@@ -1,6 +1,7 @@
 use std::fs;
 use serde::{Serialize, Deserialize};
 use walkdir;
+use tauri::{Emitter, AppHandle};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileItem {
@@ -44,7 +45,6 @@ fn get_config_path() -> std::path::PathBuf {
 #[tauri::command]
 fn load_settings() -> Result<AppSettings, String> {
     let path = get_config_path();
-    // Default settings
     let mut settings = AppSettings {
         theme: "dark".to_string(),
         font_size: 14,
@@ -54,7 +54,6 @@ fn load_settings() -> Result<AppSettings, String> {
         single_instance: true,
     };
 
-    // 1. Load from file
     if path.exists() {
         if let Ok(content) = fs::read_to_string(&path) {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
@@ -62,22 +61,23 @@ fn load_settings() -> Result<AppSettings, String> {
                 if let Some(f) = val.get("font_size").and_then(|v| v.as_u64()) { settings.font_size = f as u32; }
                 if let Some(s) = val.get("tab_size").and_then(|v| v.as_u64()) { settings.tab_size = s as u32; }
                 if let Some(l) = val.get("language").and_then(|v| v.as_str()) { settings.language = l.to_string(); }
-                // Note: context_menu from file is ignored, we check registry below
+                if let Some(c) = val.get("context_menu").and_then(|v| v.as_bool()) { settings.context_menu = c; }
                 if let Some(si) = val.get("single_instance").and_then(|v| v.as_bool()) { settings.single_instance = si; }
             }
         }
     }
 
-    // 2. Sync with Registry (Windows Only)
+    // SYNC WITH REGISTRY (Restore this logic)
     #[cfg(windows)]
     {
         use winreg::RegKey;
         use winreg::enums::*;
         let hk_cu = RegKey::predef(HKEY_CURRENT_USER);
-        // Check if the registry key exists to determine if context menu is enabled
-        // We check one of the keys we write
-        let check_path = r"Software\Classes\*\shell\OpenWithZyma";
-        settings.context_menu = hk_cu.open_subkey(check_path).is_ok();
+        // If this key exists, it means the context menu is actually enabled
+        let check_path = r"Software\Classes\*\shell\EditWithZyma";
+        let is_enabled = hk_cu.open_subkey(check_path).is_ok();
+        println!("DEBUG: Registry Check for {}: {}", check_path, is_enabled);
+        settings.context_menu = is_enabled;
     }
 
     Ok(settings)
@@ -92,34 +92,39 @@ fn save_settings(settings: AppSettings) -> Result<(), String> {
 
 #[cfg(windows)]
 #[tauri::command]
-async fn manage_context_menu(app: tauri::AppHandle, enable: bool, label: String) -> Result<(), String> {
+async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -> Result<(), String> {
     use winreg::enums::*;
     use winreg::RegKey;
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
-    let exe_str = exe_path.to_str().unwrap_or_default();
+    // Ensure we don't have existing quotes
+    let raw_path = exe_path.to_str().unwrap_or_default().trim_matches('"');
     let hk_cu = RegKey::predef(HKEY_CURRENT_USER);
-    let paths = vec![ r"Software\Classes\*\shell\OpenWithZyma", r"Software\Classes\Directory\shell\OpenWithZyma" ];
+    let paths = vec![ r"Software\Classes\*\shell\EditWithZyma", r"Software\Classes\Directory\shell\EditWithZyma" ];
+    
     if enable {
         for p in paths {
             let (key, _) = hk_cu.create_subkey(p).map_err(|e| e.to_string())?;
-            key.set_value("", &label).ok();
-            key.set_value("MUIVerb", &label).ok();
-            key.set_value("Icon", &exe_str).ok();
+            key.set_value("", &label).map_err(|e| e.to_string())?;
+            key.set_value("MUIVerb", &label).map_err(|e| e.to_string())?;
+            key.set_value("Icon", &raw_path).map_err(|e| e.to_string())?;
             
             let cmd_path = format!(r"{}\command", p);
             let (cmd_key, _) = hk_cu.create_subkey(&cmd_path).map_err(|e| e.to_string())?;
-            let cmd_val = format!("\"{}\" \"%1\"", exe_str);
-            cmd_key.set_value("", &cmd_val).ok();
+            let cmd_val = format!("\"{}\" \"%1\"", raw_path);
+            cmd_key.set_value("", &cmd_val).map_err(|e| e.to_string())?;
         }
     } else {
         for p in paths { let _ = hk_cu.delete_subkey_all(p); }
+        // Also cleanup old key if exists
+        let _ = hk_cu.delete_subkey_all(r"Software\Classes\*\shell\OpenWithZyma");
+        let _ = hk_cu.delete_subkey_all(r"Software\Classes\Directory\shell\OpenWithZyma");
     }
     Ok(())
 }
 
 #[cfg(not(windows))]
 #[tauri::command]
-async fn manage_context_menu(_app: tauri::AppHandle, _enable: bool, _label: String) -> Result<(), String> { Ok(()) }
+async fn manage_context_menu(_app: AppHandle, _enable: bool, _label: String) -> Result<(), String> { Ok(()) }
 
 #[tauri::command]
 fn is_admin() -> bool {
@@ -242,14 +247,15 @@ fn list_plugins() -> Result<Vec<(String, PluginManifest)>, String> {
 fn read_plugin_file(path: String) -> Result<String, String> { fs::read_to_string(path).map_err(|e| e.to_string()) }
 
 #[tauri::command]
-fn get_platform() -> String {
-    std::env::consts::OS.to_string()
-}
+fn get_platform() -> String { std::env::consts::OS.to_string() }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_single_instance::init(|app: &AppHandle, args: Vec<String>, _cwd: String| {
+        let _ = app.emit("single-instance", args);
+    }))
     .invoke_handler(tauri::generate_handler![
         read_dir, read_file, write_file, create_file, create_dir, remove_item, rename_item,
         search_in_dir, load_settings, save_settings, manage_context_menu, get_cli_args, is_admin, exit_app,

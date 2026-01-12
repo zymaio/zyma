@@ -3,7 +3,10 @@
 [![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20/%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![Tauri](https://img.shields.io/badge/Framework-Tauri%20v2-orange)](https://tauri.app/)
 
-**智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能文本编辑器/IDE。它旨在成为 Windows 记事本的完美替代品，同时为开发者提供类似主流 IDE 的沉浸式体验。
+**智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能文本编辑器/IDE。
+
+### 💡 核心理念：简洁 · 快速 · 高效
+我们坚信优秀的工具应当隐于无形。智码不堆砌臃肿的功能，而是致力于在保持极致启动速度和极低资源占用的同时，提供最核心、最顺手的编辑体验。无论是作为记事本的替代品，还是作为轻量级开发环境，智码都主张：**秒级响应，心无旁骛。**
 
 [简体中文](./README.md) | [English](./README_EN.md)
 
@@ -17,6 +20,7 @@
 - 🌐 **国际化**：内置简体中文、繁体中文、英文支持。
 - 🖱️ **系统集成**：一键添加右键菜单“在智码中编辑”。
 - 🧩 **插件系统**：初步支持 JS 插件扩展（开发中）。
+- 🤖 **未来规划**：代码快速补全、AI 智能补全、Git 集成等。
 
 ## 📸 界面预览
 
@@ -39,12 +43,12 @@
 ### 构建步骤
 1. 克隆仓库
    ```bash
-   git clone https://github.com/your-username/zyma.git
+   git clone https://github.com/zymaio/zyma.git
    cd zyma
    ```
 2. 安装前端依赖
    ```bash
-   cd ui
+   cd zyma/ui
    npm install
    cd ..
    ```

@@ -23,12 +23,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
     const { t } = useTranslation();
     const isWindows = platform === 'windows' || platform === 'win32';
 
-    // Helper to update specific fields and trigger parent save
     const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
         const newSettings = { ...currentSettings, [key]: value };
         onSave(newSettings);
         
-        // Side effect for context menu
         if (key === 'context_menu' && isWindows) {
             invoke("manage_context_menu", { 
                 enable: value as boolean, 
@@ -58,7 +56,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                 </div>
 
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    {/* Language */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Language')}</label>
                         <select 
@@ -72,7 +69,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         </select>
                     </div>
 
-                    {/* Theme */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Theme')}</label>
                         <select 
@@ -85,7 +81,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         </select>
                     </div>
 
-                    {/* Font Size */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('FontSize')} (px)</label>
                         <input 
@@ -110,22 +105,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                                 />
                             </div>
                         )}
-
-                        <div style={{ 
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
-                        }}>
-                            <div>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('SingleInstance')}</div>
-                                <div style={{ fontSize: '11px', opacity: 0.6 }}>{t('SingleInstanceDesc')}</div>
-                            </div>
-                            <input 
-                                type="checkbox" 
-                                checked={currentSettings.single_instance}
-                                onChange={(e) => updateSetting('single_instance', e.target.checked)}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                            />
-                        </div>
                     </div>
                 </div>
 

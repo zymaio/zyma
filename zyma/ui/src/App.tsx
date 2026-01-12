@@ -53,7 +53,7 @@ function App() {
   const pluginManager = useRef<PluginManager | null>(null);
 
   const handleFileSelect = useCallback(async (path: string, name: string) => {
-    const cleanPath = path.replace(/^\"(.*)\"$/, '$1');
+    const cleanPath = path.replace(/^"(.*)"$/, '$1');
     const existing = stateRef.current.openFiles.find(f => f.path === cleanPath);
     if (existing) {
         setActiveFilePath(cleanPath);
@@ -61,20 +61,23 @@ function App() {
     }
     try {
         const content = await invoke<string>('read_file', { path: cleanPath });
-        const newFile: OpenedFile = { path: cleanPath, name, content, originalContent: content };
-        setOpenFiles(prev => [...prev, newFile]);
+        const newFile: OpenedFile = { path: cleanPath, name: name.replace(/^"(.*)"$/, '$1'), content, originalContent: content };
+        setOpenFiles(prev => {
+            if (prev.some(f => f.path === cleanPath)) return prev;
+            return [...prev, newFile];
+        });
         setActiveFilePath(cleanPath);
     } catch (error) { 
-        console.error('File open error:', error); 
+        console.error('File open error:', error);
     }
   }, []);
 
   const processArgs = useCallback((args: string[]) => {
       if (args.length > 1) {
           const fileToOpen = args[args.length - 1];
-          if (fileToOpen.includes(":") && !fileToOpen.toLowerCase().endsWith(".exe")) {
+          if (fileToOpen.includes(":") && !fileToOpen.toLowerCase().endsWith("zyma.exe")) {
               const name = fileToOpen.split(/[\\/]/).pop() || fileToOpen;
-              handleFileSelect(fileToOpen, name.replace(/^\"(.*)\"$/, '$1'));
+              handleFileSelect(fileToOpen, name);
           }
       }
   }, [handleFileSelect]);
@@ -90,47 +93,51 @@ function App() {
       return active ? active.content : "";
   }, []);
 
-  // Initialization Guard
+  // Optimized Initialization
   useEffect(() => {
       const startApp = async () => {
-          await new Promise(resolve => setTimeout(resolve, 200));
           try {
-              const saved = await invoke<AppSettings>('load_settings');
+              // 🚀 PARALLEL STARTUP: Execute all core backend calls at once
+              const [saved, adminStatus, plat, args] = await Promise.all([
+                  invoke<AppSettings>('load_settings'),
+                  invoke<boolean>('is_admin'),
+                  invoke<string>('get_platform'),
+                  invoke<string[]>('get_cli_args')
+              ]);
+
+              // Apply results immediately
               setSettings(saved);
               i18n.changeLanguage(saved.language);
-              
-              const [adminStatus, plat] = await Promise.all([
-                  invoke<boolean>('is_admin'),
-                  invoke<string>('get_platform')
-              ]);
               setIsAdmin(adminStatus);
               setPlatform(plat);
 
+              // Initialize Plugin Manager
               pluginManager.current = new PluginManager({
                   insertText: insertTextAtCursor,
                   getContent: getCurrentContent,
                   notify: (msg) => alert(`[Plugin] ${msg}`)
               });
-              await pluginManager.current.loadAll();
+              
+              // Load plugins separately to not block UI ready state
+              pluginManager.current.loadAll();
 
-              const args = await invoke<string[]>('get_cli_args');
+              // Open file from args
               processArgs(args);
               
+              // App is ready to show
               setReady(true);
           } catch (e) { 
               console.error('Init error:', e); 
               setReady(true); 
-          } 
+          }
       };
       startApp();
 
       const unlistenSingleInstance = listen<string[]>("single-instance", (event) => {
-          if (stateRef.current.settings.single_instance) {
-              const win = getCurrentWindow();
-              win.unminimize().catch(() => {});
-              win.setFocus().catch(() => {});
-              processArgs(event.payload);
-          }
+          const win = getCurrentWindow();
+          win.unminimize().catch(() => {});
+          win.setFocus().catch(() => {});
+          processArgs(event.payload);
       });
 
       const win = getCurrentWindow();
@@ -214,7 +221,7 @@ function App() {
 
   const handleEditorChange = useCallback((val: string) => {
     setOpenFiles(prev => prev.map(f => 
-        (f.path || f.name) === activeFilePath ? { ...f, content: val } : f
+        (f.path || f.name) === stateRef.current.activeFilePath ? { ...f, content: val } : f
     ));
   }, [activeFilePath]);
 
@@ -226,7 +233,7 @@ function App() {
           case 'save_as': handleSave(true); break;
           case 'exit': invoke('exit_app'); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
-          case 'about': alert(`智码 (zyma) v2.2`); break;
+          case 'about': alert(`智码 (zyma) v1.0.0`); break;
       }
   };
 
@@ -268,7 +275,7 @@ function App() {
   }, [handleNewFile]);
 
   if (!ready) {
-      return <div className="empty-state" style={{ backgroundColor: '#1e1e1e' }}></div>;
+      return <div style={{ width: '100vw', height: '100vh', backgroundColor: '#1e1e1e' }}></div>;
   }
 
   return (
