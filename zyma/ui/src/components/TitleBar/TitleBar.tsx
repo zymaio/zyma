@@ -3,31 +3,22 @@ import { Minus, Square, X as CloseIcon, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 
-interface MenuItem {
-    label: string;
-    action?: string;
-    shortcut?: string;
-    type?: 'separator' | 'item';
-}
-
-interface MenuGroup {
-    label: string;
-    items: MenuItem[];
-}
-
 interface TitleBarProps {
     onAction: (action: string) => void;
     themeMode: 'dark' | 'light';
     isAdmin?: boolean;
+    platform?: string;
 }
 
-const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => {
+const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platform }) => {
   const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const MENU_DATA: MenuGroup[] = [
+  const isMac = platform === 'macos' || platform === 'darwin';
+
+  const MENU_DATA = [
     {
         label: t('File'),
         items: [
@@ -35,7 +26,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
             { label: t('OpenFolder'), action: 'open_folder' },
             { label: t('Save'), action: 'save', shortcut: 'Ctrl+S' },
             { label: t('SaveAs'), action: 'save_as' },
-            { type: 'separator', label: '' },
+            { type: 'separator' },
             { label: t('Exit'), action: 'exit' }
         ]
     },
@@ -54,9 +45,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
     },
     {
         label: t('Help'),
-        items: [
-             { label: t('About'), action: 'about' }
-        ]
+        items: [ { label: t('About'), action: 'about' } ]
     }
   ];
 
@@ -66,9 +55,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
             const win = getCurrentWindow();
             const max = await win.isMaximized();
             setIsMaximized(max);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     };
     checkMaximized();
 
@@ -81,14 +68,10 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMinimize = async () => {
-    await getCurrentWindow().minimize();
-  };
-
+  const handleMinimize = () => getCurrentWindow().minimize();
   const handleMaximize = async () => {
     const win = getCurrentWindow();
-    const maximized = await win.isMaximized();
-    if (maximized) {
+    if (await win.isMaximized()) {
       await win.unmaximize();
       setIsMaximized(false);
     } else {
@@ -96,87 +79,66 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
       setIsMaximized(true);
     }
   };
-
-  const handleClose = async () => {
-    await getCurrentWindow().close();
-  };
-
-  const handleMenuClick = (menuLabel: string) => {
-      setActiveMenu(activeMenu === menuLabel ? null : menuLabel);
-  };
-
-  const handleItemClick = (action?: string) => {
-      if (action) {
-          onAction(action);
-          setActiveMenu(null);
-      }
-  };
-
-  const handleMouseEnter = (menuLabel: string) => {
-      if (activeMenu) {
-          setActiveMenu(menuLabel);
-      }
-  };
+  const handleClose = () => getCurrentWindow().close();
 
   return (
     <div 
-      data-tauri-drag-region 
       style={{
         height: '30px',
         backgroundColor: 'var(--bg-activity-bar)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
         userSelect: 'none',
         color: 'var(--text-primary)',
         fontSize: '12px',
-        fontFamily: 'Segoe UI, sans-serif',
         flexShrink: 0,
         position: 'relative',
-        zIndex: 1000
+        zIndex: 1000,
+        flexDirection: isMac ? 'row-reverse' : 'row'
       }}
       ref={menuRef}
     >
-      <div style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-        <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }} data-tauri-drag-region>
-          <div style={{ width: '18px', height: '18px', backgroundColor: '#007acc', borderRadius: '3px' }}></div> 
+      {/* 1. Window Controls (MacOS: Left, Windows: Right) */}
+      {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
+      
+      <div style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1 }} data-tauri-drag-region>
+        {/* App Icon */}
+        <div style={{ padding: '0 10px' }} data-tauri-drag-region>
+          <div style={{ width: '16px', height: '16px', backgroundColor: '#007acc', borderRadius: '3px' }}></div>
         </div>
 
-        <div className="titlebar-menu" style={{ display: 'flex', height: '100%' }} data-tauri-drag-region>
+        {/* Menus */}
+        <div style={{ display: 'flex', height: '100%' }}>
             {MENU_DATA.map(menu => (
-                <div key={menu.label} style={{ position: 'relative', height: '100%' }}>
+                <div key={menu.label} style={{ position: 'relative' }}>
                     <div 
+                        className="menu-item"
                         style={{ 
-                            padding: '0 8px', 
-                            cursor: 'pointer', 
-                            height: '100%', 
-                            display: 'flex', 
-                            alignItems: 'center',
+                            padding: '0 10px', height: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer',
                             backgroundColor: activeMenu === menu.label ? 'rgba(128,128,128,0.2)' : 'transparent'
-                        }} 
-                        className="menu-item" 
-                        onClick={() => handleMenuClick(menu.label)}
-                        onMouseEnter={() => handleMouseEnter(menu.label)}
+                        }}
+                        onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
+                        onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
                     >
                         {menu.label}
                     </div>
-
                     {activeMenu === menu.label && (
                         <div style={{
                             position: 'absolute', top: '30px', left: 0,
                             backgroundColor: 'var(--bg-dropdown)', border: '1px solid var(--border-color)',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.3)', minWidth: '200px', padding: '4px 0', zIndex: 1001
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)', minWidth: '180px', padding: '4px 0', zIndex: 1001
                         }}>
-                            {menu.items.map((item, idx) => (
+                            {menu.items.map((item: any, idx) => (
                                 item.type === 'separator' ? (
                                     <div key={idx} style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0' }}></div>
                                 ) : (
                                     <div 
-                                        key={idx} className="dropdown-item" onClick={() => handleItemClick(item.action)}
-                                        style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', color: 'var(--text-primary)' }}
+                                        key={idx} className="dropdown-item" 
+                                        style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
+                                        onClick={() => { onAction(item.action); setActiveMenu(null); }}
                                     >
                                         <span>{item.label}</span>
-                                        {item.shortcut && <span style={{ marginLeft: '15px', fontSize: '10px', opacity: 0.6 }}>{item.shortcut}</span>}
+                                        {item.shortcut && <span style={{ opacity: 0.5, fontSize: '10px' }}>{item.shortcut}</span>}
                                     </div>
                                 )
                             ))}
@@ -185,18 +147,26 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin }) => 
                 </div>
             ))}
         </div>
-      </div>
 
-      <div style={{ flex: 1, textAlign: 'center', opacity: 0.6, pointerEvents: 'none' }} data-tauri-drag-region>
-        智码 - zyma {isAdmin && `[${t('Administrator')}]`}
-      </div>
-
-      <div style={{ display: 'flex', height: '100%' }}>
-        <div className="window-control" onClick={handleMinimize}><Minus size={16} /></div>
-        <div className="window-control" onClick={handleMaximize}>
-          {isMaximized ? <Copy size={14} style={{transform: 'rotate(180deg)'}} /> : <Square size={14} />}
+        {/* Draggable Title Area */}
+        <div style={{ flex: 1, height: '100%', textAlign: 'center', opacity: 0.5, paddingTop: '6px' }} data-tauri-drag-region>
+            智码 - zyma {isAdmin && `[${t('Administrator')}]`}
         </div>
-        <div className="window-control close" onClick={handleClose}><CloseIcon size={16} /></div>
+      </div>
+
+      {/* Actual Buttons (Windows: Right, MacOS: Left) */}
+      <div style={{ display: 'flex', height: '100%' }}>
+        {isMac ? (
+            <div style={{ width: '70px' }} data-tauri-drag-region></div> /* Space for MacOS traffic lights */
+        ) : (
+            <>
+                <div className="window-control" onClick={handleMinimize}><Minus size={16} /></div>
+                <div className="window-control" onClick={handleMaximize}>
+                    {isMaximized ? <Copy size={14} /> : <Square size={14} />}
+                </div>
+                <div className="window-control close" onClick={handleClose}><CloseIcon size={16} /></div>
+            </>
+        )}
       </div>
     </div>
   );

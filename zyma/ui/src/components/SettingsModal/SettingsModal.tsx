@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
@@ -16,22 +16,25 @@ interface SettingsModalProps {
     currentSettings: AppSettings;
     onSave: (settings: AppSettings) => void;
     onClose: () => void;
+    platform?: string;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose, platform }) => {
     const { t } = useTranslation();
-    const [settings, setSettings] = useState<AppSettings>(currentSettings);
+    const isWindows = platform === 'windows' || platform === 'win32';
 
-    const handleSave = () => {
-        onSave(settings);
-        onClose();
-    };
-
-    const toggleContextMenu = async (enabled: boolean) => {
-        setSettings({ ...settings, context_menu: enabled });
-        try {
-            await invoke("manage_context_menu", { enable: enabled, label: t('ContextMenuLabel') });
-        } catch (e) { alert(e); }
+    // Helper to update specific fields and trigger parent save
+    const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+        const newSettings = { ...currentSettings, [key]: value };
+        onSave(newSettings);
+        
+        // Side effect for context menu
+        if (key === 'context_menu' && isWindows) {
+            invoke("manage_context_menu", { 
+                enable: value as boolean, 
+                label: t('ContextMenuLabel') 
+            }).catch(console.error);
+        }
     };
 
     return (
@@ -55,11 +58,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                 </div>
 
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {/* Language */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Language')}</label>
                         <select 
-                            value={settings.language}
-                            onChange={(e) => setSettings({ ...settings, language: e.target.value })}
+                            value={currentSettings.language}
+                            onChange={(e) => updateSetting('language', e.target.value)}
                             style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
                         >
                             <option value="zh-CN">简体中文</option>
@@ -68,11 +72,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         </select>
                     </div>
 
+                    {/* Theme */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Theme')}</label>
                         <select 
-                            value={settings.theme}
-                            onChange={(e) => setSettings({ ...settings, theme: e.target.value as 'dark' | 'light' })}
+                            value={currentSettings.theme}
+                            onChange={(e) => updateSetting('theme', e.target.value as 'dark' | 'light')}
                             style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
                         >
                             <option value="dark">Dark</option>
@@ -80,29 +85,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         </select>
                     </div>
 
+                    {/* Font Size */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('FontSize')} (px)</label>
                         <input 
-                            type="number" value={settings.font_size}
-                            onChange={(e) => setSettings({ ...settings, font_size: parseInt(e.target.value) || 12 })}
+                            type="number" value={currentSettings.font_size}
+                            onChange={(e) => updateSetting('font_size', parseInt(e.target.value) || 12)}
                             style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
                         />
                     </div>
 
-                    {/* Checkboxes Group */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        <div style={{ 
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
-                        }}>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('ContextMenu')}</div>
-                            <input 
-                                type="checkbox" 
-                                checked={settings.context_menu}
-                                onChange={(e) => toggleContextMenu(e.target.checked)}
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                            />
-                        </div>
+                        {isWindows && (
+                            <div style={{ 
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
+                            }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('ContextMenu')}</div>
+                                <input 
+                                    type="checkbox" 
+                                    checked={currentSettings.context_menu}
+                                    onChange={(e) => updateSetting('context_menu', e.target.checked)}
+                                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                            </div>
+                        )}
 
                         <div style={{ 
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -114,17 +121,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                             </div>
                             <input 
                                 type="checkbox" 
-                                checked={settings.single_instance}
-                                onChange={(e) => setSettings({ ...settings, single_instance: e.target.checked })}
+                                checked={currentSettings.single_instance}
+                                onChange={(e) => updateSetting('single_instance', e.target.checked)}
                                 style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                             />
                         </div>
                     </div>
                 </div>
 
-                <div style={{ padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                    <button onClick={onClose} style={{ padding: '6px 15px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer' }}>{t('Cancel')}</button>
-                    <button onClick={handleSave} style={{ padding: '6px 15px', backgroundColor: 'var(--accent-color)', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}>{t('SaveApply')}</button>
+                <div style={{ padding: '15px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button 
+                        onClick={onClose} 
+                        style={{ 
+                            padding: '6px 20px', backgroundColor: 'var(--accent-color)', border: 'none', 
+                            color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
+                        }}
+                    >
+                        {t('Close')}
+                    </button>
                 </div>
             </div>
         </div>

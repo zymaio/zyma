@@ -241,6 +241,11 @@ fn list_plugins() -> Result<Vec<(String, PluginManifest)>, String> {
 #[tauri::command]
 fn read_plugin_file(path: String) -> Result<String, String> { fs::read_to_string(path).map_err(|e| e.to_string()) }
 
+#[tauri::command]
+fn get_platform() -> String {
+    std::env::consts::OS.to_string()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -248,7 +253,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
         read_dir, read_file, write_file, create_file, create_dir, remove_item, rename_item,
         search_in_dir, load_settings, save_settings, manage_context_menu, get_cli_args, is_admin, exit_app,
-        list_plugins, read_plugin_file
+        list_plugins, read_plugin_file, get_platform
     ])
     .run(tauri::generate_context!())
     .expect("error while running app");

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Files, Search, Settings } from 'lucide-react';
+import { Files, Search, Settings, Puzzle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
 import './i18n';
 
@@ -14,6 +15,7 @@ import SearchPanel from './components/SearchPanel/SearchPanel';
 import TitleBar from './components/TitleBar/TitleBar';
 import SettingsModal from './components/SettingsModal/SettingsModal';
 import ConfirmModal from './components/ConfirmModal/ConfirmModal';
+import { PluginManager } from './components/PluginSystem/PluginSystem';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
 import './App.css';
 
@@ -26,12 +28,15 @@ interface OpenedFile {
 
 function App() {
   const { t, i18n } = useTranslation();
+  const [ready, setReady] = useState(false);
   const [openFiles, setOpenFiles] = useState<OpenedFile[]>([]);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const [rootPath, setRootPath] = useState<string>(".");
-  const [sidebarTab, setSidebarTab] = useState<'explorer' | 'search'>('explorer');
+  const [sidebarTab, setSidebarTab] = useState<'explorer' | 'search' | 'plugins'>('explorer');
   const [untitledCount, setUntitledCount] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [platform, setPlatform] = useState<string>("");
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [isClosingApp, setIsClosingApp] = useState(false);
   
@@ -45,33 +50,101 @@ function App() {
   const activeFile = openFiles.find(f => (f.path || f.name) === activeFilePath) || null;
   const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
 
-  // Initialization
+  const pluginManager = useRef<PluginManager | null>(null);
+
+  const handleFileSelect = useCallback(async (path: string, name: string) => {
+    const cleanPath = path.replace(/^\"(.*)\"$/, '$1');
+    const existing = stateRef.current.openFiles.find(f => f.path === cleanPath);
+    if (existing) {
+        setActiveFilePath(cleanPath);
+        return;
+    }
+    try {
+        const content = await invoke<string>('read_file', { path: cleanPath });
+        const newFile: OpenedFile = { path: cleanPath, name, content, originalContent: content };
+        setOpenFiles(prev => [...prev, newFile]);
+        setActiveFilePath(cleanPath);
+    } catch (error) { 
+        console.error('File open error:', error); 
+    }
+  }, []);
+
+  const processArgs = useCallback((args: string[]) => {
+      if (args.length > 1) {
+          const fileToOpen = args[args.length - 1];
+          if (fileToOpen.includes(":") && !fileToOpen.toLowerCase().endsWith(".exe")) {
+              const name = fileToOpen.split(/[\\/]/).pop() || fileToOpen;
+              handleFileSelect(fileToOpen, name.replace(/^\"(.*)\"$/, '$1'));
+          }
+      }
+  }, [handleFileSelect]);
+
+  const insertTextAtCursor = useCallback((text: string) => {
+      setOpenFiles(prev => prev.map(f => 
+        (f.path || f.name) === stateRef.current.activeFilePath ? { ...f, content: f.content + text } : f
+      ));
+  }, []);
+
+  const getCurrentContent = useCallback(() => {
+      const active = stateRef.current.openFiles.find(f => (f.path || f.name) === stateRef.current.activeFilePath);
+      return active ? active.content : "";
+  }, []);
+
+  // Initialization Guard
   useEffect(() => {
-      const init = async () => {
+      const startApp = async () => {
+          await new Promise(resolve => setTimeout(resolve, 200));
           try {
               const saved = await invoke<AppSettings>('load_settings');
               setSettings(saved);
               i18n.changeLanguage(saved.language);
+              
+              const [adminStatus, plat] = await Promise.all([
+                  invoke<boolean>('is_admin'),
+                  invoke<string>('get_platform')
+              ]);
+              setIsAdmin(adminStatus);
+              setPlatform(plat);
+
+              pluginManager.current = new PluginManager({
+                  insertText: insertTextAtCursor,
+                  getContent: getCurrentContent,
+                  notify: (msg) => alert(`[Plugin] ${msg}`)
+              });
+              await pluginManager.current.loadAll();
 
               const args = await invoke<string[]>('get_cli_args');
-              if (args.length > 1) {
-                  const fileToOpen = args[args.length - 1];
-                  if (fileToOpen.includes(":")) {
-                      handleFileSelect(fileToOpen, fileToOpen.split(/[\\/]/).pop() || fileToOpen);
-                  }
-              }
-          } catch (e) { console.error(e); }
+              processArgs(args);
+              
+              setReady(true);
+          } catch (e) { 
+              console.error('Init error:', e); 
+              setReady(true); 
+          } 
       };
-      init();
+      startApp();
+
+      const unlistenSingleInstance = listen<string[]>("single-instance", (event) => {
+          if (stateRef.current.settings.single_instance) {
+              const win = getCurrentWindow();
+              win.unminimize().catch(() => {});
+              win.setFocus().catch(() => {});
+              processArgs(event.payload);
+          }
+      });
 
       const win = getCurrentWindow();
-      const unlisten = win.onCloseRequested(async (event) => {
+      const unlistenClose = win.onCloseRequested(async (event) => {
           event.preventDefault();
           const hasDirty = stateRef.current.openFiles.some(f => f.content !== f.originalContent);
           if (hasDirty) { setIsClosingApp(true); } else { invoke('exit_app'); }
       });
-      return () => { unlisten.then(fn => fn()); };
-  }, []);
+
+      return () => {
+          unlistenSingleInstance.then(f => f());
+          unlistenClose.then(f => f());
+      };
+  }, [processArgs, insertTextAtCursor, getCurrentContent, i18n]);
 
   useEffect(() => {
     document.body.classList.remove('theme-dark', 'theme-light');
@@ -82,17 +155,6 @@ function App() {
       setSettings(newSettings);
       i18n.changeLanguage(newSettings.language);
       try { await invoke('save_settings', { settings: newSettings }); } catch (e) { alert(e); }
-  };
-
-  const handleFileSelect = async (path: string, name: string) => {
-    const existing = stateRef.current.openFiles.find(f => f.path === path);
-    if (existing) { setActiveFilePath(path); return; }
-    try {
-        const content = await invoke<string>('read_file', { path });
-        const newFile: OpenedFile = { path, name, content, originalContent: content };
-        setOpenFiles(prev => [...prev, newFile]);
-        setActiveFilePath(path);
-    } catch (error) { alert(String(error)); }
   };
 
   const handleNewFile = useCallback(() => {
@@ -152,9 +214,9 @@ function App() {
 
   const handleEditorChange = useCallback((val: string) => {
     setOpenFiles(prev => prev.map(f => 
-        (f.path || f.name) === stateRef.current.activeFilePath ? { ...f, content: val } : f
+        (f.path || f.name) === activeFilePath ? { ...f, content: val } : f
     ));
-  }, []);
+  }, [activeFilePath]);
 
   const handleAction = (action: string) => {
       switch (action) {
@@ -164,7 +226,7 @@ function App() {
           case 'save_as': handleSave(true); break;
           case 'exit': invoke('exit_app'); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
-          case 'about': alert(`智码 (zyma)`); break;
+          case 'about': alert(`智码 (zyma) v2.2`); break;
       }
   };
 
@@ -205,21 +267,35 @@ function App() {
       return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNewFile]);
 
+  if (!ready) {
+      return <div className="empty-state" style={{ backgroundColor: '#1e1e1e' }}></div>;
+  }
+
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', flexDirection: 'column' }}>
-        <TitleBar onAction={handleAction} themeMode={settings.theme} />
+        <TitleBar onAction={handleAction} themeMode={settings.theme} isAdmin={isAdmin} platform={platform} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <div className="activity-bar">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', width: '100%' }}>
                     <div className={`activity-icon ${sidebarTab === 'explorer' ? 'active' : ''}`} onClick={() => setSidebarTab('explorer')} title={t('Explorer')}><Files size={24} /></div>
                     <div className={`activity-icon ${sidebarTab === 'search' ? 'active' : ''}`} onClick={() => setSidebarTab('search')} title={t('Search')}><Search size={24} /></div>
+                    <div className={`activity-icon ${sidebarTab === 'plugins' ? 'active' : ''}`} onClick={() => setSidebarTab('plugins')} title="Plugins"><Puzzle size={24} /></div>
                 </div>
                 <div style={{ flex: 1 }}></div>
                 <div style={{ marginBottom: '15px' }}>
                     <div className={`activity-icon ${showSettings ? 'active' : ''}`} onClick={() => setShowSettings(true)} title={t('Settings')}><Settings size={24} /></div>
                 </div>
             </div>
-            {sidebarTab === 'explorer' ? <Sidebar rootPath={rootPath} onFileSelect={handleFileSelect} onFileDelete={handleCloseFile} /> : <SearchPanel rootPath={rootPath} onFileSelect={handleFileSelect} />}
+
+            {sidebarTab === 'explorer' && <Sidebar rootPath={rootPath} onFileSelect={handleFileSelect} onFileDelete={handleCloseFile} />}
+            {sidebarTab === 'search' && <SearchPanel rootPath={rootPath} onFileSelect={handleFileSelect} />}
+            {sidebarTab === 'plugins' && (
+                <div style={{ width: '250px', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', padding: '10px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>Plugins</div>
+                    <div style={{ fontSize: '12px', opacity: 0.6 }}>Manage your extensions here (Coming Soon)</div>
+                </div>
+            )}
+
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <TabBar files={openFiles.map(f => ({ path: f.path || f.name, name: f.name, isDirty: f.content !== f.originalContent }))} activePath={activeFilePath} onSwitch={setActiveFilePath} onClose={handleCloseFile} />
                 {activeFile ? (
@@ -238,12 +314,16 @@ function App() {
             </div>
         </div>
         <div className="status-bar">
-            <div>{activeFile ? (activeFile.path || activeFile.name) : t('NoFile')}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                {isAdmin && <span style={{ backgroundColor: '#e81123', color: '#fff', padding: '0 4px', borderRadius: '2px', fontSize: '10px', fontWeight: 'bold' }}>{t('Administrator')}</span>}
+                {activeFile ? (activeFile.path || activeFile.name) : t('NoFile')}
+            </div>
             <div style={{ flex: 1 }}></div>
             <div>{activeFile && activeFile.content !== activeFile.originalContent ? '● ' + t('Unsaved') : ''}</div>
             <div style={{ marginLeft: '15px' }}>{rootPath}</div>
         </div>
-        {showSettings && <SettingsModal currentSettings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} />}
+        {showSettings && <SettingsModal currentSettings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} platform={platform} />}
+        
         {pendingCloseId && (
             <ConfirmModal 
                 title={t('File')}
@@ -258,13 +338,7 @@ function App() {
             />
         )}
         {isClosingApp && (
-            <ConfirmModal 
-                title="zyma"
-                message={t('SaveBeforeClose', { name: t('all files') })}
-                onSave={() => handleAppExit(true)}
-                onDontSave={() => handleAppExit(false)}
-                onCancel={() => setIsClosingApp(false)}
-            />
+            <ConfirmModal title="zyma" message={t('SaveBeforeClose', { name: t('all files') })} onSave={() => handleAppExit(true)} onDontSave={() => handleAppExit(false)} onCancel={() => setIsClosingApp(false)} />
         )}
     </div>
   );

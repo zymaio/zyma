@@ -12,8 +12,8 @@ jobs:
       - name: Mirror the GitHub repo to Gitee
         uses: Yikun/hub-mirror-action@master
         with:
-          src: github/your-github-username
-          dst: gitee/your-gitee-username
+          src: github/zymaio
+          dst: gitee/zymaio
           dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
           dst_token: ${{ secrets.GITEE_TOKEN }}
           static_list: "zyma"
