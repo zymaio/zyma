@@ -1,0 +1,228 @@
+/* Default Variables (Base) */
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+}
+
+/* Dark Theme (Default) */
+body.theme-dark {
+  --bg-dark: #1e1e1e;
+  --bg-sidebar: #252526;
+  --bg-activity-bar: #333333;
+  --bg-tab: #2d2d2d;
+  --bg-tab-active: #1e1e1e;
+  --bg-titlebar: #333333;
+  --bg-dropdown: #252526;
+  --text-primary: #cccccc;
+  --text-secondary: #969696;
+  --border-color: #3e3e42;
+  --accent-color: #007acc;
+  --status-bar-bg: #007acc;
+  --scrollbar-thumb: #424242;
+  --scrollbar-hover: #4f4f4f;
+  --dropdown-hover: #094771;
+  --input-bg: #3c3c3c;
+  --input-border: #555;
+  --preview-bg: #0d1117;
+  --preview-color: #c9d1d9;
+}
+
+/* Light Theme */
+body.theme-light {
+  --bg-dark: #ffffff;
+  --bg-sidebar: #f3f3f3;
+  --bg-activity-bar: #e8e8e8;
+  --bg-tab: #ececec;
+  --bg-tab-active: #ffffff;
+  --bg-titlebar: #dddddd;
+  --bg-dropdown: #ffffff;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --border-color: #e4e4e4;
+  --accent-color: #007acc;
+  --status-bar-bg: #007acc;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-hover: #a8a8a8;
+  --dropdown-hover: #0060c0;
+  --input-bg: #ffffff;
+  --input-border: #ccc;
+  --preview-bg: #ffffff;
+  --preview-color: #24292f;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.file-item-hover:hover {
+  background-color: var(--bg-activity-bar); /* Fallback or specific hover color */
+  color: var(--text-primary); 
+  filter: brightness(110%);
+}
+
+/* Adjust hover specifically based on theme */
+body.theme-dark .file-item-hover:hover {
+    background-color: #2a2d2e;
+    color: #fff;
+}
+body.theme-light .file-item-hover:hover {
+    background-color: #e8e8e8;
+    color: #000;
+}
+
+/* TitleBar Styles */
+.menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+body.theme-light .menu-item:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.window-control {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: background-color 0.1s;
+}
+
+.window-control:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+body.theme-light .window-control:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.window-control.close:hover {
+  background-color: #e81123 !important;
+  color: #fff !important;
+}
+
+.dropdown-item:hover {
+  background-color: var(--dropdown-hover);
+  color: #fff !important;
+}
+
+/* Layout Styles */
+.empty-state {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-secondary);
+    flex-direction: column;
+    background-color: var(--bg-dark);
+}
+
+.logo-text {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.status-bar {
+    height: 22px;
+    background-color: var(--status-bar-bg);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.activity-bar {
+    width: 48px;
+    background-color: var(--bg-activity-bar);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    gap: 20px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-color);
+}
+
+.activity-icon {
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.activity-icon.active {
+    color: var(--text-primary);
+    border-left: 2px solid var(--accent-color);
+    padding-left: 2px;
+}
+
+.activity-icon:hover {
+    color: var(--text-primary);
+}
+
+.tab-close-btn:hover {
+    background-color: rgba(128, 128, 128, 0.3);
+}
+
+.icon-btn {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.icon-btn:hover {
+    opacity: 1;
+    color: var(--text-primary);
+}
+
+.item-actions {
+    display: none;
+}
+
+.file-item-hover:hover .item-actions {
+    display: flex;
+    align-items: center;
+}
+
+.action-icon {
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.action-icon:hover {
+    opacity: 1;
+    color: #ff4d4f;
+}

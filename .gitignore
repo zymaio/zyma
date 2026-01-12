@@ -1,0 +1,19 @@
+# Rust
+/zyma/src-tauri/target
+/zyma/src-tauri/gen
+
+# Node.js
+/zyma/ui/node_modules
+/zyma/ui/dist
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config
+/zyma/src-tauri/.zyma_config.json
+*.log
