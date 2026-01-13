@@ -8,7 +8,6 @@ interface AboutModalProps {
 }
 
 const AboutModal: React.FC<AboutModalProps> = ({ onClose }) => {
-    const { t } = useTranslation();
     const version = "0.9.1";
 
     const handleOpenLink = (url: string) => {
