@@ -18,6 +18,7 @@ import ConfirmModal from './components/ConfirmModal/ConfirmModal';
 import AboutModal from './components/AboutModal/AboutModal';
 import { PluginManager } from './components/PluginSystem/PluginSystem';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
+import { APP_VERSION } from './config';
 import './App.css';
 
 interface OpenedFile {
@@ -25,6 +26,12 @@ interface OpenedFile {
     name: string;
     content: string;
     originalContent: string;
+}
+
+interface UpdateInfo {
+    version: string;
+    source: string;
+    url: string;
 }
 
 function App() {
@@ -36,14 +43,16 @@ function App() {
   const [sidebarTab, setSidebarTab] = useState<'explorer' | 'search' | 'plugins'>('explorer');
   const [untitledCount, setUntitledCount] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
+  const [aboutState, setAboutState] = useState<{show: boolean, autoCheck: boolean, data: UpdateInfo | null}>({ 
+      show: false, autoCheck: false, data: null 
+  });
   const [isAdmin, setIsAdmin] = useState(false);
   const [platform, setPlatform] = useState<string>("");
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [isClosingApp, setIsClosingApp] = useState(false);
   
   const [settings, setSettings] = useState<AppSettings>({
-      theme: 'dark', font_size: 14, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true
+      theme: 'dark', font_size: 14, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true
   });
 
   const stateRef = useRef({ openFiles, activeFilePath, settings, untitledCount });
@@ -95,11 +104,9 @@ function App() {
       return active ? active.content : "";
   }, []);
 
-  // Optimized Initialization
   useEffect(() => {
       const startApp = async () => {
           try {
-              // 🚀 PARALLEL STARTUP
               const [saved, adminStatus, plat, args] = await Promise.all([
                   invoke<AppSettings>('load_settings'),
                   invoke<boolean>('is_admin'),
@@ -120,10 +127,19 @@ function App() {
               
               pluginManager.current.loadAll();
               processArgs(args);
-              // App is ready to show
               setReady(true);
-              // 🚀 SHOW WINDOW VIA BACKEND
               invoke('show_main_window').catch(console.error);
+
+              if (saved.auto_update) {
+                  setTimeout(async () => {
+                      try {
+                          const info = await invoke<UpdateInfo>('check_update_racing');
+                          if (info.version !== APP_VERSION) {
+                              setAboutState({ show: true, autoCheck: false, data: info }); 
+                          }
+                      } catch (e) { /* silent fail */ }
+                  }, 3000);
+              }
           } catch (e) { 
               console.error('Init error:', e); 
               setReady(true);
@@ -232,7 +248,8 @@ function App() {
           case 'save_as': handleSave(true); break;
           case 'exit': invoke('exit_app'); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
-          case 'about': setShowAbout(true); break;
+          case 'check_update': setAboutState({ show: true, autoCheck: true, data: null }); break;
+          case 'about': setAboutState({ show: true, autoCheck: false, data: null }); break;
       }
   };
 
@@ -329,7 +346,7 @@ function App() {
             <div style={{ marginLeft: '15px' }}>{rootPath}</div>
         </div>
         {showSettings && <SettingsModal currentSettings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} platform={platform} />}
-        {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
+        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} initialData={aboutState.data} />}
         
         {pendingCloseId && (
             <ConfirmModal 

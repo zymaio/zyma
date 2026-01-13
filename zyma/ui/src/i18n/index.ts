@@ -34,7 +34,14 @@ const resources = {
       "ContextMenuLabel": "Edit with Zyma",
       "SingleInstance": "Single Instance Mode",
       "SingleInstanceDesc": "Reuse existing window when opening files",
-      "Success": "Success"
+      "Success": "Success",
+      "CheckUpdate": "Check for Updates",
+      "Checking": "Checking...",
+      "AlreadyLatest": "Up to date",
+      "AutoUpdate": "Auto Check Updates",
+      "NewVersionFound": "New version v{{version}} found",
+      "GoDownload": "Click to download from {{source}}",
+      "AppDescription": "Simple · Fast · Efficient Modern Code Editor"
     }
   },
   'zh-CN': {
@@ -69,7 +76,14 @@ const resources = {
       "ContextMenuLabel": "在智码中编辑",
       "SingleInstance": "单实例模式",
       "SingleInstanceDesc": "开启后，打开新文件将复用现有窗口",
-      "Success": "成功"
+      "Success": "成功",
+      "CheckUpdate": "检查更新",
+      "Checking": "正在检查...",
+      "AlreadyLatest": "已是最新版本",
+      "AutoUpdate": "自动检测更新",
+      "NewVersionFound": "发现新版本 v{{version}}",
+      "GoDownload": "点击前往 {{source}} 下载",
+      "AppDescription": "简洁 · 快速 · 高效的现代代码编辑器"
     }
   },
   'zh-TW': {
@@ -104,7 +118,14 @@ const resources = {
       "ContextMenuLabel": "在智碼中編輯",
       "SingleInstance": "單實例模式",
       "SingleInstanceDesc": "開啟後，開啟新檔案將複用現有視窗",
-      "Success": "成功"
+      "Success": "成功",
+      "CheckUpdate": "檢查更新",
+      "Checking": "正在檢查...",
+      "AlreadyLatest": "已是最新版本",
+      "AutoUpdate": "自動檢測更新",
+      "NewVersionFound": "發現新版本 v{{version}}",
+      "GoDownload": "點擊前往 {{source}} 下載",
+      "AppDescription": "簡潔 · 快速 · 高效的現代程式碼編輯器"
     }
   }
 };

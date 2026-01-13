@@ -45,7 +45,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
     },
     {
         label: t('Help'),
-        items: [ { label: t('About'), action: 'about' } ]
+        items: [ 
+            { label: t('CheckUpdate', '检查更新...'), action: 'check_update' },
+            { type: 'separator' },
+            { label: t('About'), action: 'about' } 
+        ]
     }
   ];
 
@@ -102,11 +106,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
       {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
       
       <div style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, flexDirection: isMac ? 'row-reverse' : 'row' }}>
-        {/* New Zyma Logo: Red Standalone Lightning Bolt */}
+        {/* New Zyma Logo: Red Background + White Bolt */}
         <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }} data-tauri-drag-region>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="#FF4D4F"/>
+          <div style={{ 
+            width: '18px', height: '18px', backgroundColor: '#FF4D4F', borderRadius: '4px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
             </svg>
           </div>
         </div>

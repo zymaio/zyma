@@ -10,6 +10,7 @@ export interface AppSettings {
     language: string;
     context_menu: boolean;
     single_instance: boolean;
+    auto_update: boolean;
 }
 
 interface SettingsModalProps {
@@ -105,6 +106,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                                 />
                             </div>
                         )}
+
+                        <div style={{ 
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
+                        }}>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('AutoUpdate', '自动检测更新')}</div>
+                            <input 
+                                type="checkbox" 
+                                checked={currentSettings.auto_update}
+                                onChange={(e) => updateSetting('auto_update', e.target.checked)}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                        </div>
                     </div>
                 </div>
 

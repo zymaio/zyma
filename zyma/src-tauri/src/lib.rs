@@ -25,6 +25,7 @@ pub struct AppSettings {
     language: String,
     context_menu: bool,
     single_instance: bool,
+    auto_update: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -52,6 +53,7 @@ fn load_settings() -> Result<AppSettings, String> {
         language: "zh-CN".to_string(),
         context_menu: false,
         single_instance: true,
+        auto_update: true,
     };
 
     if path.exists() {
@@ -63,6 +65,7 @@ fn load_settings() -> Result<AppSettings, String> {
                 if let Some(l) = val.get("language").and_then(|v| v.as_str()) { settings.language = l.to_string(); }
                 if let Some(c) = val.get("context_menu").and_then(|v| v.as_bool()) { settings.context_menu = c; }
                 if let Some(si) = val.get("single_instance").and_then(|v| v.as_bool()) { settings.single_instance = si; }
+                if let Some(au) = val.get("auto_update").and_then(|v| v.as_bool()) { settings.auto_update = au; }
             }
         }
     }
@@ -156,7 +159,7 @@ fn open_url(url: String) -> Result<(), String> {
         use std::os::windows::process::CommandExt;
         std::process::Command::new("cmd")
             .args(&["/C", "start", &url])
-            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .creation_flags(0x08000000)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
@@ -167,13 +170,63 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+async fn check_update_racing() -> Result<UpdateInfo, String> {
+    let urls = vec![
+        ("Gitee", "https://gitee.com/api/v5/repos/zymaio/zyma/releases/latest"),
+        ("GitHub", "https://api.github.com/repos/zymaio/zyma/releases/latest")
+    ];
+
+    for (source, url) in urls {
+        let output = if cfg!(windows) {
+            use std::os::windows::process::CommandExt;
+            let ps_cmd = format!(
+                "$ProgressPreference = 'SilentlyContinue'; Invoke-RestMethod -Uri '{}' -Method Get -TimeoutSec 5 -Headers @{{'User-Agent'='Zyma'}} | ConvertTo-Json -Depth 5 -Compress",
+                url
+            );
+            std::process::Command::new("powershell")
+                .args(&["-Command", &ps_cmd])
+                .creation_flags(0x08000000)
+                .output()
+        } else {
+            std::process::Command::new("curl")
+                .args(&["-L", "-s", "-A", "Zyma", "--max-time", "5", url])
+                .output()
+        };
+
+        if let Ok(out) = output {
+            if out.status.success() {
+                let body = String::from_utf8_lossy(&out.stdout);
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                    if let Some(tag_name) = json.get("tag_name").and_then(|v| v.as_str()) {
+                        let version = tag_name.trim_start_matches('v').to_string();
+                        return Ok(UpdateInfo {
+                            version,
+                            source: source.to_string(),
+                            url: if source == "Gitee" { "https://gitee.com/zymaio/zyma/releases" } else { "https://github.com/zymaio/zyma/releases" }.to_string()
+                        });
+                    }
+                }
+            }
+        }
+    }
+    Err("Update check failed".to_string())
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UpdateInfo {
+    version: String,
+    source: String,
+    url: String,
+}
+
+#[tauri::command]
 fn read_dir(path: String) -> Result<Vec<FileItem>, String> {
     let dir_path = if path.is_empty() { "." } else { &path };
     let entries = fs::read_dir(dir_path).map_err(|e| e.to_string())?;
     let mut items = Vec::new();
     for entry in entries {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let p = entry.path();
+        let e = if let Ok(e) = entry { e } else { continue };
+        let p = e.path();
         items.push(FileItem { 
             name: p.file_name().unwrap_or_default().to_string_lossy().to_string(), 
             path: p.to_string_lossy().to_string(), 
@@ -270,10 +323,13 @@ fn show_main_window(window: tauri::Window) {
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        let _ = app.emit("single-instance", args);
+    }))
     .invoke_handler(tauri::generate_handler![
         read_dir, read_file, write_file, create_file, create_dir, remove_item, rename_item,
         search_in_dir, load_settings, save_settings, manage_context_menu, get_cli_args, is_admin, exit_app,
-        list_plugins, read_plugin_file, get_platform, open_url, show_main_window
+        list_plugins, read_plugin_file, get_platform, open_url, show_main_window, check_update_racing
     ])
     .run(tauri::generate_context!())
     .expect("error while running app");
