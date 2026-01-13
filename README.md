@@ -28,9 +28,8 @@
 - **渠道 B (国内加速)**: [Gitee 发行版](https://gitee.com/zymaio/zyma/releases) (由开发者手动同步，国内下载飞快)
 
 ### 系统要求
-- **Windows**: 10 或更高版本
-- **macOS**: 11 (Big Sur) 或更高版本
-- **Linux**: 常见发行版均支持 (.AppImage / .deb)
+- **Windows**: 10 或更高版本 (当前仅支持 Windows，其他平台适配中)
+- **macOS/Linux**: 计划在未来版本中提供支持 (Coming Soon)
 
 ## ✨ 核心特性
 

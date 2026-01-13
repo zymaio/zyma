@@ -14,12 +14,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest"
-            args: "--target aarch64-apple-darwin"
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
-          - platform: "ubuntu-22.04"
-            args: ""
           - platform: "windows-latest"
             args: ""
 
@@ -32,17 +26,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-
       - name: install frontend dependencies
         run: npm install
         working-directory: zyma/ui
@@ -53,9 +36,9 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: "Zyma v__VERSION__"
-          releaseBody: "See the assets below to download the latest version of Zyma IDE."
+          releaseBody: "Windows Alpha Release. Other platforms coming soon!"
           releaseDraft: true
-          prerelease: false
+          prerelease: true
           args: ${{ matrix.args }}
           projectPath: "zyma"
 
@@ -73,8 +56,3 @@ jobs:
           static_list: "zyma"
           force_update: true
           debug: true
-
-      - name: Help Note
-        run: |
-          echo "Please manually upload the .exe and .dmg from GitHub to Gitee Release for Chinese users."
-          echo "Automated file upload to Gitee is limited by their API size limits."

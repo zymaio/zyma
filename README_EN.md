@@ -46,9 +46,8 @@ We believe that great tools should be invisible. Zyma focuses on providing a dis
 ## 📦 How to Build
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [Rust](https://www.rust-lang.org/) (1.77+ recommended)
-- Tauri CLI: `cargo install tauri-cli`
+- **Windows**: 10 or higher (Currently Windows only)
+- **macOS/Linux**: Planned for future releases (Coming Soon)
 
 ### Steps
 1. Clone the repository
