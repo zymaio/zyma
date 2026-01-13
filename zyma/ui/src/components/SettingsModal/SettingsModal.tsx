@@ -11,6 +11,11 @@ export interface AppSettings {
     context_menu: boolean;
     single_instance: boolean;
     auto_update: boolean;
+    window_width: number;
+    window_height: number;
+    window_x: number | null;
+    window_y: number | null;
+    is_maximized: boolean;
 }
 
 interface SettingsModalProps {

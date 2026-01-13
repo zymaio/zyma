@@ -1,6 +1,6 @@
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager, PhysicalSize, PhysicalPosition};
 use crate::models::UpdateInfo;
-use serde_json;
+use crate::models::AppSettings;
 
 #[tauri::command]
 pub fn is_admin() -> bool {
@@ -22,13 +22,56 @@ pub fn is_admin() -> bool {
         }
         is_elevated
     }
-    #[cfg(not(windows))] {
-        true
-    }
+    #[cfg(not(windows))] { true }
 }
 
 #[tauri::command]
-pub fn exit_app() { std::process::exit(0); }
+pub fn save_window_state(window: tauri::Window) -> Result<(), String> {
+    println!("DEBUG: Starting save_window_state...");
+    let mut settings = crate::commands::config::load_settings().unwrap_or_else(|_| {
+        crate::models::AppSettings {
+            theme: "dark".to_string(),
+            font_size: 14,
+            tab_size: 4,
+            language: "zh-CN".to_string(),
+            context_menu: false,
+            single_instance: true,
+            auto_update: true,
+            window_width: 800.0,
+            window_height: 600.0,
+            window_x: None,
+            window_y: None,
+            is_maximized: false,
+        }
+    });
+
+    let is_maximized = window.is_maximized().unwrap_or(false);
+    settings.is_maximized = is_maximized;
+
+    if !is_maximized {
+        if let Ok(size) = window.outer_size() {
+            println!("DEBUG: Capturing size: {}x{}", size.width, size.height);
+            settings.window_width = size.width as f64;
+            settings.window_height = size.height as f64;
+        }
+        if let Ok(pos) = window.outer_position() {
+            println!("DEBUG: Capturing position: x={}, y={}", pos.x, pos.y);
+            settings.window_x = Some(pos.x);
+            settings.window_y = Some(pos.y);
+        }
+    } else {
+        println!("DEBUG: Window is maximized, skipping size/pos capture");
+    }
+
+    let result = crate::commands::config::save_settings(settings);
+    println!("DEBUG: Save result: {:?}", result);
+    result
+}
+
+#[tauri::command]
+pub fn exit_app(app_handle: tauri::AppHandle) { 
+    app_handle.exit(0); 
+}
 
 #[tauri::command]
 pub fn get_cli_args() -> Vec<String> { std::env::args().collect() }
@@ -88,7 +131,7 @@ pub async fn manage_context_menu(_app: AppHandle, _enable: bool, _label: String)
 #[tauri::command]
 pub async fn check_update_racing() -> Result<UpdateInfo, String> {
     let urls = vec![
-        ("Gitee", "https://gitee.com/api/v5/repos/zymaio/zyma/releases/latest"),
+        ("Gitee", "https://gitee.com/api/v5/repos/fourthz/zyma/releases/latest"),
         ("GitHub", "https://api.github.com/repos/zymaio/zyma/releases/latest")
     ];
 
@@ -118,7 +161,7 @@ pub async fn check_update_racing() -> Result<UpdateInfo, String> {
                         return Ok(UpdateInfo {
                             version,
                             source: source.to_string(),
-                            url: if source == "Gitee" { "https://gitee.com/zymaio/zyma/releases" } else { "https://github.com/zymaio/zyma/releases" }.to_string()
+                            url: if source == "Gitee" { "https://gitee.com/fourthz/zyma/releases" } else { "https://github.com/zymaio/zyma/releases" }.to_string()
                         });
                     }
                 }
@@ -129,10 +172,41 @@ pub async fn check_update_racing() -> Result<UpdateInfo, String> {
 }
 
 #[tauri::command]
+pub fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
 pub fn get_platform() -> String { std::env::consts::OS.to_string() }
 
 #[tauri::command]
-pub fn show_main_window(window: tauri::Window) {
-    window.show().ok();
-    window.set_focus().ok();
+pub fn show_main_window(
+    app_handle: tauri::AppHandle,
+    width: f64, 
+    height: f64, 
+    x: Option<i32>, 
+    y: Option<i32>, 
+    is_maximized: bool
+) {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        // 1. Apply Size and Position (Physical pixels)
+        // Use a reasonable minimum size if something went wrong
+        let w = if width > 100.0 { width } else { 800.0 };
+        let h = if height > 100.0 { height } else { 600.0 };
+        
+        let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
+        
+        if let (Some(x), Some(y)) = (x, y) {
+            let _ = window.set_position(tauri::PhysicalPosition::new(x, y));
+        }
+
+        // 2. Apply Maximized if needed
+        if is_maximized {
+            let _ = window.maximize();
+        }
+
+        // 3. Finally show and focus
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }

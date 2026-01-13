@@ -17,15 +17,15 @@
 
 ## 🌍 官方仓库
 
-- **主仓库**: [GitHub - zymaio/zyma](https://github.com/zymaio/zyma) (**下载安装包请至此处的 Releases**)
-- **镜像库**: [Gitee - zymaio/zyma](https://gitee.com/zymaio/zyma) (国内访问加速)
+- **主仓库**: [GitHub - fourthz/zyma](https://github.com/zymaio/zyma) (**下载安装包请至此处的 Releases**)
+- **镜像库**: [Gitee - fourthz/zyma](https://gitee.com/fourthz/zyma) (国内访问加速)
 
 ## 📦 如何下载安装
 
 由于 GitHub 访问限制，我们提供两个下载渠道：
 
 - **渠道 A (推荐)**: [GitHub Releases](https://github.com/zymaio/zyma/releases) (包含全平台最新自动构建)
-- **渠道 B (国内加速)**: [Gitee 发行版](https://gitee.com/zymaio/zyma/releases) (由开发者手动同步，国内下载飞快)
+- **渠道 B (国内加速)**: [Gitee 发行版](https://gitee.com/fourthz/zyma/releases) (由开发者手动同步，国内下载飞快)
 
 ### 系统要求
 - **Windows**: 10 或更高版本 (当前仅支持 Windows，其他平台适配中)

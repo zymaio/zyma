@@ -17,8 +17,8 @@ We believe that great tools should be invisible. Zyma focuses on providing a dis
 
 ## 🌍 Repositories
 
-- **Primary**: [GitHub - zymaio/zyma](https://github.com/zymaio/zyma) (Actions, Releases)
-- **Mirror**: [Gitee - zymaio/zyma](https://gitee.com/zymaio/zyma) (Fast access in China)
+- **Primary**: [GitHub - fourthz/zyma](https://github.com/zymaio/zyma) (Actions, Releases)
+- **Mirror**: [Gitee - fourthz/zyma](https://gitee.com/fourthz/zyma) (Fast access in China)
 
 ## ✨ Core Features
 

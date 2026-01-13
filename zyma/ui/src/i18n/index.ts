@@ -41,7 +41,16 @@ const resources = {
       "AutoUpdate": "Auto Check Updates",
       "NewVersionFound": "New version v{{version}} found",
       "GoDownload": "Click to download from {{source}}",
-      "AppDescription": "Simple · Fast · Efficient Modern Code Editor"
+      "AppDescription": "Simple · Fast · Efficient Modern Code Editor",
+      "Plugins": "Plugins",
+      "Undo": "Undo",
+      "Redo": "Redo",
+      "AllFiles": "all files",
+      "ComingSoon": "Coming Soon",
+      "Results": "results",
+      "Line": "Line",
+      "Loading": "Loading",
+      "EnterName": "Enter {{type}} name"
     }
   },
   'zh-CN': {
@@ -83,7 +92,16 @@ const resources = {
       "AutoUpdate": "自动检测更新",
       "NewVersionFound": "发现新版本 v{{version}}",
       "GoDownload": "点击前往 {{source}} 下载",
-      "AppDescription": "简洁 · 快速 · 高效的现代代码编辑器"
+      "AppDescription": "简洁 · 快速 · 高效的现代代码编辑器",
+      "Plugins": "插件",
+      "Undo": "撤销",
+      "Redo": "重做",
+      "AllFiles": "所有文件",
+      "ComingSoon": "即将推出",
+      "Results": "个结果",
+      "Line": "行",
+      "Loading": "加载中",
+      "EnterName": "请输入{{type}}名称"
     }
   },
   'zh-TW': {
@@ -125,7 +143,16 @@ const resources = {
       "AutoUpdate": "自動檢測更新",
       "NewVersionFound": "發現新版本 v{{version}}",
       "GoDownload": "點擊前往 {{source}} 下載",
-      "AppDescription": "簡潔 · 快速 · 高效的現代程式碼編輯器"
+      "AppDescription": "簡潔 · 快速 · 高效的現代程式碼編輯器",
+      "Plugins": "外掛",
+      "Undo": "復原",
+      "Redo": "重做",
+      "AllFiles": "所有檔案",
+      "ComingSoon": "即將推出",
+      "Results": "個結果",
+      "Line": "行",
+      "Loading": "載入中",
+      "EnterName": "請輸入{{type}}名稱"
     }
   }
 };

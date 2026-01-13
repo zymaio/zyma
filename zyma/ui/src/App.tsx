@@ -3,7 +3,6 @@ import { Files, Search, Settings, Puzzle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
 import './i18n';
 
@@ -18,7 +17,6 @@ import ConfirmModal from './components/ConfirmModal/ConfirmModal';
 import AboutModal from './components/AboutModal/AboutModal';
 import { PluginManager } from './components/PluginSystem/PluginSystem';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
-import { APP_VERSION } from './config';
 import './App.css';
 
 interface OpenedFile {
@@ -48,11 +46,13 @@ function App() {
   });
   const [isAdmin, setIsAdmin] = useState(false);
   const [platform, setPlatform] = useState<string>("");
+  const [appVersion, setAppVersion] = useState<string>("");
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [isClosingApp, setIsClosingApp] = useState(false);
   
   const [settings, setSettings] = useState<AppSettings>({
-      theme: 'dark', font_size: 14, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true
+      theme: 'dark', font_size: 14, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
+      window_width: 800, window_height: 600, window_x: 0, window_y: 0, is_maximized: false
   });
 
   const stateRef = useRef({ openFiles, activeFilePath, settings, untitledCount });
@@ -104,17 +104,34 @@ function App() {
       return active ? active.content : "";
   }, []);
 
+  const saveWindowStateAndExit = async (shouldExit: boolean) => {
+      try {
+          const win = getCurrentWindow();
+          // First capture state while window is still normal
+          await invoke('save_window_state');
+          if (shouldExit) {
+              await win.hide();
+              await invoke('exit_app');
+          }
+      } catch (e) { 
+          console.error('Failed to save window state:', e); 
+          if (shouldExit) await invoke('exit_app');
+      } 
+  };
+
   useEffect(() => {
       const startApp = async () => {
           try {
-              const [saved, adminStatus, plat, args] = await Promise.all([
+              const [saved, adminStatus, plat, args, version] = await Promise.all([
                   invoke<AppSettings>('load_settings'),
                   invoke<boolean>('is_admin'),
                   invoke<string>('get_platform'),
-                  invoke<string[]>('get_cli_args')
+                  invoke<string[]>('get_cli_args'),
+                  invoke<string>('get_app_version')
               ]);
 
               setSettings(saved);
+              setAppVersion(version);
               i18n.changeLanguage(saved.language);
               setIsAdmin(adminStatus);
               setPlatform(plat);
@@ -128,14 +145,13 @@ function App() {
               pluginManager.current.loadAll();
               processArgs(args);
               setReady(true);
-              invoke('show_main_window').catch(console.error);
-
+              
               if (saved.auto_update) {
                   setTimeout(async () => {
                       try {
                           const info = await invoke<UpdateInfo>('check_update_racing');
-                          if (info.version !== APP_VERSION) {
-                              setAboutState({ show: true, autoCheck: false, data: info }); 
+                          if (info.version !== version) {
+                              setAboutState({ show: true, autoCheck: true, data: info }); 
                           }
                       } catch (e) { /* silent fail */ }
                   }, 3000);
@@ -143,27 +159,22 @@ function App() {
           } catch (e) { 
               console.error('Init error:', e); 
               setReady(true);
-              invoke('show_main_window').catch(console.error);
           }
       };
       startApp();
-
-      const unlistenSingleInstance = listen<string[]>("single-instance", (event) => {
-          const win = getCurrentWindow();
-          win.unminimize().catch(() => {});
-          win.setFocus().catch(() => {});
-          processArgs(event.payload);
-      });
 
       const win = getCurrentWindow();
       const unlistenClose = win.onCloseRequested(async (event) => {
           event.preventDefault();
           const hasDirty = stateRef.current.openFiles.some(f => f.content !== f.originalContent);
-          if (hasDirty) { setIsClosingApp(true); } else { invoke('exit_app'); }
+          if (hasDirty) { 
+              setIsClosingApp(true); 
+          } else { 
+              await saveWindowStateAndExit(true); 
+          } 
       });
 
       return () => {
-          unlistenSingleInstance.then(f => f());
           unlistenClose.then(f => f());
       };
   }, [processArgs, insertTextAtCursor, getCurrentContent, i18n]);
@@ -246,7 +257,7 @@ function App() {
           case 'open_folder': handleOpenFolder(); break;
           case 'save': handleSave(false); break;
           case 'save_as': handleSave(true); break;
-          case 'exit': invoke('exit_app'); break;
+          case 'exit': saveWindowStateAndExit(true); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
           case 'check_update': setAboutState({ show: true, autoCheck: true, data: null }); break;
           case 'about': setAboutState({ show: true, autoCheck: false, data: null }); break;
@@ -269,7 +280,7 @@ function App() {
           const dirtyFiles = stateRef.current.openFiles.filter(f => f.content !== f.originalContent);
           for (const file of dirtyFiles) { await doSave(file); }
       }
-      await invoke('exit_app');
+      await saveWindowStateAndExit(true);
   };
 
   useEffect(() => {
@@ -302,7 +313,7 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', width: '100%' }}>
                     <div className={`activity-icon ${sidebarTab === 'explorer' ? 'active' : ''}`} onClick={() => setSidebarTab('explorer')} title={t('Explorer')}><Files size={24} /></div>
                     <div className={`activity-icon ${sidebarTab === 'search' ? 'active' : ''}`} onClick={() => setSidebarTab('search')} title={t('Search')}><Search size={24} /></div>
-                    <div className={`activity-icon ${sidebarTab === 'plugins' ? 'active' : ''}`} onClick={() => setSidebarTab('plugins')} title="Plugins"><Puzzle size={24} /></div>
+                    <div className={`activity-icon ${sidebarTab === 'plugins' ? 'active' : ''}`} onClick={() => setSidebarTab('plugins')} title={t('Plugins')}><Puzzle size={24} /></div>
                 </div>
                 <div style={{ flex: 1 }}></div>
                 <div style={{ marginBottom: '15px' }}>
@@ -314,8 +325,8 @@ function App() {
             {sidebarTab === 'search' && <SearchPanel rootPath={rootPath} onFileSelect={handleFileSelect} />}
             {sidebarTab === 'plugins' && (
                 <div style={{ width: '250px', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', padding: '10px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>Plugins</div>
-                    <div style={{ fontSize: '12px', opacity: 0.6 }}>Manage your extensions here (Coming Soon)</div>
+                    <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '10px' }}>{t('Plugins')}</div>
+                    <div style={{ fontSize: '12px', opacity: 0.6 }}>Manage your extensions here ({t('ComingSoon')})</div>
                 </div>
             )}
 
@@ -346,7 +357,7 @@ function App() {
             <div style={{ marginLeft: '15px' }}>{rootPath}</div>
         </div>
         {showSettings && <SettingsModal currentSettings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} platform={platform} />}
-        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} initialData={aboutState.data} />}
+        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} initialData={aboutState.data} version={appVersion} />}
         
         {pendingCloseId && (
             <ConfirmModal 
@@ -362,7 +373,7 @@ function App() {
             />
         )}
         {isClosingApp && (
-            <ConfirmModal title="zyma" message={t('SaveBeforeClose', { name: t('all files') })} onSave={() => handleAppExit(true)} onDontSave={() => handleAppExit(false)} onCancel={() => setIsClosingApp(false)} />
+            <ConfirmModal title="zyma" message={t('SaveBeforeClose', { name: t('AllFiles') })} onSave={() => handleAppExit(true)} onDontSave={() => handleAppExit(false)} onCancel={() => setIsClosingApp(false)} />
         )}
     </div>
   );

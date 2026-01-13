@@ -67,7 +67,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                     )}
                 </div>
                 <div style={{ fontSize: '11px', marginTop: '5px', opacity: 0.6 }}>
-                    {results.length} results
+                    {results.length} {t('Results')}
                 </div>
             </div>
 
@@ -82,7 +82,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                             {res.path.split(/[\\/]/).pop()}
                         </div>
                         <div style={{ fontSize: '11px', opacity: 0.6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            Line {res.line}: {res.content}
+                            {t('Line')} {res.line}: {res.content}
                         </div>
                     </div>
                 ))}

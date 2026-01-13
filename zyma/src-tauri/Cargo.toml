@@ -1,6 +1,6 @@
 [package]
 name = "zyma"
-version = "0.9.2"
+version = "0.9.3"
 description = "ZymaPad"
 authors = ["Zyma Contributors"]
 license = "MIT OR Apache-2.0"

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { X, ExternalLink, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { APP_VERSION } from '../../config';
 
 interface UpdateInfo {
     version: string;
@@ -14,11 +13,12 @@ interface AboutModalProps {
     onClose: () => void;
     autoCheck?: boolean;
     initialData?: UpdateInfo | null;
+    version: string;
 }
 
-const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, initialData = null }) => {
+const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, initialData = null, version }) => {
     const { t } = useTranslation();
-    const currentVersion = APP_VERSION;
+    const currentVersion = version;
     const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'latest' | 'new'>(initialData ? 'new' : 'idle');
     const [latestInfo, setLatestInfo] = useState<UpdateInfo | null>(initialData);
 
@@ -39,7 +39,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ini
         try {
             const info = await invoke<UpdateInfo>('check_update_racing');
             setLatestInfo(info);
-            if (info.version !== APP_VERSION) {
+            if (info.version !== version) {
                 setUpdateStatus('new');
             } else {
                 setUpdateStatus('latest');

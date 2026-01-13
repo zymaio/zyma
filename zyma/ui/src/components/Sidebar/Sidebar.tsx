@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete 
   };
 
   const handleCreate = async (type: 'file' | 'dir') => {
-      const name = prompt(`Enter ${type} name:`);
+      const name = prompt(t('EnterName', { type }));
       if (!name) return;
 
       const path = `${rootPath}/${name}`;
@@ -109,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete 
 
         {isRootOpen && (
             <div>
-                 {isLoading && <div style={{ paddingLeft: '20px', fontSize: '11px', color: '#666' }}>Loading...</div>}
+                 {isLoading && <div style={{ paddingLeft: '20px', fontSize: '11px', color: '#666' }}>{t('Loading')}...</div>}
                  {rootFiles.map((file) => (
                     <FileTreeItem key={file.path} item={file} onFileSelect={onFileSelect} onDelete={handleDelete} level={1} />
                  ))}
@@ -128,6 +128,7 @@ interface FileTreeItemProps {
 }
 
 const FileTreeItem: React.FC<FileTreeItemProps> = ({ item, onFileSelect, onDelete, level = 0 }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<FileItemData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -182,7 +183,7 @@ const FileTreeItem: React.FC<FileTreeItemProps> = ({ item, onFileSelect, onDelet
       </div>
       {item.is_dir && isOpen && (
         <div>
-          {isLoading && <div style={{ paddingLeft: `${20 + level * 10}px`, fontSize: '11px', color: '#666' }}>Loading...</div>}
+          {isLoading && <div style={{ paddingLeft: `${20 + level * 10}px`, fontSize: '11px', color: '#666' }}>{t('Loading')}...</div>}
           {children.map((child) => (
             <FileTreeItem key={child.path} item={child} onFileSelect={onFileSelect} onDelete={onDelete} level={level + 1} />
           ))}

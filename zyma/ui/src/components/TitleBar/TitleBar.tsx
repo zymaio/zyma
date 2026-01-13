@@ -33,8 +33,8 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
     {
         label: t('Edit'),
         items: [
-            { label: 'Undo', action: 'undo', shortcut: 'Ctrl+Z' },
-            { label: 'Redo', action: 'redo', shortcut: 'Ctrl+Y' }
+            { label: t('Undo'), action: 'undo', shortcut: 'Ctrl+Z' },
+            { label: t('Redo'), action: 'redo', shortcut: 'Ctrl+Y' }
         ]
     },
     {

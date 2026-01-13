@@ -23,6 +23,12 @@ pub struct AppSettings {
     pub context_menu: bool,
     pub single_instance: bool,
     pub auto_update: bool,
+    // Window state
+    pub window_width: f64,
+    pub window_height: f64,
+    pub window_x: Option<i32>,
+    pub window_y: Option<i32>,
+    pub is_maximized: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
