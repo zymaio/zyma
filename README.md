@@ -45,7 +45,28 @@
 
 ## 📸 界面预览
 
-*(在此处添加截图)*
+### 🚀 核心编辑体验 (Rust & TypeScript)
+支持 20+ 种编程语言语法高亮，毫秒级响应。
+
+<p align="center">
+  <img src="docs/screenshots/coding_rust.png" width="45%" alt="Coding Rust">
+  &nbsp;
+  <img src="docs/screenshots/conding_typescript.png" width="45%" alt="Coding TypeScript">
+</p>
+
+### 📖 Markdown 实时预览
+内置分屏实时预览功能，支持 GitHub 风格渲染。
+
+<p align="center">
+  <img src="docs/screenshots/markdown_preview.png" width="90%" alt="Markdown Preview">
+</p>
+
+### 🎨 主题切换与系统设置
+支持深色/浅色模式动态切换，配置自动持久化。
+
+<p align="center">
+  <img src="docs/screenshots/setting.png" width="60%" alt="Settings">
+</p>
 
 ## 🛠️ 技术栈
 

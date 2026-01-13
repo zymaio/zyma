@@ -34,7 +34,28 @@ We believe that great tools should be invisible. Zyma focuses on providing a dis
 
 ## 📸 Screenshots
 
-*(Add your screenshots here)*
+### 🚀 Core Editing Experience (Rust & TypeScript)
+Supports syntax highlighting for 20+ languages with millisecond response times.
+
+<p align="center">
+  <img src="docs/screenshots/coding_rust.png" width="45%" alt="Coding Rust">
+  &nbsp;
+  <img src="docs/screenshots/conding_typescript.png" width="45%" alt="Coding TypeScript">
+</p>
+
+### 📖 Markdown Real-time Preview
+Built-in split-view preview with GitHub-style rendering.
+
+<p align="center">
+  <img src="docs/screenshots/markdown_preview.png" width="90%" alt="Markdown Preview">
+</p>
+
+### 🎨 Theme & Settings
+Dynamic switching between Dark and Light modes, with persistent configurations.
+
+<p align="center">
+  <img src="docs/screenshots/setting.png" width="60%" alt="Settings">
+</p>
 
 ## 🛠️ Tech Stack
 
