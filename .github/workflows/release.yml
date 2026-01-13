@@ -44,8 +44,10 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: install frontend dependencies
-        run: npm install
-        working-directory: zyma/ui
+        run: |
+          cd ui
+          npm install
+        working-directory: zyma
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -58,3 +60,36 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
           projectPath: "zyma"
+
+  sync-to-gitee:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to Gitee
+        uses: Yikun/gitee-mirror-action@v0.0.2
+        with:
+          src: github/zymaio
+          dst: gitee/${{ secrets.GITEE_REPO_OWNER }}
+          dst_key: ${{ secrets.GITEE_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_TOKEN }}
+          static_list: "zyma"
+          force_update: true
+          debug: true
+
+      - name: Create Gitee Release
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          curl -X POST "https://gitee.com/api/v5/repos/${{ secrets.GITEE_REPO }}/releases" \
+               -H "Content-Type: application/json" \
+               -d "{
+                 \"access_token\": \"${{ secrets.GITEE_TOKEN }}\",
+                 \"tag_name\": \"$TAG_NAME\",
+                 \"name\": \"Zyma $TAG_NAME\",
+                 \"body\": \"Release synced from GitHub. Please visit GitHub for binary downloads.\",
+                 \"prerelease\": false
+               }"
