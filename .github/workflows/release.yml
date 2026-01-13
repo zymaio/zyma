@@ -41,7 +41,7 @@ jobs:
           tagName: v__VERSION__
           releaseName: "Zyma v__VERSION__"
           releaseBody: "Windows Release. Domestic users please use Gitee mirror."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
           projectPath: "zyma"
