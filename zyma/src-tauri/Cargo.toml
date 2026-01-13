@@ -25,3 +25,4 @@ walkdir = "2.5.0"
 winreg = "0.55.0"
 winapi = { version = "0.3.9", features = ["processthreadsapi", "securitybaseapi", "winnt"] }
 tauri-plugin-single-instance = "2.3.7"
+tauri-plugin-shell = "2.3.4"

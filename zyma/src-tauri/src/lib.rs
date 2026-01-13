@@ -67,16 +67,13 @@ fn load_settings() -> Result<AppSettings, String> {
         }
     }
 
-    // SYNC WITH REGISTRY (Restore this logic)
     #[cfg(windows)]
     {
         use winreg::RegKey;
         use winreg::enums::*;
         let hk_cu = RegKey::predef(HKEY_CURRENT_USER);
-        // If this key exists, it means the context menu is actually enabled
         let check_path = r"Software\Classes\*\shell\EditWithZyma";
         let is_enabled = hk_cu.open_subkey(check_path).is_ok();
-        println!("DEBUG: Registry Check for {}: {}", check_path, is_enabled);
         settings.context_menu = is_enabled;
     }
 
@@ -96,7 +93,6 @@ async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -> Re
     use winreg::enums::*;
     use winreg::RegKey;
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
-    // Ensure we don't have existing quotes
     let raw_path = exe_path.to_str().unwrap_or_default().trim_matches('"');
     let hk_cu = RegKey::predef(HKEY_CURRENT_USER);
     let paths = vec![ r"Software\Classes\*\shell\EditWithZyma", r"Software\Classes\Directory\shell\EditWithZyma" ];
@@ -104,18 +100,17 @@ async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -> Re
     if enable {
         for p in paths {
             let (key, _) = hk_cu.create_subkey(p).map_err(|e| e.to_string())?;
-            key.set_value("", &label).map_err(|e| e.to_string())?;
-            key.set_value("MUIVerb", &label).map_err(|e| e.to_string())?;
-            key.set_value("Icon", &raw_path).map_err(|e| e.to_string())?;
+            key.set_value("", &label).ok();
+            key.set_value("MUIVerb", &label).ok();
+            key.set_value("Icon", &raw_path).ok();
             
             let cmd_path = format!(r"{}\command", p);
             let (cmd_key, _) = hk_cu.create_subkey(&cmd_path).map_err(|e| e.to_string())?;
             let cmd_val = format!("\"{}\" \"%1\"", raw_path);
-            cmd_key.set_value("", &cmd_val).map_err(|e| e.to_string())?;
+            cmd_key.set_value("", &cmd_val).ok();
         }
     } else {
         for p in paths { let _ = hk_cu.delete_subkey_all(p); }
-        // Also cleanup old key if exists
         let _ = hk_cu.delete_subkey_all(r"Software\Classes\*\shell\OpenWithZyma");
         let _ = hk_cu.delete_subkey_all(r"Software\Classes\Directory\shell\OpenWithZyma");
     }
@@ -154,6 +149,17 @@ fn exit_app() { std::process::exit(0); }
 
 #[tauri::command]
 fn get_cli_args() -> Vec<String> { std::env::args().collect() }
+
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(windows)] {
+        std::process::Command::new("cmd").args(&["/C", "start", &url]).spawn().map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(windows))] {
+        std::process::Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 #[tauri::command]
 fn read_dir(path: String) -> Result<Vec<FileItem>, String> {
@@ -253,13 +259,10 @@ fn get_platform() -> String { std::env::consts::OS.to_string() }
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_single_instance::init(|app: &AppHandle, args: Vec<String>, _cwd: String| {
-        let _ = app.emit("single-instance", args);
-    }))
     .invoke_handler(tauri::generate_handler![
         read_dir, read_file, write_file, create_file, create_dir, remove_item, rename_item,
         search_in_dir, load_settings, save_settings, manage_context_menu, get_cli_args, is_admin, exit_app,
-        list_plugins, read_plugin_file, get_platform
+        list_plugins, read_plugin_file, get_platform, open_url
     ])
     .run(tauri::generate_context!())
     .expect("error while running app");

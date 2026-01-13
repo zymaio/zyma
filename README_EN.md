@@ -22,13 +22,13 @@ We believe that great tools should be invisible. Zyma focuses on providing a dis
 
 ## ✨ Core Features
 
-- 🚀 **Extreme Performance**: Built on a Rust core with minimal memory footprint and millisecond-level startup.
-- 📝 **Versatile Editing**: Built-in syntax highlighting for 20+ mainstream programming languages and multi-tab management.
+- 🚀 **Extreme Performance**: Built on a Rust core with **parallelized initialization for millisecond-level startup**.
+- 📝 **Versatile Editing**: Built-in syntax highlighting for 20+ languages and multi-tab management.
 - 📖 **Markdown Enhanced**: Real-time side-by-side preview with GitHub-style rendering.
 - 🔍 **Global Search**: Instant full-project text scanning with jump-to-file capability.
 - 🎨 **Highly Customizable**: Dynamic switching between Dark and Light modes, plus real-time font scaling.
 - 🌐 **Internationalization**: Built-in support for Simplified Chinese, Traditional Chinese, and English.
-- 🖱️ **System Integration**: One-click context menu integration ("Edit with Zyma").
+- 🖱️ **System Integration**: One-click context menu integration ("Edit with Zyma"); Professional "About" dialog for easy access to project resources.
 - 🧩 **Plugin System**: Basic JS-based extension engine (In development).
 - 🤖 **Upcoming**: Code auto-completion, AI-powered coding assistant, Git integration.
 

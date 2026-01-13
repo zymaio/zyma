@@ -15,6 +15,7 @@ import SearchPanel from './components/SearchPanel/SearchPanel';
 import TitleBar from './components/TitleBar/TitleBar';
 import SettingsModal from './components/SettingsModal/SettingsModal';
 import ConfirmModal from './components/ConfirmModal/ConfirmModal';
+import AboutModal from './components/AboutModal/AboutModal';
 import { PluginManager } from './components/PluginSystem/PluginSystem';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
 import './App.css';
@@ -35,6 +36,7 @@ function App() {
   const [sidebarTab, setSidebarTab] = useState<'explorer' | 'search' | 'plugins'>('explorer');
   const [untitledCount, setUntitledCount] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [platform, setPlatform] = useState<string>("");
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
@@ -97,7 +99,7 @@ function App() {
   useEffect(() => {
       const startApp = async () => {
           try {
-              // 🚀 PARALLEL STARTUP: Execute all core backend calls at once
+              // 🚀 PARALLEL STARTUP
               const [saved, adminStatus, plat, args] = await Promise.all([
                   invoke<AppSettings>('load_settings'),
                   invoke<boolean>('is_admin'),
@@ -105,31 +107,24 @@ function App() {
                   invoke<string[]>('get_cli_args')
               ]);
 
-              // Apply results immediately
               setSettings(saved);
               i18n.changeLanguage(saved.language);
               setIsAdmin(adminStatus);
               setPlatform(plat);
 
-              // Initialize Plugin Manager
               pluginManager.current = new PluginManager({
                   insertText: insertTextAtCursor,
                   getContent: getCurrentContent,
                   notify: (msg) => alert(`[Plugin] ${msg}`)
               });
               
-              // Load plugins separately to not block UI ready state
               pluginManager.current.loadAll();
-
-              // Open file from args
               processArgs(args);
-              
-              // App is ready to show
               setReady(true);
           } catch (e) { 
               console.error('Init error:', e); 
               setReady(true); 
-          }
+          } 
       };
       startApp();
 
@@ -233,7 +228,7 @@ function App() {
           case 'save_as': handleSave(true); break;
           case 'exit': invoke('exit_app'); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
-          case 'about': alert(`智码 (zyma) v0.9.1`); break;
+          case 'about': setShowAbout(true); break;
       }
   };
 
@@ -330,6 +325,7 @@ function App() {
             <div style={{ marginLeft: '15px' }}>{rootPath}</div>
         </div>
         {showSettings && <SettingsModal currentSettings={settings} onSave={handleSaveSettings} onClose={() => setShowSettings(false)} platform={platform} />}
+        {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
         
         {pendingCloseId && (
             <ConfirmModal 
