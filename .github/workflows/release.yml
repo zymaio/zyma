@@ -53,7 +53,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: "Zyma v__VERSION__"
-          releaseBody: "Lightning fast IDE built with Rust & Tauri. See assets below for downloads."
+          releaseBody: "See the assets below to download the latest version of Zyma IDE."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
@@ -63,7 +63,7 @@ jobs:
     needs: publish-tauri
     runs-on: ubuntu-latest
     steps:
-      - name: Mirror the GitHub repo to Gitee
+      - name: Mirror to Gitee
         uses: Yikun/hub-mirror-action@master
         with:
           src: github/zymaio
@@ -73,3 +73,8 @@ jobs:
           static_list: "zyma"
           force_update: true
           debug: true
+
+      - name: Help Note
+        run: |
+          echo "Please manually upload the .exe and .dmg from GitHub to Gitee Release for Chinese users."
+          echo "Automated file upload to Gitee is limited by their API size limits."
