@@ -120,11 +120,15 @@ function App() {
               
               pluginManager.current.loadAll();
               processArgs(args);
+              // App is ready to show
               setReady(true);
+              // 🚀 SHOW WINDOW NOW
+              getCurrentWindow().show();
           } catch (e) { 
               console.error('Init error:', e); 
-              setReady(true); 
-          } 
+              setReady(true);
+              getCurrentWindow().show();
+          }
       };
       startApp();
 

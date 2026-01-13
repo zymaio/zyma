@@ -1,6 +1,5 @@
 import React from 'react';
 import { X, ExternalLink } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 
 interface AboutModalProps {
