@@ -122,12 +122,12 @@ function App() {
               processArgs(args);
               // App is ready to show
               setReady(true);
-              // 🚀 SHOW WINDOW NOW
-              getCurrentWindow().show();
+              // 🚀 SHOW WINDOW VIA BACKEND
+              invoke('show_main_window').catch(console.error);
           } catch (e) { 
               console.error('Init error:', e); 
               setReady(true);
-              getCurrentWindow().show();
+              invoke('show_main_window').catch(console.error);
           }
       };
       startApp();

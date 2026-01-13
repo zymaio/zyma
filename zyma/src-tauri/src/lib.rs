@@ -104,7 +104,7 @@ async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -> Re
             key.set_value("MUIVerb", &label).ok();
             key.set_value("Icon", &raw_path).ok();
             
-            let cmd_path = format!(r"{}\command", p);
+            let cmd_path = format!("{}\\command", p);
             let (cmd_key, _) = hk_cu.create_subkey(&cmd_path).map_err(|e| e.to_string())?;
             let cmd_val = format!("\"{}\" \"%1\"", raw_path);
             cmd_key.set_value("", &cmd_val).ok();
@@ -153,7 +153,12 @@ fn get_cli_args() -> Vec<String> { std::env::args().collect() }
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
     #[cfg(windows)] {
-        std::process::Command::new("cmd").args(&["/C", "start", &url]).spawn().map_err(|e| e.to_string())?;
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .args(&["/C", "start", &url])
+            .creation_flags(0x08000000) // CREATE_NO_WINDOW
+            .spawn()
+            .map_err(|e| e.to_string())?;
     }
     #[cfg(not(windows))] {
         std::process::Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?;
@@ -255,6 +260,12 @@ fn read_plugin_file(path: String) -> Result<String, String> { fs::read_to_string
 #[tauri::command]
 fn get_platform() -> String { std::env::consts::OS.to_string() }
 
+#[tauri::command]
+fn show_main_window(window: tauri::Window) {
+    window.show().ok();
+    window.set_focus().ok();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -262,7 +273,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
         read_dir, read_file, write_file, create_file, create_dir, remove_item, rename_item,
         search_in_dir, load_settings, save_settings, manage_context_menu, get_cli_args, is_admin, exit_app,
-        list_plugins, read_plugin_file, get_platform, open_url
+        list_plugins, read_plugin_file, get_platform, open_url, show_main_window
     ])
     .run(tauri::generate_context!())
     .expect("error while running app");
