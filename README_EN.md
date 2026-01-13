@@ -1,7 +1,12 @@
-# Zyma
+<p align="center">
+  <img src="zyma/src-tauri/branding.svg" width="128" alt="Zyma Brand Logo">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="zyma/src-tauri/icon.svg" width="128" alt="Zyma App Icon">
+</p>
 
-[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20/%20Apache--2.0-blue.svg)](LICENSE-MIT)
-[![Tauri](https://img.shields.io/badge/Framework-Tauri%20v2-orange)](https://tauri.app/)
+<p align="center">
+  <b>Zyma</b>
+</p>
 
 **Zyma** is an ultra-lightweight, high-performance text editor/IDE built with Rust and Tauri.
 
@@ -9,6 +14,11 @@
 We believe that great tools should be invisible. Zyma focuses on providing a distraction-free editing experience with millisecond startup times and minimal resource footprint. Whether used as a Notepad replacement or a lightweight coding environment, Zyma stands for: **Instant Response, Total Focus.**
 
 [简体中文](./README.md) | [English](./README_EN.md)
+
+## 🌍 Repositories
+
+- **Primary**: [GitHub - zymaio/zyma](https://github.com/zymaio/zyma) (Actions, Releases)
+- **Mirror**: [Gitee - zymaio/zyma](https://gitee.com/zymaio/zyma) (Fast access in China)
 
 ## ✨ Core Features
 
@@ -63,7 +73,10 @@ We believe that great tools should be invisible. Zyma focuses on providing a dis
 
 ## 📄 License
 
-This project is dual-licensed under **MIT OR Apache-2.0**. Plugins are allowed to be closed-source.
+This project is dual-licensed under **MIT OR Apache-2.0**.
+- **Core Code**: Licensed under MIT or Apache-2.0.
+- **Brand Assets**: The Zyma Lightning Bolt logo is an original artwork owned by Zyma Contributors and is licensed for use within this project and its derivatives.
+- **Plugins**: Closed-source development is permitted.
 
 ---
 

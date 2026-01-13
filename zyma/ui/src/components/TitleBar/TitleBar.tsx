@@ -102,14 +102,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
       {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
       
       <div style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, flexDirection: isMac ? 'row-reverse' : 'row' }}>
-        {/* New Zyma Logo: Lightning Bolt Z */}
+        {/* New Zyma Logo: Red Standalone Lightning Bolt */}
         <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }} data-tauri-drag-region>
-          <div style={{ 
-            width: '18px', height: '18px', backgroundColor: '#007acc', borderRadius: '4px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M160 100H400L220 260H360L120 420L190 260H100L160 100Z" fill="white"/>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="#FF4D4F"/>
             </svg>
           </div>
         </div>

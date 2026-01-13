@@ -233,7 +233,7 @@ function App() {
           case 'save_as': handleSave(true); break;
           case 'exit': invoke('exit_app'); break;
           case 'toggle_theme': handleSaveSettings({ ...settings, theme: settings.theme === 'dark' ? 'light' : 'dark' }); break;
-          case 'about': alert(`智码 (zyma) v1.0.0`); break;
+          case 'about': alert(`智码 (zyma) v0.9.1`); break;
       }
   };
 

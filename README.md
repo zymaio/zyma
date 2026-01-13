@@ -1,7 +1,12 @@
-# 智码 (Zyma)
+<p align="center">
+  <img src="zyma/src-tauri/branding.svg" width="128" alt="Zyma Brand Logo">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="zyma/src-tauri/icon.svg" width="128" alt="Zyma App Icon">
+</p>
 
-[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20/%20Apache--2.0-blue.svg)](LICENSE-MIT)
-[![Tauri](https://img.shields.io/badge/Framework-Tauri%20v2-orange)](https://tauri.app/)
+<p align="center">
+  <b>智码 (Zyma)</b>
+</p>
 
 **智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能文本编辑器/IDE。
 
@@ -9,6 +14,11 @@
 我们坚信优秀的工具应当隐于无形。智码不堆砌臃肿的功能，而是致力于在保持极致启动速度和极低资源占用的同时，提供最核心、最顺手的编辑体验。无论是作为记事本的替代品，还是作为轻量级开发环境，智码都主张：**秒级响应，心无旁骛。**
 
 [简体中文](./README.md) | [English](./README_EN.md)
+
+## 🌍 官方仓库
+
+- **主仓库**: [GitHub - zymaio/zyma](https://github.com/zymaio/zyma) (包含自动构建、Releases)
+- **镜像库**: [Gitee - zymaio/zyma](https://gitee.com/zymaio/zyma) (国内访问加速)
 
 ## ✨ 核心特性
 
@@ -63,7 +73,10 @@
 
 ## 📄 开源协议
 
-本项目采用 **MIT OR Apache-2.0** 双协议开源。插件部分允许闭源开发。
+本项目采用 **MIT OR Apache-2.0** 双协议开源。
+- **核心代码**: 遵循上述开源协议。
+- **品牌资源**: 智码 (Zyma) 的闪电图标 (Logo) 为原创美术作品，版权归智码贡献者所有，并同样授权在本项目及其衍生作品中使用。
+- **插件部分**: 允许闭源开发。
 
 ---
 
