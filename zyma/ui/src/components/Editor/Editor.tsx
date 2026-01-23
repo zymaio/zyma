@@ -4,9 +4,9 @@ import { tokyoNight } from '@uiw/codemirror-theme-tokyo-night';
 import { githubLight } from '@uiw/codemirror-theme-github';
 import { EditorView } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
-import { HighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
-import { search, setSearchQuery, findNext, findPrevious, SearchQuery } from '@codemirror/search';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { search } from '@codemirror/search';
+import { defaultKeymap } from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
 
 // 导入语言包
@@ -90,7 +90,7 @@ const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize 
     
     const exts: any[] = [
         EditorView.lineWrapping,
-        search({ topPanel: false, createPanel: () => ({ dom: document.createElement('div') }) }),
+        search({ createPanel: () => ({ dom: document.createElement('div') }) }),
         keymap.of(defaultKeymap.filter(k => k.key !== 'Mod-f')), // 显式移除默认的 Ctrl+F
         EditorView.updateListener.of((update) => {
             if (update.selectionSet && onCursorUpdate) {

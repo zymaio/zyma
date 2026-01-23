@@ -1,7 +1,7 @@
 pub mod models;
 pub mod commands;
 
-use tauri::{Emitter, AppHandle, Manager, PhysicalSize, PhysicalPosition};
+use tauri::{Emitter, Manager};
 use std::fs;
 
 fn get_config_path() -> std::path::PathBuf {

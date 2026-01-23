@@ -8,6 +8,7 @@ interface TitleBarProps {
     themeMode: 'dark' | 'light';
     isAdmin?: boolean;
     platform?: string;
+    title?: string;
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platform }) => {

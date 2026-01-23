@@ -1,6 +1,5 @@
-use tauri::{AppHandle, Manager, PhysicalSize, PhysicalPosition};
+use tauri::{AppHandle, Manager};
 use crate::models::UpdateInfo;
-use crate::models::AppSettings;
 
 #[tauri::command]
 pub fn is_admin() -> bool {

@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Files, Search, Settings, Puzzle, Info } from 'lucide-react';
+import { Settings, Info } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 import './i18n';
-
 import Sidebar from './components/Sidebar/Sidebar';
 import TabBar from './components/TabBar/TabBar';
 import Breadcrumbs from './components/Breadcrumbs/Breadcrumbs';
@@ -20,7 +19,7 @@ import AboutModal from './components/AboutModal/AboutModal';
 import CommandPalette from './components/CommandSystem/CommandPalette';
 import EditorSearch from './components/EditorSearch/EditorSearch';
 import { setupWorkbench } from './core/workbench';
-import { setSearchQuery, findNext, findPrevious, SearchQuery } from '@codemirror/search';
+import { SearchQuery, setSearchQuery, findNext, findPrevious } from '@codemirror/search';
 import { undo, redo } from '@codemirror/commands';
 import { views } from './components/ViewSystem/ViewRegistry';
 import { statusBar } from './components/StatusBar/StatusBarRegistry';
