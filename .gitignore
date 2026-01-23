@@ -17,3 +17,6 @@ Thumbs.db
 # Config
 /zyma/src-tauri/.zyma_config.json
 *.log
+
+# Vendor
+/vendor/
