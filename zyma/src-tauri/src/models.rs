@@ -18,6 +18,7 @@ pub struct SearchResult {
 pub struct AppSettings {
     pub theme: String,
     pub font_size: u32,
+    pub ui_font_size: u32, // 新增：界面字体大小
     pub tab_size: u32,
     pub language: String,
     pub context_menu: bool,

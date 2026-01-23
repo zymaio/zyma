@@ -1,0 +1,100 @@
+.editor-search-container {
+    position: absolute;
+    top: 10px;
+    right: 30px;
+    z-index: 100;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    padding: 6px;
+    border-radius: 4px;
+    width: 320px;
+    animation: slideIn 0.1s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 2px;
+}
+
+.search-input-wrapper:focus-within {
+    border-color: var(--accent-color);
+}
+
+.search-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 4px 8px;
+    font-size: 13px;
+    outline: none;
+}
+
+.search-options {
+    display: flex;
+    padding-right: 4px;
+}
+
+.option-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-radius: 2px;
+}
+
+.option-btn:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+}
+
+.option-btn.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.search-nav-buttons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.nav-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 4px;
+    cursor: pointer;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    opacity: 0.7;
+}
+
+.nav-btn:hover {
+    background-color: rgba(128, 128, 128, 0.2);
+    opacity: 1;
+}
+
+.nav-btn.close:hover {
+    color: #f44336;
+}

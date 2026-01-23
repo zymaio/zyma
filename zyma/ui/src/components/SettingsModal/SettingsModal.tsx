@@ -6,6 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 export interface AppSettings {
     theme: 'dark' | 'light';
     font_size: number;
+    ui_font_size: number;
     tab_size: number;
     language: string;
     context_menu: boolean;
@@ -63,11 +64,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
 
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Language')}</label>
+                        <label style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }}>{t('Language')}</label>
                         <select 
                             value={currentSettings.language}
                             onChange={(e) => updateSetting('language', e.target.value)}
-                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
+                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
                         >
                             <option value="zh-CN">简体中文</option>
                             <option value="zh-TW">繁體中文</option>
@@ -76,11 +77,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Theme')}</label>
+                        <label style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }}>{t('Theme')}</label>
                         <select 
                             value={currentSettings.theme}
                             onChange={(e) => updateSetting('theme', e.target.value as 'dark' | 'light')}
-                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
+                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
                         >
                             <option value="dark">Dark</option>
                             <option value="light">Light</option>
@@ -88,11 +89,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('FontSize')} (px)</label>
+                        <label style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }}>{t('FontSize')} (Editor px)</label>
                         <input 
                             type="number" value={currentSettings.font_size}
                             onChange={(e) => updateSetting('font_size', parseInt(e.target.value) || 12)}
-                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none' }}
+                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <label style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }}>{t('UIFontSize')} (px)</label>
+                        <input 
+                            type="number" value={currentSettings.ui_font_size || 13}
+                            onChange={(e) => updateSetting('ui_font_size', parseInt(e.target.value) || 13)}
+                            style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
                         />
                     </div>
 
@@ -102,7 +112,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                 padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
                             }}>
-                                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('ContextMenu')}</div>
+                                <div style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold' }}>{t('ContextMenu')}</div>
                                 <input 
                                     type="checkbox" 
                                     checked={currentSettings.context_menu}
@@ -116,7 +126,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '12px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '4px' 
                         }}>
-                            <div style={{ fontSize: '13px', fontWeight: 'bold' }}>{t('AutoUpdate', '自动检测更新')}</div>
+                            <div style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold' }}>{t('AutoUpdate')}</div>
                             <input 
                                 type="checkbox" 
                                 checked={currentSettings.auto_update}

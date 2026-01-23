@@ -24,8 +24,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
                 boxShadow: '0 8px 30px rgba(0,0,0,0.5)', borderRadius: '8px',
                 padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px'
             }}>
-                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{title}</div>
-                <div style={{ fontSize: '14px', lineHeight: '1.5', opacity: 0.9 }}>{message}</div>
+                <div style={{ fontWeight: 'bold', fontSize: 'calc(var(--ui-font-size) + 2px)' }}>{title}</div>
+                <div style={{ fontSize: 'var(--ui-font-size)', lineHeight: '1.5', opacity: 0.9 }}>{message}</div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                     <button 
@@ -33,7 +33,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
                         style={{
                             padding: '6px 15px', backgroundColor: 'transparent',
                             border: '1px solid var(--border-color)', color: 'var(--text-primary)',
-                            borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                            borderRadius: '4px', cursor: 'pointer', fontSize: 'var(--ui-font-size)'
                         }}
                     >
                         {t('Cancel')}
@@ -44,7 +44,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
                         style={{
                             padding: '6px 15px', backgroundColor: 'transparent',
                             border: '1px solid var(--border-color)', color: 'var(--text-primary)',
-                            borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                            borderRadius: '4px', cursor: 'pointer', fontSize: 'var(--ui-font-size)'
                         }}
                     >
                         {t('DontSave')}
@@ -54,7 +54,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
                         style={{
                             padding: '6px 15px', backgroundColor: 'var(--accent-color)',
                             border: 'none', color: '#fff',
-                            borderRadius: '4px', cursor: 'pointer', fontSize: '13px'
+                            borderRadius: '4px', cursor: 'pointer', fontSize: 'var(--ui-font-size)'
                         }}
                     >
                         {t('Save')}

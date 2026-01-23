@@ -94,7 +94,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
         alignItems: 'center',
         userSelect: 'none',
         color: 'var(--text-primary)',
-        fontSize: '12px',
+        fontSize: 'var(--ui-font-size)',
         flexShrink: 0,
         position: 'relative',
         zIndex: 1000,
@@ -145,11 +145,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                                 ) : (
                                     <div 
                                         key={idx} className="dropdown-item" 
-                                        style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between' }}
+                                        style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: '20px' }}
                                         onClick={() => { onAction(item.action); setActiveMenu(null); }}
                                     >
                                         <span>{item.label}</span>
-                                        {item.shortcut && <span style={{ opacity: 0.5, fontSize: '10px' }}>{item.shortcut}</span>}
+                                        {item.shortcut && <span style={{ opacity: 0.5, fontSize: 'var(--ui-font-size)' }}>{item.shortcut}</span>}
                                     </div>
                                 )
                             ))}

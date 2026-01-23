@@ -1,68 +1,94 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  --ui-font-size: 13px;
+  font-size: var(--ui-font-size);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+.theme-dark {
+  --bg-editor: #1a1b26;
+  --bg-sidebar: #16161e;
+  --bg-activity: #16161e;
+  --bg-status: #1a1b26;
+  --bg-tabs: #16161e;
+  --bg-active-tab: #1a1b26;
+  --text-main: #a9b1d6;
+  --text-muted: #565f89;
+  --text-active: #c0caf5;
+  --border-color: #24283b;
+  --accent-color: #7aa2f7;
+  --active-bg: #292e42;
+  --active-text: #7aa2f7;
+  color: var(--text-main);
+  background-color: var(--bg-editor);
+  --bg-dark: var(--bg-editor);
+  --bg-activity-bar: var(--bg-activity);
+  --bg-titlebar: var(--bg-activity); 
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+  --bg-dropdown: var(--bg-sidebar);
+  --dropdown-hover: var(--active-bg);
+  --input-bg: var(--bg-editor);
 }
-a:hover {
-  color: #535bf2;
+
+.theme-light {
+  --bg-editor: #ffffff;
+  --bg-sidebar: #f6f8fa;
+  --bg-activity: #f6f8fa;
+  --bg-status: #f6f8fa;
+  --bg-tabs: #f6f8fa;
+  --bg-active-tab: #ffffff;
+  --text-main: #24292f;
+  --text-muted: #57606a;
+  --text-active: #0969da;
+  --border-color: #d0d7de;
+  --accent-color: #0969da;
+  --active-bg: #eaeff4;
+  --active-text: #0969da;
+  color: var(--text-main);
+  background-color: var(--bg-editor);
+  --bg-dark: var(--bg-editor);
+  --bg-activity-bar: var(--bg-activity);
+  --bg-titlebar: var(--bg-activity);
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+  --bg-dropdown: #ffffff;
+  --dropdown-hover: var(--active-bg);
+  --input-bg: var(--bg-editor);
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+  font-size: var(--ui-font-size);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#root { height: 100%; width: 100%; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+.breadcrumb-item:hover { color: var(--text-primary); text-decoration: underline; }
+.breadcrumb-item { transition: color 0.2s; }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.menu-item, .dropdown-item, .breadcrumb-item, .command-palette-item, .context-menu-item, .status-bar, .activity-bar, .sidebar-item-container {
+    font-size: var(--ui-font-size) !important;
 }

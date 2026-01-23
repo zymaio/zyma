@@ -1,53 +1,7 @@
 /* Default Variables (Base) */
 :root {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: 13px;
-}
-
-/* Dark Theme (Default) */
-body.theme-dark {
-  --bg-dark: #1e1e1e;
-  --bg-sidebar: #252526;
-  --bg-activity-bar: #333333;
-  --bg-tab: #2d2d2d;
-  --bg-tab-active: #1e1e1e;
-  --bg-titlebar: #333333;
-  --bg-dropdown: #252526;
-  --text-primary: #cccccc;
-  --text-secondary: #969696;
-  --border-color: #3e3e42;
-  --accent-color: #007acc;
-  --status-bar-bg: #007acc;
-  --scrollbar-thumb: #424242;
-  --scrollbar-hover: #4f4f4f;
-  --dropdown-hover: #094771;
-  --input-bg: #3c3c3c;
-  --input-border: #555;
-  --preview-bg: #0d1117;
-  --preview-color: #c9d1d9;
-}
-
-/* Light Theme */
-body.theme-light {
-  --bg-dark: #ffffff;
-  --bg-sidebar: #f3f3f3;
-  --bg-activity-bar: #e8e8e8;
-  --bg-tab: #ececec;
-  --bg-tab-active: #ffffff;
-  --bg-titlebar: #dddddd;
-  --bg-dropdown: #ffffff;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --border-color: #e4e4e4;
-  --accent-color: #007acc;
-  --status-bar-bg: #007acc;
-  --scrollbar-thumb: #c1c1c1;
-  --scrollbar-hover: #a8a8a8;
-  --dropdown-hover: #0060c0;
-  --input-bg: #ffffff;
-  --input-border: #ccc;
-  --preview-bg: #ffffff;
-  --preview-color: #24292f;
+  font-size: var(--ui-font-size);
 }
 
 html, body, #root {
@@ -58,23 +12,11 @@ html, body, #root {
   overflow: hidden;
   background-color: var(--bg-dark);
   color: var(--text-primary);
+  font-size: var(--ui-font-size);
 }
 
 * {
   box-sizing: border-box;
-}
-
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-hover);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -154,12 +96,12 @@ body.theme-light .window-control:hover {
 
 .status-bar {
     height: 22px;
-    background-color: var(--status-bar-bg);
+    background-color: var(--status-bar-bg, #007acc); /* Fallback to VS Code blue */
     color: #fff;
     display: flex;
     align-items: center;
     padding: 0 10px;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
     user-select: none;
     flex-shrink: 0;
 }

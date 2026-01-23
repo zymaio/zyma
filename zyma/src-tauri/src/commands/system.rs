@@ -27,11 +27,11 @@ pub fn is_admin() -> bool {
 
 #[tauri::command]
 pub fn save_window_state(window: tauri::Window) -> Result<(), String> {
-    println!("DEBUG: Starting save_window_state...");
     let mut settings = crate::commands::config::load_settings().unwrap_or_else(|_| {
         crate::models::AppSettings {
             theme: "dark".to_string(),
             font_size: 14,
+            ui_font_size: 13,
             tab_size: 4,
             language: "zh-CN".to_string(),
             context_menu: false,
@@ -50,22 +50,21 @@ pub fn save_window_state(window: tauri::Window) -> Result<(), String> {
 
     if !is_maximized {
         if let Ok(size) = window.outer_size() {
-            println!("DEBUG: Capturing size: {}x{}", size.width, size.height);
             settings.window_width = size.width as f64;
             settings.window_height = size.height as f64;
         }
         if let Ok(pos) = window.outer_position() {
-            println!("DEBUG: Capturing position: x={}, y={}", pos.x, pos.y);
             settings.window_x = Some(pos.x);
             settings.window_y = Some(pos.y);
         }
-    } else {
-        println!("DEBUG: Window is maximized, skipping size/pos capture");
     }
 
-    let result = crate::commands::config::save_settings(settings);
-    println!("DEBUG: Save result: {:?}", result);
-    result
+    crate::commands::config::save_settings(settings)
+}
+
+#[tauri::command]
+pub fn kill_process() {
+    std::process::exit(0);
 }
 
 #[tauri::command]

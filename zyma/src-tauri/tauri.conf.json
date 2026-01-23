@@ -1,21 +1,21 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "zyma",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "identifier": "com.zyma.editor",
   "build": {
     "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm --prefix ui run dev",
+    "beforeBuildCommand": "npm --prefix ui run build"
   },
   "app": {
     "windows": [
       {
         "label": "main",
         "title": "智码 (zyma)",
-        "width": 800,
-        "height": 600,
+        "width": 1000,
+        "height": 700,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,

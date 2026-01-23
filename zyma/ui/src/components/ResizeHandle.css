@@ -1,0 +1,3 @@
+.resize-handle:hover {
+    background-color: var(--accent-color);
+}

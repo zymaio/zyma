@@ -4,7 +4,10 @@ import { tokyoNight } from '@uiw/codemirror-theme-tokyo-night';
 import { githubLight } from '@uiw/codemirror-theme-github';
 import { EditorView } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
-import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, syntaxHighlighting, indentOnInput, bracketMatching, foldGutter, foldKeymap } from '@codemirror/language';
+import { search, setSearchQuery, findNext, findPrevious, SearchQuery } from '@codemirror/search';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { keymap } from '@codemirror/view';
 
 // 导入语言包
 import { javascript } from '@codemirror/lang-javascript';
@@ -45,6 +48,8 @@ interface EditorProps {
     themeMode: 'dark' | 'light';
     fontSize?: number;
     onChange?: (val: string) => void;
+    onCursorUpdate?: (line: number, col: number) => void;
+    editorRef?: React.MutableRefObject<EditorView | null>;
 }
 
 const LANGUAGE_MAP: Record<string, () => any> = {
@@ -73,15 +78,27 @@ const LANGUAGE_MAP: Record<string, () => any> = {
     'go': () => go(),
     'sql': () => sql(),
     'xml': () => xml(),
+    'svg': () => xml(),
     'vue': () => vue(),
 };
 
-const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize = 14, onChange }) => {
+const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize = 14, onChange, onCursorUpdate, editorRef }) => {
   const extensions = useMemo(() => {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    let ext = fileName.split('.').pop()?.toLowerCase() || '';
+    // 特判全名文件
+    if (fileName.toLowerCase() === 'cargo.lock') ext = 'toml';
     
     const exts: any[] = [
         EditorView.lineWrapping,
+        search({ topPanel: false, createPanel: () => ({ dom: document.createElement('div') }) }),
+        keymap.of(defaultKeymap.filter(k => k.key !== 'Mod-f')), // 显式移除默认的 Ctrl+F
+        EditorView.updateListener.of((update) => {
+            if (update.selectionSet && onCursorUpdate) {
+                const pos = update.state.selection.main.head;
+                const line = update.state.doc.lineAt(pos);
+                onCursorUpdate(line.number, pos - line.from + 1);
+            }
+        }),
         EditorView.theme({
             "&": { height: "100%" },
             ".cm-scroller": { fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', monospace" },
@@ -124,6 +141,9 @@ const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize 
       <CodeMirror
         value={content}
         height="100%"
+        onCreateEditor={(view) => {
+            if (editorRef) editorRef.current = view;
+        }}
         theme={themeMode === 'dark' ? tokyoNight : githubLight}
         extensions={extensions}
         onChange={onChange}
