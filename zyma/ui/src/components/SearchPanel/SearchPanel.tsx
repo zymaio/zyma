@@ -11,7 +11,7 @@ interface SearchResult {
 
 interface SearchPanelProps {
     rootPath: string;
-    onFileSelect: (path: string, name: string, line?: number) => void;
+    onFileSelect: (path: string, name: string) => void;
 }
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => {
@@ -127,7 +127,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                             {isExpanded && fileMatches.map((res, idx) => (
                                 <div 
                                     key={idx} 
-                                    onClick={() => onFileSelect(res.path, fileName, res.line)}
+                                    onClick={() => onFileSelect(res.path, fileName)}
                                     style={{ padding: '4px 10px 4px 34px', cursor: 'pointer', fontSize: 'calc(var(--ui-font-size) - 2px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}
                                     className="file-item-hover"
                                 >

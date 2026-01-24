@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { tokyoNight } from '@uiw/codemirror-theme-tokyo-night';
 import { githubLight } from '@uiw/codemirror-theme-github';
@@ -8,24 +8,6 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { search } from '@codemirror/search';
 import { defaultKeymap } from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
-
-// 导入语言包
-import { javascript } from '@codemirror/lang-javascript';
-import { rust } from '@codemirror/lang-rust';
-import { python } from '@codemirror/lang-python';
-import { markdown } from '@codemirror/lang-markdown';
-import { html } from '@codemirror/lang-html';
-import { css } from '@codemirror/lang-css';
-import { cpp } from '@codemirror/lang-cpp';
-import { json } from '@codemirror/lang-json';
-import { java } from '@codemirror/lang-java';
-import { yaml } from '@codemirror/lang-yaml';
-import { php } from '@codemirror/lang-php';
-import { go } from '@codemirror/lang-go';
-import { sql } from '@codemirror/lang-sql';
-import { xml } from '@codemirror/lang-xml';
-import { sass } from '@codemirror/lang-sass';
-import { vue } from '@codemirror/lang-vue';
 
 // --- 手动增强色彩方案 ---
 const richHighlightStyle = HighlightStyle.define([
@@ -52,46 +34,61 @@ interface EditorProps {
     editorRef?: React.MutableRefObject<EditorView | null>;
 }
 
-const LANGUAGE_MAP: Record<string, () => any> = {
-    'js': () => javascript(),
-    'jsx': () => javascript({ jsx: true }),
-    'ts': () => javascript({ typescript: true }),
-    'tsx': () => javascript({ jsx: true, typescript: true }),
-    'rs': () => rust(),
-    'py': () => python(),
-    'md': () => markdown(),
-    'html': () => html(),
-    'css': () => css(),
-    'scss': () => sass(),
-    'sass': () => sass(),
-    'cpp': () => cpp(),
-    'hpp': () => cpp(),
-    'c': () => cpp(),
-    'h': () => cpp(),
-    'cs': () => cpp(),
-    'json': () => json(),
-    'java': () => java(),
-    'yaml': () => yaml(),
-    'yml': () => yaml(),
-    'toml': () => rust(),
-    'php': () => php(),
-    'go': () => go(),
-    'sql': () => sql(),
-    'xml': () => xml(),
-    'svg': () => xml(),
-    'vue': () => vue(),
+// 语言包映射表：改为返回 Promise 的动态导入
+const LANGUAGE_LOADERS: Record<string, () => Promise<any>> = {
+    'js': () => import('@codemirror/lang-javascript').then(m => m.javascript()),
+    'jsx': () => import('@codemirror/lang-javascript').then(m => m.javascript({ jsx: true })),
+    'ts': () => import('@codemirror/lang-javascript').then(m => m.javascript({ typescript: true })),
+    'tsx': () => import('@codemirror/lang-javascript').then(m => m.javascript({ jsx: true, typescript: true })),
+    'rs': () => import('@codemirror/lang-rust').then(m => m.rust()),
+    'py': () => import('@codemirror/lang-python').then(m => m.python()),
+    'md': () => import('@codemirror/lang-markdown').then(m => m.markdown()),
+    'html': () => import('@codemirror/lang-html').then(m => m.html()),
+    'css': () => import('@codemirror/lang-css').then(m => m.css()),
+    'scss': () => import('@codemirror/lang-sass').then(m => m.sass()),
+    'sass': () => import('@codemirror/lang-sass').then(m => m.sass()),
+    'cpp': () => import('@codemirror/lang-cpp').then(m => m.cpp()),
+    'hpp': () => import('@codemirror/lang-cpp').then(m => m.cpp()),
+    'c': () => import('@codemirror/lang-cpp').then(m => m.cpp()),
+    'h': () => import('@codemirror/lang-cpp').then(m => m.cpp()),
+    'cs': () => import('@codemirror/lang-cpp').then(m => m.cpp()),
+    'json': () => import('@codemirror/lang-json').then(m => m.json()),
+    'java': () => import('@codemirror/lang-java').then(m => m.java()),
+    'yaml': () => import('@codemirror/lang-yaml').then(m => m.yaml()),
+    'yml': () => import('@codemirror/lang-yaml').then(m => m.yaml()),
+    'toml': () => import('@codemirror/lang-rust').then(m => m.rust()),
+    'php': () => import('@codemirror/lang-php').then(m => m.php()),
+    'go': () => import('@codemirror/lang-go').then(m => m.go()),
+    'sql': () => import('@codemirror/lang-sql').then(m => m.sql()),
+    'xml': () => import('@codemirror/lang-xml').then(m => m.xml()),
+    'svg': () => import('@codemirror/lang-xml').then(m => m.xml()),
+    'vue': () => import('@codemirror/lang-vue').then(m => m.vue()),
 };
 
 const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize = 14, onChange, onCursorUpdate, editorRef }) => {
-  const extensions = useMemo(() => {
+  const [langExtension, setLangExtension] = useState<any>(null);
+
+  // 异步加载语言包
+  useEffect(() => {
     let ext = fileName.split('.').pop()?.toLowerCase() || '';
-    // 特判全名文件
     if (fileName.toLowerCase() === 'cargo.lock') ext = 'toml';
     
+    const loader = LANGUAGE_LOADERS[ext];
+    if (loader) {
+        loader().then(setLangExtension).catch(err => {
+            console.error(`Failed to load language for ${ext}:`, err);
+            setLangExtension(null);
+        });
+    } else {
+        setLangExtension(null);
+    }
+  }, [fileName]);
+
+  const extensions = useMemo(() => {
     const exts: any[] = [
         EditorView.lineWrapping,
         search({ createPanel: () => ({ dom: document.createElement('div') }) }),
-        keymap.of(defaultKeymap.filter(k => k.key !== 'Mod-f')), // 显式移除默认的 Ctrl+F
+        keymap.of(defaultKeymap.filter(k => k.key !== 'Mod-f')),
         EditorView.updateListener.of((update) => {
             if (update.selectionSet && onCursorUpdate) {
                 const pos = update.state.selection.main.head;
@@ -116,20 +113,12 @@ const Editor: React.FC<EditorProps> = ({ content, fileName, themeMode, fontSize 
         exts.push(syntaxHighlighting(richHighlightStyle));
     }
 
-    try {
-        const langFunc = LANGUAGE_MAP[ext];
-        if (langFunc) {
-            const langExt = langFunc();
-            if (langExt) {
-                exts.push(langExt);
-            }
-        }
-    } catch (e) {
-        console.error(`Failed to load language extension for ${ext}:`, e);
+    if (langExtension) {
+        exts.push(langExtension);
     }
 
     return exts;
-  }, [fileName, themeMode]);
+  }, [langExtension, themeMode, onCursorUpdate]);
 
   return (
     <div style={{

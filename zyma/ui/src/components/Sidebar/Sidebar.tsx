@@ -10,7 +10,7 @@ import type { FileItemData } from './components/FileTreeItem';
 
 interface SidebarProps {
   rootPath: string;
-  onFileSelect: (path: string, name: string, line?: number) => void;
+  onFileSelect: (path: string, name: string) => void;
   onFileDelete?: (path: string) => void;
   activeFilePath: string | null;
 }

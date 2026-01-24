@@ -40,10 +40,3 @@ pub struct PluginManifest {
     pub entry: String,
     pub description: Option<String>,
 }
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UpdateInfo {
-    pub version: String,
-    pub source: String,
-    pub url: String,
-}

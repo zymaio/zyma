@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Settings, Info } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -48,10 +48,13 @@ function App() {
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [isClosingApp, setIsClosingApp] = useState(false);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+  const [hasUpdate, setHasUpdate] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
   const isResizingRef = useRef(false);
   const isExitingRef = useRef(false);
+  const initialArgsProcessed = useRef(false);
+  const processedPaths = useRef(new Set<string>());
 
   const [settings, setSettings] = useState<AppSettings>({
       theme: 'dark', font_size: 14, ui_font_size: 13, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
@@ -62,15 +65,23 @@ function App() {
   const appStateRef = useRef({ settings, cursorPos });
   useEffect(() => { appStateRef.current = { settings, cursorPos }; }, [settings, cursorPos]);
 
-  const activeFile = fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null;
+  const activeFile = useMemo(() => {
+    if (!fm.activeFilePath) return null;
+    return fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null;
+  }, [fm.openFiles, fm.activeFilePath]);
+
   const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
   
   // 计算相对路径
-  const relativePath = activeFile?.path ? (
-      activeFile.path.startsWith(rootPath) 
-      ? activeFile.path.replace(rootPath, '').replace(/^[\\\/]/, '') 
-      : activeFile.path
-  ) : activeFile?.name || t('NoFile');
+  const relativePath = useMemo(() => {
+    if (!activeFile) return t('NoFile');
+    const path = activeFile.path || activeFile.name;
+    // 同时也对 rootPath 做一次标准化对比
+    const normRoot = rootPath.replace(/\\/g, '/');
+    return path.startsWith(normRoot) 
+      ? path.replace(normRoot, '').replace(/^[\\\/]/, '') 
+      : path;
+  }, [activeFile, rootPath, t]);
 
   // 计算语言模式显示
   const getLanguageMode = () => {
@@ -112,6 +123,8 @@ function App() {
   };
 
   useEffect(() => {
+      let unlistenSingleInstance: (() => void) | null = null;
+
       const startApp = async () => {
           try {
               if (getCurrentWindow().label !== 'main') { setReady(true); return; }
@@ -121,11 +134,25 @@ function App() {
                   invoke<string>('get_app_version'), invoke<string>('get_cwd')
               ]);
               
-              const finalRootPath = rootPath === '.' ? cwd : rootPath;
               if (rootPath === '.') setRootPath(cwd);
+              const finalRootPath = rootPath === '.' ? cwd : rootPath;
 
               setSettings(saved); setAppVersion(version); i18n.changeLanguage(saved.language); 
               setIsAdmin(adminStatus); setPlatform(plat);
+
+              // 1. 自动更新右键菜单路径（如果已开启）
+              if (saved.context_menu && (plat === 'windows' || plat === 'win32')) {
+                  invoke("manage_context_menu", { enable: true, label: t('ContextMenuLabel') }).catch(() => {});
+              }
+
+              // 2. 自动检查更新
+              if (saved.auto_update) {
+                  import('@tauri-apps/plugin-updater').then(({ check }) => {
+                      check().then(update => {
+                          if (update) setHasUpdate(true);
+                      }).catch(() => {});
+                  });
+              }
               
               setupWorkbench(t, {
                   handleNewFile: fm.handleNewFile,
@@ -142,19 +169,46 @@ function App() {
                   }
               });
 
-              const manager = new PluginManager({
-                  insertText: (text) => fm.handleEditorChange(fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content + text), 
-                  getContent: () => fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content || "", 
-                  notify: (m) => alert(`[Plugin] ${m}`)
-              });
-              pluginManager.current = manager;
-              manager.loadAll();
+              if (!pluginManager.current) {
+                  pluginManager.current = new PluginManager({
+                      insertText: (text) => fm.handleEditorChange(fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content + text), 
+                      getContent: () => fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content || "", 
+                      notify: (m) => alert(`[Plugin] ${m}`)
+                  });
+                  pluginManager.current.loadAll();
+              }
 
-              if (args.length > 1) { const file = args[args.length-1]; if (file.includes(":")) fm.handleFileSelect(file, file.split(/[\\/]/).pop() || file); }
+              const openFileFromArgs = (argList: string[]) => {
+                  if (argList.length > 1) {
+                      const possibleFile = argList[argList.length - 1];
+                      if (possibleFile && !possibleFile.toLowerCase().endsWith('zyma.exe') && 
+                         (possibleFile.includes(":") || possibleFile.startsWith("/"))) {
+                          
+                          const norm = possibleFile.replace(/\\/g, '/').toLowerCase();
+                          // 即使是重复路径，我们也执行一次激活切换，但如果是新路径则正常打开
+                          fm.handleFileSelect(possibleFile, possibleFile.split(/[\\/]/).pop() || possibleFile);
+                          processedPaths.current.add(norm);
+                      }
+                  }
+              };
+
+              // 重点：只有在第一次启动时处理原始命令行参数
+              if (!initialArgsProcessed.current) {
+                  openFileFromArgs(args);
+                  initialArgsProcessed.current = true;
+              }
+
+              // 设置单实例监听
+              const cleanup = await listen<string[]>("single-instance", (event) => {
+                  openFileFromArgs(event.payload);
+                  getCurrentWindow().setFocus();
+              });
+              unlistenSingleInstance = () => cleanup();
+
               setReady(true);
           } catch (e) { console.error("Init Error:", e); setReady(true); }
       };
-      const timer = setTimeout(() => setReady(true), 2000);
+
       startApp();
       const unlistenClose = getCurrentWindow().onCloseRequested(async (e) => {
           if (isExitingRef.current) return;
@@ -162,7 +216,11 @@ function App() {
           if (fm.stateRef.current.openFiles.some(f => f.content !== f.originalContent)) setIsClosingApp(true);
           else handleAppExit(false);
       });
-      return () => { clearTimeout(timer); unlistenClose.then(f => f()); };
+
+      return () => { 
+          if (unlistenSingleInstance) unlistenSingleInstance();
+          unlistenClose.then(f => f()); 
+      };
   }, [fm.handleFileSelect, i18n, t, rootPath]);
 
   useEffect(() => {
@@ -187,20 +245,6 @@ function App() {
   }, [rootPath]);
 
   if (!ready) return <div style={{ width: '100vw', height: '100vh', backgroundColor: '#1e1e1e' }}></div>;
-
-  if (getCurrentWindow().label !== 'main') {
-      const [content, setContent] = useState<string>('<div style="padding:20px">AI Assistant Ready.</div>');
-      useEffect(() => {
-          const unlisten = listen<string>('ai:update-content', (e) => setContent(e.payload));
-          return () => { unlisten.then(f => f()); };
-      }, []);
-      return (
-          <div style={{ width: '100vw', height: '100vh', backgroundColor: '#16161e', color: '#ccc', display: 'flex', flexDirection: 'column' }}>
-              <TitleBar onAction={() => {}} themeMode="dark" isAdmin={false} platform={platform} title={getCurrentWindow().label} />
-              <div id="plugin-root" style={{ flex: 1, overflow: 'auto' }} dangerouslySetInnerHTML={{ __html: content }} />
-          </div>
-      );
-  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', flexDirection: 'column' }}>
@@ -235,12 +279,25 @@ function App() {
                 </>
             )}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <TabBar files={fm.openFiles.map(f => ({ path: f.path || f.name, name: f.name, isDirty: f.content !== f.originalContent }))} activePath={fm.activeFilePath} onSwitch={fm.setActiveFilePath} onClose={(id) => { const f = fm.openFiles.find(x => (x.path || x.name) === id); if (f && f.content !== f.originalContent) setPendingCloseId(id); else fm.closeFile(id); }} />
+                <TabBar 
+                    files={fm.openFiles.map(f => ({ 
+                        path: f.path || f.name, 
+                        name: f.name, 
+                        isDirty: f.content !== f.originalContent 
+                    }))} 
+                    activePath={fm.activeFilePath} 
+                    onSwitch={(id) => fm.setActiveFilePath(id)} 
+                    onClose={(id) => { 
+                        const f = fm.openFiles.find(x => (x.path || x.name) === id); 
+                        if (f && f.content !== f.originalContent) setPendingCloseId(id); 
+                        else fm.closeFile(id); 
+                    }} 
+                />
                 <Breadcrumbs path={fm.activeFilePath} />
                 {activeFile ? (
                     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                        <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
-                            <Editor key={fm.activeFilePath} content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} onCursorUpdate={(l, c) => setCursorPos({ line: l, col: c })} editorRef={fm.editorViewRef} />
+                        <div style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={(activeFile.path || activeFile.name).replace(/\\/g, '/').toLowerCase()}>
+                            <Editor content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} onCursorUpdate={(l, c) => setCursorPos({ line: l, col: c })} editorRef={fm.editorViewRef} />
                         </div>
                         <EditorSearch visible={showSearch} onClose={() => setShowSearch(false)} onSearch={(q, o) => { if (!fm.editorViewRef.current) return; const query = new SearchQuery({ search: q, caseSensitive: o.matchCase, wholeWord: o.wholeWord, regexp: o.useRegex }); fm.editorViewRef.current.dispatch({ effects: setSearchQuery.of(query) }); }} onNext={() => fm.editorViewRef.current && findNext(fm.editorViewRef.current)} onPrev={() => fm.editorViewRef.current && findPrevious(fm.editorViewRef.current)} />
                         {isMarkdown && <div style={{ flex: 1, height: '100%', overflow: 'hidden', borderLeft: '1px solid var(--border-color)' }}><Preview content={activeFile.content} themeMode={settings.theme} /></div>}
@@ -293,14 +350,15 @@ function App() {
                 ))}
 
                 {/* 7. 版本号 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '10px' }} onClick={() => commands.executeCommand('about')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
+                    {hasUpdate && <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: '#52c41a', borderRadius: '50%', border: '1px solid var(--bg-statusbar)' }} title={t('UpdateAvailable')} />}
                     <Info size={14} />
-                    <span>0.9.4</span>
+                    <span>{appVersion}</span>
                 </div>
             </div>
         </div>
         {showSettings && <SettingsModal currentSettings={settings} onSave={async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); await invoke('save_settings', { settings: ns }); }} onClose={() => setShowSettings(false)} platform={platform} />}
-        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} initialData={aboutState.data} version={appVersion} />}
+        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} version={appVersion} />}
         <CommandPalette visible={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
         {pendingCloseId && <ConfirmModal title={t('File')} message={t('SaveBeforeClose', { name: fm.openFiles.find(f => (f.path || f.name) === pendingCloseId)?.name })} onSave={async () => { const f = fm.openFiles.find(x => (x.path || x.name) === pendingCloseId); if (await fm.doSave(f || null)) fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onDontSave={() => { fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onCancel={() => setPendingCloseId(null)} />}
         {isClosingApp && <ConfirmModal title="zyma" message={t('SaveBeforeClose', { name: t('AllFiles') })} onSave={() => handleAppExit(true)} onDontSave={() => handleAppExit(false)} onCancel={() => setIsClosingApp(false)} />}

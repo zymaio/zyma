@@ -1,52 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, RefreshCw } from 'lucide-react';
+import { X, ExternalLink, RefreshCw, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-
-interface UpdateInfo {
-    version: string;
-    source: string;
-    url: string;
-}
+import { check } from '@tauri-apps/plugin-updater';
 
 interface AboutModalProps {
     onClose: () => void;
     autoCheck?: boolean;
-    initialData?: UpdateInfo | null;
     version: string;
 }
 
-const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, initialData = null, version }) => {
+const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, version }) => {
     const { t } = useTranslation();
     const currentVersion = version;
-    const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'latest' | 'new'>(initialData ? 'new' : 'idle');
-    const [latestInfo, setLatestInfo] = useState<UpdateInfo | null>(initialData);
+    const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'latest' | 'new' | 'downloading'>('idle');
+    const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
     // Auto-trigger check if requested
     useEffect(() => {
-        if (autoCheck && !initialData) {
+        if (autoCheck) {
             checkUpdate();
         }
-    }, [autoCheck, initialData]);
+    }, [autoCheck]);
 
     const handleOpenLink = (url: string) => {
         invoke('open_url', { url }).catch(console.error);
     };
 
     const checkUpdate = async () => {
-        if (updateStatus === 'checking') return;
+        if (updateStatus === 'checking' || updateStatus === 'downloading') return;
         setUpdateStatus('checking');
         try {
-            const info = await invoke<UpdateInfo>('check_update_racing');
-            setLatestInfo(info);
-            if (info.version !== version) {
+            const update = await check();
+            if (update) {
+                setLatestVersion(update.version);
                 setUpdateStatus('new');
             } else {
                 setUpdateStatus('latest');
             }
         } catch (e) {
-            console.error(e);
+            console.error('Update check failed:', e);
             setUpdateStatus('idle');
+        }
+    };
+
+    const installUpdate = async () => {
+        try {
+            const update = await check();
+            if (update) {
+                setUpdateStatus('downloading');
+                await update.downloadAndInstall();
+                // App will restart automatically if configured, or you might need to relaunch
+            }
+        } catch (e) {
+            console.error('Download/Install failed:', e);
+            alert(t('UpdateFailed'));
+            setUpdateStatus('new');
         }
     };
 
@@ -56,6 +65,8 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ini
                 return <div style={{ fontSize: 'var(--ui-font-size)', opacity: 0.5 }}>{t('Checking')}</div>;
             case 'latest':
                 return <div style={{ fontSize: 'var(--ui-font-size)', color: '#52c41a' }}>{t('AlreadyLatest')}</div>;
+            case 'downloading':
+                return <div style={{ fontSize: 'var(--ui-font-size)', color: '#faad14' }}>{t('Downloading')}...</div>;
             case 'new':
                  return null;
             case 'idle':
@@ -104,20 +115,24 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ini
                         {renderUpdateStatus()}
                     </div>
 
-                    {updateStatus === 'new' && latestInfo && (
+                    {updateStatus === 'new' && latestVersion && (
                         <div style={{ 
                             width: '100%', padding: '12px', backgroundColor: 'rgba(82,196,26,0.1)', 
                             borderRadius: '8px', border: '1px solid rgba(82,196,26,0.2)', marginBottom: '20px' 
                         }}>
-                            <div style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
-                                {t('NewVersionFound', { version: latestInfo.version })}
+                            <div style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: '#52c41a', marginBottom: '8px' }}>
+                                {t('NewVersionFound', { version: latestVersion })}
                             </div>
-                            <div 
-                                onClick={() => handleOpenLink(latestInfo.url)}
-                                style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', color: '#007acc', cursor: 'pointer', textDecoration: 'underline' }}
+                            <button 
+                                onClick={installUpdate}
+                                style={{ 
+                                    padding: '6px 15px', backgroundColor: '#52c41a', color: '#fff', 
+                                    border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold',
+                                    display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto'
+                                }}
                             >
-                                {t('GoDownload', { source: latestInfo.source })}
-                            </div>
+                                <Download size={14} /> {t('UpdateNow')}
+                            </button>
                         </div>
                     )}
 

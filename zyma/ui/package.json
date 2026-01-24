@@ -1,7 +1,7 @@
 {
   "name": "ui",
   "private": false,
-  "version": "0.9.4",
+  "version": "0.9.5",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "scripts": {
@@ -33,6 +33,7 @@
     "@tauri-apps/api": "^2.9.1",
     "@tauri-apps/plugin-dialog": "^2.5.0",
     "@tauri-apps/plugin-shell": "^2.3.4",
+    "@tauri-apps/plugin-updater": "^2.5.0",
     "@uiw/codemirror-theme-dracula": "^4.25.4",
     "@uiw/codemirror-theme-github": "^4.25.4",
     "@uiw/codemirror-theme-tokyo-night": "^4.25.4",

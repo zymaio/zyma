@@ -1,6 +1,7 @@
 use std::fs;
 use crate::models::{FileItem, SearchResult};
-use walkdir;
+use ignore::WalkBuilder;
+use std::sync::mpsc;
 
 #[tauri::command]
 pub fn get_cwd() -> Result<String, String> {
@@ -29,6 +30,10 @@ pub fn read_dir(path: String) -> Result<Vec<FileItem>, String> {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
+    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+    if metadata.len() > 5 * 1024 * 1024 {
+        return Err("File too large (Max 5MB)".to_string());
+    }
     let bytes = fs::read(&path).map_err(|e| e.to_string())?;
     if bytes.iter().take(1024).any(|&b| b == 0) { return Err("Binary file".to_string()); }
     Ok(String::from_utf8_lossy(&bytes).to_string())
@@ -58,84 +63,71 @@ pub fn rename_item(at: String, to: String) -> Result<(), String> {
 pub fn search_in_dir(root: String, pattern: String, mode: Option<String>) -> Result<Vec<SearchResult>, String> {
     if pattern.is_empty() { return Ok(Vec::new()); }
     let search_mode = mode.unwrap_or_else(|| "content".to_string());
-    let mut results = Vec::new();
-    
-    // 预处理 pattern 为小写，用于忽略大小写搜索
     let pattern_lower = pattern.to_lowercase();
 
-    // 严格过滤：必须忽略构建目录和版本控制目录，否则会卡死
-    let ignore_dirs = vec!["node_modules", ".git", "target", "dist", "build", ".vscode", ".idea"];
+    // 使用 mpsc channel 收集多线程结果
+    let (tx, rx) = mpsc::channel();
+    
+    // 构建并行遍历器，ignore 库会自动处理 .gitignore
+    let walker = WalkBuilder::new(&root)
+        .hidden(false) // 允许搜索隐藏文件，但尊重 .gitignore
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .threads(std::cmp::min(8, num_cpus::get())) // 限制最大线程数
+        .build_parallel();
 
-    for entry in walkdir::WalkDir::new(&root).into_iter().filter_entry(|e| {
-        let n = e.file_name().to_string_lossy();
-        // 修复：不要过滤当前目录 "."
-        let is_ignored = (n.starts_with('.') && n != ".") || ignore_dirs.iter().any(|d| n == *d);
-        !is_ignored
-    }) {
-        let e = if let Ok(e) = entry { e } else { continue };
-        let path_str = e.path().to_string_lossy().to_string();
+    walker.run(|| {
+        let tx = tx.clone();
+        let pattern_lower = pattern_lower.clone();
+        let search_mode = search_mode.clone();
+        
+        Box::new(move |result| {
+            let entry = if let Ok(e) = result { e } else { return ignore::WalkState::Continue };
+            if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                return ignore::WalkState::Continue;
+            }
 
-        // 1. 文件名搜索模式
-        if search_mode == "filename" {
-            // ... (保持之前的通配符逻辑不变) ...
-            let filename = e.file_name().to_string_lossy().to_lowercase();
-            // let p_lower = pattern.to_lowercase(); // 已经有 pattern_lower 了
-            
-            let is_match = if pattern_lower == "*" {
-                true
-            } else if pattern_lower.starts_with("*") && pattern_lower.ends_with("*") {
-                if pattern_lower.len() > 2 {
-                    filename.contains(&pattern_lower[1..pattern_lower.len()-1])
-                } else {
-                    true 
-                }
-            } else if pattern_lower.starts_with("*") {
-                if pattern_lower.len() > 1 {
-                    filename.ends_with(&pattern_lower[1..])
-                } else {
-                    true
-                }
-            } else if pattern_lower.ends_with("*") {
-                if pattern_lower.len() > 1 {
-                    filename.starts_with(&pattern_lower[..pattern_lower.len()-1])
-                } else {
-                    true
+            let path_str = entry.path().to_string_lossy().to_string();
+            let filename = entry.file_name().to_string_lossy().to_lowercase();
+
+            if search_mode == "filename" {
+                if filename.contains(&pattern_lower) {
+                    let _ = tx.send(SearchResult {
+                        path: path_str,
+                        line: 0,
+                        content: "File Match".to_string(),
+                    });
                 }
             } else {
-                filename.contains(&pattern_lower)
-            };
+                // 内容搜索模式
+                // 性能保护：超过 500KB 的文件跳过内容搜索
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.len() > 500 * 1024 { return ignore::WalkState::Continue; }
+                }
 
-            if is_match {
-                results.push(SearchResult { 
-                    path: path_str, 
-                    line: 0, 
-                    content: "File Match".to_string() 
-                });
-            }
-        } 
-        // 2. 内容搜索模式 (仅限文件)
-        else if e.path().is_file() {
-            // 性能保护：检查文件大小，超过 500KB 跳过内容搜索
-            if let Ok(metadata) = e.metadata() {
-                if metadata.len() > 500 * 1024 { continue; } 
-            }
-
-            // 尝试读取文本
-            if let Ok(c) = fs::read_to_string(e.path()) {
-                for (idx, line) in c.lines().enumerate() {
-                    // 忽略大小写搜索
-                    if line.to_lowercase().contains(&pattern_lower) {
-                        results.push(SearchResult { 
-                            path: path_str.clone(), 
-                            line: idx + 1, 
-                            content: line.trim().chars().take(100).collect() 
-                        });
+                if let Ok(content) = fs::read_to_string(entry.path()) {
+                    for (idx, line) in content.lines().enumerate() {
+                        if line.to_lowercase().contains(&pattern_lower) {
+                            let _ = tx.send(SearchResult {
+                                path: path_str.clone(),
+                                line: idx + 1,
+                                content: line.trim().chars().take(100).collect(),
+                            });
+                        }
                     }
-                    if results.len() > 2000 { break; } 
                 }
             }
-        }
-        if results.len() > 2000 { break; }
-    }
+            ignore::WalkState::Continue
+        })
+    });
+
+    // 收集所有结果
+    drop(tx); // 关闭发送端，否则 rx.iter() 永远不会结束
+    let mut results: Vec<SearchResult> = rx.into_iter().take(2000).collect();
+    
+    // 排序结果，让显示更自然
+    results.sort_by(|a, b| a.path.cmp(&b.path).then(a.line.cmp(&b.line)));
+    
     Ok(results)
 }

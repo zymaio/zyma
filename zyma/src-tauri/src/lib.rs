@@ -13,6 +13,7 @@ fn get_config_path() -> std::path::PathBuf {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
         let _ = app.emit("single-instance", args);
@@ -44,7 +45,6 @@ pub fn run() {
         commands::system::get_app_version,
         commands::system::open_url, 
         commands::system::show_main_window, 
-        commands::system::check_update_racing,
         commands::plugins::list_plugins, 
         commands::plugins::read_plugin_file
     ])

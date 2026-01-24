@@ -21,6 +21,11 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
   const { t } = useTranslation();
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
 
+  const isMatching = (p1: string | null, p2: string | null) => {
+    if (!p1 || !p2) return p1 === p2;
+    return p1.replace(/\\/g, '/').toLowerCase() === p2.replace(/\\/g, '/').toLowerCase();
+  };
+
   useEffect(() => {
       const handleClick = () => setContextMenu(null);
       window.addEventListener('click', handleClick);
@@ -33,7 +38,7 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
   };
 
   const getMenuItems = (targetPath: string): MenuItem[] => {
-      const index = files.findIndex(f => f.path === targetPath);
+      const index = files.findIndex(f => isMatching(f.path, targetPath));
       const isLeftmost = index === 0;
       const isRightmost = index === files.length - 1;
       const hasOnlyOne = files.length === 1;
@@ -43,7 +48,7 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
           { 
               label: t('CloseOthers'), 
               action: () => {
-                  files.forEach(f => { if (f.path !== targetPath) onClose(f.path); });
+                  files.forEach(f => { if (!isMatching(f.path, targetPath)) onClose(f.path); });
               },
               disabled: hasOnlyOne
           },
@@ -90,7 +95,7 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
             key={file.path}
             path={file.path}
             name={file.name} 
-            active={activePath === file.path} 
+            active={isMatching(activePath, file.path)} 
             isDirty={file.isDirty}
             onClick={() => onSwitch(file.path)}
             onClose={() => onClose(file.path)}

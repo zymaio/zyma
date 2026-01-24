@@ -1,5 +1,4 @@
 use tauri::{AppHandle, Manager};
-use crate::models::UpdateInfo;
 
 #[tauri::command]
 pub fn is_admin() -> bool {
@@ -125,49 +124,6 @@ pub async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -
 #[cfg(not(windows))]
 #[tauri::command]
 pub async fn manage_context_menu(_app: AppHandle, _enable: bool, _label: String) -> Result<(), String> { Ok(()) }
-
-#[tauri::command]
-pub async fn check_update_racing() -> Result<UpdateInfo, String> {
-    let urls = vec![
-        ("Gitee", "https://gitee.com/api/v5/repos/fourthz/zyma/releases/latest"),
-        ("GitHub", "https://api.github.com/repos/zymaio/zyma/releases/latest")
-    ];
-
-    for (source, url) in urls {
-        let output = if cfg!(windows) {
-            use std::os::windows::process::CommandExt;
-            let ps_cmd = format!(
-                "$ProgressPreference = 'SilentlyContinue'; Invoke-RestMethod -Uri '{}' -Method Get -TimeoutSec 5 -Headers @{{'User-Agent'='Zyma'}} | ConvertTo-Json -Depth 5 -Compress",
-                url
-            );
-            std::process::Command::new("powershell")
-                .args(&["-Command", &ps_cmd])
-                .creation_flags(0x08000000)
-                .output()
-        } else {
-            std::process::Command::new("curl")
-                .args(&["-L", "-s", "-A", "Zyma", "--max-time", "5", url])
-                .output()
-        };
-
-        if let Ok(out) = output {
-            if out.status.success() {
-                let body = String::from_utf8_lossy(&out.stdout);
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
-                    if let Some(tag_name) = json.get("tag_name").and_then(|v| v.as_str()) {
-                        let version = tag_name.trim_start_matches('v').to_string();
-                        return Ok(UpdateInfo {
-                            version,
-                            source: source.to_string(),
-                            url: if source == "Gitee" { "https://gitee.com/fourthz/zyma/releases" } else { "https://github.com/zymaio/zyma/releases" }.to_string()
-                        });
-                    }
-                }
-            }
-        }
-    }
-    Err("Update check failed".to_string())
-}
 
 #[tauri::command]
 pub fn get_app_version() -> String {

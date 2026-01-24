@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { EditorView } from '@codemirror/view';
-import { EditorSelection } from '@codemirror/state';
 
 export interface OpenedFile {
     path: string;
@@ -23,46 +22,39 @@ export function useFileManagement(t: (key: string) => string) {
         stateRef.current = { openFiles, activeFilePath, untitledCount };
     }, [openFiles, activeFilePath, untitledCount]);
 
-    const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
-        const cleanPath = path.replace(/^"(.*)"$/, '$1');
-        const existing = stateRef.current.openFiles.find(f => f.path === cleanPath);
+    const handleFileSelect = useCallback(async (path: string, name: string) => {
+        // 全系统唯一路径标准：正斜杠 + 小写
+        const normalizePath = (p: string) => p.replace(/^"(.*)"$/, '$1').replace(/\\/g, '/').toLowerCase();
+        const cleanPath = normalizePath(path);
+
+        // 1. 立即检查是否已存在
+        const existing = stateRef.current.openFiles.find(f => {
+            if (!f.path) return false;
+            return normalizePath(f.path) === cleanPath;
+        });
         
         if (existing) {
-            setActiveFilePath(cleanPath);
-            if (line !== undefined && editorViewRef.current) {
-                setTimeout(() => {
-                    if (!editorViewRef.current) return;
-                    const view = editorViewRef.current;
-                    const safeLine = Math.min(Math.max(1, line), view.state.doc.lines);
-                    const lineInfo = view.state.doc.line(safeLine);
-                    view.dispatch({ 
-                        effects: EditorView.scrollIntoView(lineInfo.from, { y: 'center' }), 
-                        selection: EditorSelection.cursor(lineInfo.from) 
-                    });
-                    view.focus();
-                }, 50);
-            }
+            setActiveFilePath(existing.path);
             return;
         }
 
+        // 2. 如果不存在，再执行异步读取
         try {
             const content = await invoke<string>('read_file', { path: cleanPath });
-            const newFile: OpenedFile = { path: cleanPath, name: name.replace(/^"(.*)"$/, '$1'), content, originalContent: content };
-            setOpenFiles(prev => [...prev, newFile]);
+            const newFile: OpenedFile = { 
+                path: cleanPath, 
+                name: name.replace(/^"(.*)"$/, '$1'), 
+                content, 
+                originalContent: content 
+            };
+            
+            setOpenFiles(prev => {
+                if (prev.some(f => f.path && normalizePath(f.path) === cleanPath)) {
+                    return prev;
+                }
+                return [...prev, newFile];
+            });
             setActiveFilePath(cleanPath);
-            if (line !== undefined) {
-                setTimeout(() => {
-                    if (!editorViewRef.current) return;
-                    const view = editorViewRef.current;
-                    const safeLine = Math.min(Math.max(1, line), view.state.doc.lines);
-                    const lineInfo = view.state.doc.line(safeLine);
-                    view.dispatch({ 
-                        effects: EditorView.scrollIntoView(lineInfo.from, { y: 'center' }), 
-                        selection: EditorSelection.cursor(lineInfo.from) 
-                    });
-                    view.focus();
-                }, 100);
-            }
         } catch (error) { console.error('File open error:', error); }
     }, []);
 

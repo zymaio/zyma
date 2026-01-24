@@ -1,0 +1,11 @@
+{
+  "version": "0.9.5",
+  "notes": "Zyma v0.9.5: 开启在线更新功能，修复右键菜单单实例问题。",
+  "pub_date": "2026-01-24T12:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "在你发布新版本时，从构建输出中复制签名填入此处",
+      "url": "https://github.com/fourthz/zyma/releases/download/v0.9.5/zyma.exe.zip"
+    }
+  }
+}
