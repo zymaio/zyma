@@ -13,9 +13,10 @@ interface SidebarProps {
   onFileSelect: (path: string, name: string) => void;
   onFileDelete?: (path: string) => void;
   activeFilePath: string | null;
+  pluginMenuItems?: { label: string, commandId: string }[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete, activeFilePath }) => {
+const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete, activeFilePath, pluginMenuItems = [] }) => {
   const { t } = useTranslation();
   const [rootFiles, setRootFiles] = useState<FileItemData[]>([]);
   const [projectName, setProjectName] = useState<string>("Project");
@@ -107,6 +108,23 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
               { label: t('Delete'), action: () => handleDelete(path, name), danger: true }
           );
       }
+
+      // 注入插件注册的菜单
+      if (pluginMenuItems.length > 0) {
+          items.push({ label: '', action: () => {}, separator: true });
+          pluginMenuItems.forEach(mi => {
+              items.push({ 
+                  label: mi.label, 
+                  action: () => {
+                      // 这里假设 commands 是全局可用的，或者通过某种方式分发
+                      import('../CommandSystem/CommandRegistry').then(m => {
+                          m.commands.executeCommand(mi.commandId, path);
+                      });
+                  } 
+              });
+          });
+      }
+
       return items;
   };
 

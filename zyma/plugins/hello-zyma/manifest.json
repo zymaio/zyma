@@ -1,7 +1,0 @@
-{
-  "name": "HelloZyma",
-  "version": "1.0.0",
-  "author": "Zyma",
-  "entry": "index.js",
-  "description": "My first plugin!"
-}

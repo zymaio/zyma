@@ -16,9 +16,9 @@
   --bg-status: #1a1b26;
   --bg-tabs: #16161e;
   --bg-active-tab: #1a1b26;
-  --text-main: #a9b1d6;
-  --text-muted: #565f89;
-  --text-active: #c0caf5;
+  --text-main: #e0e6f8; /* 提升亮度 */
+  --text-muted: #9499b8; /* 提升亮度 */
+  --text-active: #ffffff; /* 纯白 */
   --border-color: #24283b;
   --accent-color: #7aa2f7;
   --active-bg: #292e42;

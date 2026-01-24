@@ -1,49 +1,24 @@
 exports.activate = function() {
-    zyma.ui.notify("HelloZyma 插件已激活!");
-
-    // 1. 注册一个命令到命令面板
-    zyma.commands.register({
-        id: 'hello.insertGreeting',
-        title: 'Insert Greeting',
-        category: 'Plugin',
-        callback: () => {
-            const time = new Date().toLocaleTimeString();
-            zyma.editor.insertText(`\n[HelloZyma] 你好！现在是 ${time}\n`);
-            zyma.ui.notify("已成功插入问候语！");
-        }
-    });
-
-    // 2. 注册一个状态栏项
     zyma.statusBar.registerItem({
-        id: 'hello-status',
-        text: '✨ Hello Plugin',
+        id: 'hello.status',
+        text: '👋 Hello Zyma',
         alignment: 'right',
-        priority: 100,
-        tooltip: '点击我会弹窗',
-        onClick: () => {
-            zyma.ui.notify("你点击了插件状态栏！");
-        }
-    // 3. 注册一个命令来打开 AI 专用窗口
-    zyma.commands.register({
-        id: 'ai.openDedicatedWindow',
-        title: 'Open AI Assistant Window',
-        category: 'AI',
-        callback: () => {
-            zyma.window.create('ai-assistant', {
-                title: 'Zyma AI Assistant',
-                width: 400,
-                height: 600,
-                resizable: true,
-                alwaysOnTop: true, // 让 AI 窗口始终在前，方便边看代码边聊天
-                decorations: true
-            });
-            zyma.ui.notify("AI 专用窗口已开启");
-        }
+        priority: 10,
+        onClick: () => zyma.ui.notify("您点击了 Hello 插件的状态栏！")
     });
 
-    console.log("HelloZyma commands registered!");
-};
-
-exports.deactivate = function() {
-    console.log("HelloZyma deactivated.");
+    zyma.views.register({
+        id: 'hello.sidebar',
+        title: 'Hello',
+        icon: 'Info', 
+        component: () => {
+            return React.createElement('div', { 
+                key: 'hello-container',
+                style: { padding: '20px', color: '#fff', textAlign: 'center' } 
+            }, 
+                React.createElement('h2', { key: 'h2' }, '欢迎使用 Zyma'),
+                React.createElement('p', { key: 'p', style: { opacity: 0.7, marginTop: '10px' } }, '这是一个演示插件，展示了如何注入 UI。')
+            );
+        }
+    });
 };

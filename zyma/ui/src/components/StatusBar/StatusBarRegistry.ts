@@ -12,6 +12,7 @@ export interface StatusBarItem {
 export class StatusBarRegistry {
     private static instance: StatusBarRegistry;
     private items: Map<string, StatusBarItem> = new Map();
+    private listeners: (() => void)[] = [];
 
     private constructor() {}
 
@@ -22,8 +23,26 @@ export class StatusBarRegistry {
         return StatusBarRegistry.instance;
     }
 
+    subscribe(listener: () => void): () => void {
+        this.listeners.push(listener);
+        return () => {
+            this.listeners = this.listeners.filter(l => l !== listener);
+        };
+    }
+
+    private notify(): void {
+        this.listeners.forEach(l => l());
+    }
+
     registerItem(item: StatusBarItem): void {
         this.items.set(item.id, item);
+        this.notify();
+    }
+
+    unregisterItem(id: string): void {
+        if (this.items.delete(id)) {
+            this.notify();
+        }
     }
 
     getItems(alignment: 'left' | 'right'): StatusBarItem[] {

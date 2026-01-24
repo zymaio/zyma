@@ -51,7 +51,11 @@ pub fn create_dir(path: String) -> Result<(), String> { fs::create_dir_all(path)
 #[tauri::command]
 pub fn remove_item(path: String) -> Result<(), String> {
     let p = std::path::Path::new(&path);
-    if p.is_dir() { fs::remove_dir_all(path).map_err(|e| e.to_string()) } else { fs::remove_file(path).map_err(|e| e.to_string()) }
+    if p.is_dir() { 
+        fs::remove_dir_all(p).map_err(|e| e.to_string()) 
+    } else { 
+        fs::remove_file(p).map_err(|e| e.to_string()) 
+    }
 }
 
 #[tauri::command]

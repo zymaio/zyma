@@ -1,0 +1,7 @@
+{
+  "name": "ZymaDevHelper",
+  "version": "1.0.0",
+  "author": "Zyma Team",
+  "entry": "index.js",
+  "description": "Zyma 插件开发套件：支持一键生成插件模板、查看系统状态。"
+}

@@ -28,8 +28,18 @@ import { PluginManager } from './components/PluginSystem/PluginSystem';
 import { commands } from './components/CommandSystem/CommandRegistry';
 import { useFileManagement } from './hooks/useFileManagement';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
+import * as LucideIcons from 'lucide-react';
 import './App.css';
 import './components/ResizeHandle.css';
+
+const DynamicIcon = ({ icon, size = 24 }: { icon: any, size?: number }) => {
+    if (typeof icon !== 'string') return icon;
+    const Icon = (LucideIcons as any)[icon];
+    if (Icon) return <Icon size={size} />;
+    return <span style={{ fontSize: '12px' }}>{icon}</span>;
+};
+
+import PluginsPanel from './components/PluginSystem/PluginsPanel';
 
 function App() {
   const { t, i18n } = useTranslation();
@@ -37,7 +47,7 @@ function App() {
   const fm = useFileManagement(t); // 使用 fm (File Manager) 命名空间
   
   const [rootPath, setRootPath] = useState<string>(".");
-  const [sidebarTab, setSidebarTab] = useState<'explorer' | 'search' | 'plugins'>('explorer');
+  const [sidebarTab, setSidebarTab] = useState<string>('explorer');
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -51,6 +61,7 @@ function App() {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [pluginMenus, setPluginMenus] = useState<any[]>([]); // 记录插件菜单状态
   const isResizingRef = useRef(false);
   const isExitingRef = useRef(false);
   const initialArgsProcessed = useRef(false);
@@ -97,6 +108,16 @@ function App() {
   };
 
   const pluginManager = useRef<PluginManager | null>(null);
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
+    const unsubStatus = statusBar.subscribe(() => forceUpdate(n => n + 1));
+    return () => {
+        unsubViews();
+        unsubStatus();
+    };
+  }, []);
 
   const startResizing = useCallback(() => {
       isResizingRef.current = true;
@@ -154,6 +175,38 @@ function App() {
                   });
               }
               
+              console.log("[Zyma] Starting initialization flow...");
+              // 添加强力弹窗，确认代码已执行
+              // alert("Zyma Frontend Initialization Started!");
+
+              // 1. 先实例化插件管理器
+              if (!pluginManager.current) {
+                  console.log("[Zyma] Initializing Plugin Engine...");
+                  pluginManager.current = new PluginManager({
+                      insertText: (text) => {
+                          const active = fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath);
+                          if (active) fm.handleEditorChange(active.content + text);
+                      }, 
+                      getContent: () => fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath)?.content || "", 
+                      notify: (m) => alert(`[Plugin] ${m}`),
+                      onMenuUpdate: () => {
+                          setPluginMenus(pluginManager.current?.getFileMenuItems() || []);
+                          forceUpdate(n => n + 1);
+                      },
+                      showDiff: async (path, content, title) => {
+                          const confirmed = await ask(`是否应用 [${title || 'AI'}] 对文件 ${path} 的建议修改？`, { title: 'Zyma Diff', kind: 'info' });
+                          if (confirmed) {
+                              try {
+                                  await invoke('write_file', { path, content });
+                                  fm.handleEditorChange(content);
+                              } catch (e) { alert("Error: " + e); }
+                          }
+                      }
+                  });
+                  pluginManager.current.loadAll();
+              }
+
+              // 2. 再配置工作区视图
               setupWorkbench(t, {
                   handleNewFile: fm.handleNewFile,
                   handleSave: (force) => fm.doSave(fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null, force),
@@ -164,19 +217,22 @@ function App() {
                   setSidebarTab: (id) => setSidebarTab(id as any), 
                   toggleSidebar: () => setShowSidebar(prev => !prev),
                   components: {
-                      Sidebar: <Sidebar rootPath={finalRootPath} onFileSelect={fm.handleFileSelect} onFileDelete={fm.closeFile} activeFilePath={fm.activeFilePath} />,
-                      SearchPanel: <SearchPanel rootPath={finalRootPath} onFileSelect={fm.handleFileSelect} />
+                      Sidebar: <Sidebar 
+                          rootPath={finalRootPath} 
+                          onFileSelect={fm.handleFileSelect} 
+                          onFileDelete={fm.closeFile} 
+                          activeFilePath={fm.activeFilePath} 
+                          pluginMenuItems={pluginMenus} 
+                      />,
+                      SearchPanel: <SearchPanel rootPath={finalRootPath} onFileSelect={fm.handleFileSelect} />,
+                      PluginList: () => (
+                          <PluginsPanel 
+                              pluginManager={pluginManager.current} 
+                              onUpdate={() => forceUpdate(n => n + 1)} 
+                          />
+                      )
                   }
               });
-
-              if (!pluginManager.current) {
-                  pluginManager.current = new PluginManager({
-                      insertText: (text) => fm.handleEditorChange(fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content + text), 
-                      getContent: () => fm.stateRef.current.openFiles.find(f => (f.path || f.name) === fm.stateRef.current.activeFilePath)?.content || "", 
-                      notify: (m) => alert(`[Plugin] ${m}`)
-                  });
-                  pluginManager.current.loadAll();
-              }
 
               const openFileFromArgs = (argList: string[]) => {
                   if (argList.length > 1) {
@@ -266,7 +322,21 @@ function App() {
             <div className="activity-bar">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', width: '100%' }}>
                     {views.getViews().map(view => (
-                        <div key={view.id} className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} onClick={() => { if (sidebarTab === view.id && showSidebar) setShowSidebar(false); else { setSidebarTab(view.id as any); setShowSidebar(true); } }} title={view.title}>{view.icon}</div>
+                        <div 
+                            key={view.id} 
+                            className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} 
+                            onClick={() => { 
+                                if (sidebarTab === view.id && showSidebar) {
+                                    setShowSidebar(false); 
+                                } else { 
+                                    setSidebarTab(view.id); 
+                                    setShowSidebar(true); 
+                                } 
+                            }} 
+                            title={view.title}
+                        >
+                            <DynamicIcon icon={view.icon} />
+                        </div>
                     ))}
                 </div>
                 <div style={{ flex: 1 }}></div>
@@ -274,7 +344,21 @@ function App() {
             </div>
             {showSidebar && (
                 <>
-                    <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>{views.getView(sidebarTab)?.component}</div>
+                    <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                        {(() => {
+                            // 核心修复：如果是内置的扩展面板，直接渲染稳定组件，不经过动态 ViewRegistry 转发匿名函数
+                            if (sidebarTab === 'plugins') {
+                                return <PluginsPanel 
+                                    pluginManager={pluginManager.current} 
+                                    onUpdate={() => forceUpdate(n => n + 1)} 
+                                />;
+                            }
+                            const view = views.getView(sidebarTab);
+                            if (!view) return null;
+                            const Content = view.component;
+                            return typeof Content === 'function' ? <Content /> : Content;
+                        })()}
+                    </div>
                     <div style={{ width: '4px', cursor: 'col-resize', zIndex: 10 }} className="resize-handle" onMouseDown={startResizing} />
                 </>
             )}

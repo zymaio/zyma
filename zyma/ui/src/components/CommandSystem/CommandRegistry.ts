@@ -15,6 +15,7 @@ export interface Command {
 export class CommandRegistry {
     private static instance: CommandRegistry;
     private commands: Map<string, Command> = new Map();
+    private listeners: (() => void)[] = [];
 
     private constructor() {}
 
@@ -25,6 +26,17 @@ export class CommandRegistry {
         return CommandRegistry.instance;
     }
 
+    subscribe(listener: () => void): () => void {
+        this.listeners.push(listener);
+        return () => {
+            this.listeners = this.listeners.filter(l => l !== listener);
+        };
+    }
+
+    private notify(): void {
+        this.listeners.forEach(l => l());
+    }
+
     /**
      * 注册一个命令
      */
@@ -33,6 +45,16 @@ export class CommandRegistry {
             console.warn(`Command ${command.id} is already registered. Overwriting.`);
         }
         this.commands.set(command.id, command);
+        this.notify();
+    }
+
+    /**
+     * 注销一个命令
+     */
+    unregisterCommand(id: string): void {
+        if (this.commands.delete(id)) {
+            this.notify();
+        }
     }
 
     /**

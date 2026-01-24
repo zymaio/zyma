@@ -1,0 +1,7 @@
+{
+  "name": "ZymaPluginDev",
+  "version": "1.0.0",
+  "author": "Zyma Team",
+  "entry": "index.js",
+  "description": "Zyma 插件开发辅助工具：支持一键生成模板，快速开发。"
+}
