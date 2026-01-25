@@ -15,7 +15,7 @@ fn simplify_path(p: PathBuf) -> String {
 
 #[tauri::command]
 pub fn list_plugins(
-    external_plugins: State<'_, crate::ExternalPlugins>
+    state: tauri::State<'_, crate::AppState>
 ) -> Result<Vec<(String, PluginManifest, bool)>, String> {
     let mut plugins = Vec::new();
     let mut seen_names = std::collections::HashSet::new();
@@ -32,7 +32,7 @@ pub fn list_plugins(
     scan_dir(&user_path, false, &mut plugins, &mut seen_names);
 
     // 扫描通过命令行参数传入的动态路径
-    for p_dir in &external_plugins.0 {
+    for p_dir in &state.external_plugins {
         scan_dir(p_dir, false, &mut plugins, &mut seen_names);
     }
 

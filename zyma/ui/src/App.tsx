@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Settings, Info } from 'lucide-react';
+import { Settings, Info, Monitor } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, ask } from '@tauri-apps/plugin-dialog';
@@ -27,6 +27,7 @@ import { keybindings } from './components/KeybindingSystem/KeybindingManager';
 import { PluginManager } from './components/PluginSystem/PluginSystem';
 import { commands } from './components/CommandSystem/CommandRegistry';
 import { useFileManagement } from './hooks/useFileManagement';
+import { useAppInitialization } from './hooks/useAppInitialization';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
 import * as LucideIcons from 'lucide-react';
 import './App.css';
@@ -40,11 +41,17 @@ const DynamicIcon = ({ icon, size = 24 }: { icon: any, size?: number }) => {
 };
 
 import PluginsPanel from './components/PluginSystem/PluginsPanel';
+import OutputPanel from './components/PluginSystem/OutputPanel';
+import ActivityBar from './components/ActivityBar';
+import StatusBar from './components/StatusBar';
 
 function App() {
   const { t, i18n } = useTranslation();
-  const [ready, setReady] = useState(false);
-  const fm = useFileManagement(t); // 使用 fm (File Manager) 命名空间
+  const fm = useFileManagement(t);
+  const {
+      ready, settings, setSettings, isAdmin, platform, appVersion, hasUpdate,
+      activeChannels, pluginMenus, pluginManager, handleAppExit, isExiting
+  } = useAppInitialization(fm, i18n);
   
   const [rootPath, setRootPath] = useState<string>(".");
   const [sidebarTab, setSidebarTab] = useState<string>('explorer');
@@ -52,25 +59,14 @@ function App() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [aboutState, setAboutState] = useState<{show: boolean, autoCheck: boolean, data: any}>({ show: false, autoCheck: false, data: null });
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [platform, setPlatform] = useState<string>("");
-  const [appVersion, setAppVersion] = useState<string>("");
-  const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [isClosingApp, setIsClosingApp] = useState(false);
+  const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const [hasUpdate, setHasUpdate] = useState(false);
+  const [showBottomPanel, setShowBottomPanel] = useState(false);
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(200);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [pluginMenus, setPluginMenus] = useState<any[]>([]); // 记录插件菜单状态
   const isResizingRef = useRef(false);
-  const isExitingRef = useRef(false);
-  const initialArgsProcessed = useRef(false);
-  const processedPaths = useRef(new Set<string>());
-
-  const [settings, setSettings] = useState<AppSettings>({
-      theme: 'dark', font_size: 14, ui_font_size: 13, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
-      window_width: 800, window_height: 600, window_x: 0, window_y: 0, is_maximized: false
-  });
 
   // 统一的状态引用
   const appStateRef = useRef({ settings, cursorPos });
@@ -107,7 +103,6 @@ function App() {
       return t(langKey);
   };
 
-  const pluginManager = useRef<PluginManager | null>(null);
   const [, forceUpdate] = useState(0);
 
   useEffect(() => {
@@ -133,151 +128,48 @@ function App() {
       return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, []);
 
-  const handleAppExit = async (saveAll: boolean) => {
-      if (saveAll) {
-          const dirtyFiles = fm.openFiles.filter(f => f.content !== f.originalContent);
-          for (const file of dirtyFiles) await fm.doSave(file);
-      }
-      isExitingRef.current = true;
-      try { await invoke('save_window_state'); } catch (e) {}
-      await getCurrentWindow().destroy(); 
-  };
-
   useEffect(() => {
-      let unlistenSingleInstance: (() => void) | null = null;
-
-      const startApp = async () => {
-          try {
-              if (getCurrentWindow().label !== 'main') { setReady(true); return; }
-              const [saved, adminStatus, plat, args, version, cwd] = await Promise.all([
-                  invoke<AppSettings>('load_settings'), invoke<boolean>('is_admin'),
-                  invoke<string>('get_platform'), invoke<string[]>('get_cli_args'), 
-                  invoke<string>('get_app_version'), invoke<string>('get_cwd')
-              ]);
-              
-              if (rootPath === '.') setRootPath(cwd);
-              const finalRootPath = rootPath === '.' ? cwd : rootPath;
-
-              setSettings(saved); setAppVersion(version); i18n.changeLanguage(saved.language); 
-              setIsAdmin(adminStatus); setPlatform(plat);
-
-              // 1. 自动更新右键菜单路径（如果已开启）
-              if (saved.context_menu && (plat === 'windows' || plat === 'win32')) {
-                  invoke("manage_context_menu", { enable: true, label: t('ContextMenuLabel') }).catch(() => {});
-              }
-
-              // 2. 自动检查更新
-              if (saved.auto_update) {
-                  import('@tauri-apps/plugin-updater').then(({ check }) => {
-                      check().then(update => {
-                          if (update) setHasUpdate(true);
-                      }).catch(() => {});
-                  });
-              }
-              
-              console.log("[Zyma] Starting initialization flow...");
-              // 添加强力弹窗，确认代码已执行
-              // alert("Zyma Frontend Initialization Started!");
-
-              // 1. 先实例化插件管理器
-              if (!pluginManager.current) {
-                  console.log("[Zyma] Initializing Plugin Engine...");
-                  pluginManager.current = new PluginManager({
-                      insertText: (text) => {
-                          const active = fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath);
-                          if (active) fm.handleEditorChange(active.content + text);
-                      }, 
-                      getContent: () => fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath)?.content || "", 
-                      notify: (m) => alert(`[Plugin] ${m}`),
-                      onMenuUpdate: () => {
-                          setPluginMenus(pluginManager.current?.getFileMenuItems() || []);
-                          forceUpdate(n => n + 1);
-                      },
-                      showDiff: async (path, content, title) => {
-                          const confirmed = await ask(`是否应用 [${title || 'AI'}] 对文件 ${path} 的建议修改？`, { title: 'Zyma Diff', kind: 'info' });
-                          if (confirmed) {
-                              try {
-                                  await invoke('write_file', { path, content });
-                                  fm.handleEditorChange(content);
-                              } catch (e) { alert("Error: " + e); }
-                          }
-                      }
-                  });
-                  pluginManager.current.loadAll();
-              }
-
-              // 2. 再配置工作区视图
-              setupWorkbench(t, {
-                  handleNewFile: fm.handleNewFile,
-                  handleSave: (force) => fm.doSave(fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null, force),
-                  handleSaveSettings: async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); try { await invoke('save_settings', { settings: ns }); } catch (e) { alert(e); } },
-                  getSettings: () => appStateRef.current.settings,
-                  setShowCommandPalette,
-                  setShowSearch, 
-                  setSidebarTab: (id) => setSidebarTab(id as any), 
-                  toggleSidebar: () => setShowSidebar(prev => !prev),
-                  components: {
-                      Sidebar: <Sidebar 
-                          rootPath={finalRootPath} 
-                          onFileSelect={fm.handleFileSelect} 
-                          onFileDelete={fm.closeFile} 
-                          activeFilePath={fm.activeFilePath} 
-                          pluginMenuItems={pluginMenus} 
-                      />,
-                      SearchPanel: <SearchPanel rootPath={finalRootPath} onFileSelect={fm.handleFileSelect} />,
-                      PluginList: () => (
-                          <PluginsPanel 
-                              pluginManager={pluginManager.current} 
-                              onUpdate={() => forceUpdate(n => n + 1)} 
-                          />
-                      )
-                  }
-              });
-
-              const openFileFromArgs = (argList: string[]) => {
-                  if (argList.length > 1) {
-                      const possibleFile = argList[argList.length - 1];
-                      if (possibleFile && !possibleFile.toLowerCase().endsWith('zyma.exe') && 
-                         (possibleFile.includes(":") || possibleFile.startsWith("/"))) {
-                          
-                          const norm = possibleFile.replace(/\\/g, '/').toLowerCase();
-                          // 即使是重复路径，我们也执行一次激活切换，但如果是新路径则正常打开
-                          fm.handleFileSelect(possibleFile, possibleFile.split(/[\\/]/).pop() || possibleFile);
-                          processedPaths.current.add(norm);
-                      }
-                  }
-              };
-
-              // 重点：只有在第一次启动时处理原始命令行参数
-              if (!initialArgsProcessed.current) {
-                  openFileFromArgs(args);
-                  initialArgsProcessed.current = true;
-              }
-
-              // 设置单实例监听
-              const cleanup = await listen<string[]>("single-instance", (event) => {
-                  openFileFromArgs(event.payload);
-                  getCurrentWindow().setFocus();
-              });
-              unlistenSingleInstance = () => cleanup();
-
-              setReady(true);
-          } catch (e) { console.error("Init Error:", e); setReady(true); }
-      };
-
-      startApp();
       const unlistenClose = getCurrentWindow().onCloseRequested(async (e) => {
-          if (isExitingRef.current) return;
+          if (isExiting) return;
           e.preventDefault();
           if (fm.stateRef.current.openFiles.some(f => f.content !== f.originalContent)) setIsClosingApp(true);
           else handleAppExit(false);
       });
 
       return () => { 
-          if (unlistenSingleInstance) unlistenSingleInstance();
           unlistenClose.then(f => f()); 
       };
-  }, [fm.handleFileSelect, i18n, t, rootPath]);
+  }, [isExiting, handleAppExit, fm.stateRef]);
+
+  useEffect(() => {
+      if (!ready) return;
+      setupWorkbench(t, {
+          handleNewFile: fm.handleNewFile,
+          handleSave: (force) => fm.doSave(fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null, force),
+          handleSaveSettings: async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); try { await invoke('save_settings', { settings: ns }); } catch (e) { alert(e); } },
+          getSettings: () => appStateRef.current.settings,
+          setShowCommandPalette,
+          setShowSearch, 
+          setSidebarTab: (id) => setSidebarTab(id as any), 
+          toggleSidebar: () => setShowSidebar(prev => !prev),
+          components: {
+              Sidebar: <Sidebar 
+                  rootPath={rootPath} 
+                  onFileSelect={fm.handleFileSelect} 
+                  onFileDelete={fm.closeFile} 
+                  activeFilePath={fm.activeFilePath} 
+                  pluginMenuItems={pluginMenus} 
+              />,
+              SearchPanel: <SearchPanel rootPath={rootPath} onFileSelect={fm.handleFileSelect} />,
+              PluginList: () => (
+                  <PluginsPanel 
+                      pluginManager={pluginManager.current} 
+                      onUpdate={() => forceUpdate(n => n + 1)} 
+                  />
+              )
+          }
+      });
+  }, [ready, rootPath, pluginMenus, t, fm, i18n]);
 
   useEffect(() => {
     document.body.classList.remove('theme-dark', 'theme-light');
@@ -287,8 +179,8 @@ function App() {
 
   useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => { if (keybindings.handleKeyEvent(e)) e.stopPropagation(); };
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      window.addEventListener('keydown', handleKeyDown, true);
+      return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
   useEffect(() => {
@@ -319,29 +211,15 @@ function App() {
             }
         }} themeMode={settings.theme} isAdmin={isAdmin} platform={platform} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <div className="activity-bar">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', width: '100%' }}>
-                    {views.getViews().map(view => (
-                        <div 
-                            key={view.id} 
-                            className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} 
-                            onClick={() => { 
-                                if (sidebarTab === view.id && showSidebar) {
-                                    setShowSidebar(false); 
-                                } else { 
-                                    setSidebarTab(view.id); 
-                                    setShowSidebar(true); 
-                                } 
-                            }} 
-                            title={view.title}
-                        >
-                            <DynamicIcon icon={view.icon} />
-                        </div>
-                    ))}
-                </div>
-                <div style={{ flex: 1 }}></div>
-                <div style={{ marginBottom: '15px' }}><div className={`activity-icon ${showSettings ? 'active' : ''}`} onClick={() => setShowSettings(true)} title={t('Settings')}><Settings size={24} /></div></div>
-            </div>
+            <ActivityBar 
+                sidebarTab={sidebarTab} 
+                showSidebar={showSidebar} 
+                setSidebarTab={setSidebarTab} 
+                setShowSidebar={setShowSidebar} 
+                activeChannels={activeChannels} 
+                onShowSettings={() => setShowSettings(true)} 
+                showSettings={showSettings} 
+            />
             {showSidebar && (
                 <>
                     <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -395,56 +273,17 @@ function App() {
                 )}
             </div>
         </div>
-        <div className="status-bar">
-            {/* 左侧区域：主要显示当前文件和插件注入项 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {isAdmin && <span style={{ backgroundColor: '#e81123', color: '#fff', padding: '0 4px', borderRadius: '2px', fontSize: 'calc(var(--ui-font-size) - 3px)', fontWeight: 'bold' }}>{t('Administrator')}</span>}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.9 }} title={activeFile?.path || ''}>
-                    {relativePath}
-                </div>
-                {statusBar.getItems('left').map(item => <div key={item.id} title={item.tooltip} onClick={item.onClick} style={{ cursor: item.onClick ? 'pointer' : 'default', padding: '0 5px' }}>{item.text}</div>)}
-            </div>
 
-            <div style={{ flex: 1 }}></div>
-
-            {/* 右侧区域：按 IDE 习惯从右往左排列关键信息 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                {/* 1. 光标位置 */}
-                <div title={t('Line') + '/' + t('Column')}>
-                    {`${t('Ln')} ${cursorPos.line}, ${t('Col')} ${cursorPos.col}`}
-                </div>
-
-                {/* 2. 制表符 */}
-                <div style={{ opacity: 0.8 }}>{t('Spaces')}: 4</div>
-
-                {/* 3. 编码 */}
-                <div style={{ opacity: 0.8 }}>{t('UTF8')}</div>
-
-                {/* 4. 语言模式 */}
-                <div style={{ fontWeight: '500' }}>{getLanguageMode()}</div>
-
-                {/* 5. 未保存标记 */}
-                <div style={{ minWidth: '60px', textAlign: 'right' }}>
-                    {activeFile && activeFile.content !== activeFile.originalContent ? '● ' + t('Unsaved') : ''}
-                </div>
-
-                {/* 6. 插件右侧项 */}
-                {statusBar.getItems('right').map(item => (
-                    item.id !== 'editor-cursor' && (
-                        <div key={item.id} title={item.tooltip} onClick={item.onClick} style={{ cursor: item.onClick ? 'pointer' : 'default', padding: '0 5px', display: 'flex', alignItems: 'center' }}>
-                            {item.text}
-                        </div>
-                    )
-                ))}
-
-                {/* 7. 版本号 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
-                    {hasUpdate && <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: '#52c41a', borderRadius: '50%', border: '1px solid var(--bg-statusbar)' }} title={t('UpdateAvailable')} />}
-                    <Info size={14} />
-                    <span>{appVersion}</span>
-                </div>
-            </div>
-        </div>
+        <StatusBar 
+            isAdmin={isAdmin} 
+            relativePath={relativePath} 
+            activeFile={activeFile} 
+            cursorPos={cursorPos} 
+            getLanguageMode={getLanguageMode} 
+            hasUpdate={hasUpdate} 
+            appVersion={appVersion} 
+            t={t} 
+        />
         {showSettings && <SettingsModal currentSettings={settings} onSave={async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); await invoke('save_settings', { settings: ns }); }} onClose={() => setShowSettings(false)} platform={platform} />}
         {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} version={appVersion} />}
         <CommandPalette visible={showCommandPalette} onClose={() => setShowCommandPalette(false)} />

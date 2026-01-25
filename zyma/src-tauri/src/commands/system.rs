@@ -134,6 +134,78 @@ pub fn get_app_version() -> String {
 pub fn get_platform() -> String { std::env::consts::OS.to_string() }
 
 #[tauri::command]
+pub fn system_get_env(name: String) -> Option<String> {
+    std::env::var(name).ok()
+}
+
+#[derive(serde::Serialize)]
+pub struct ExecResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+}
+
+#[tauri::command]
+pub async fn system_exec(program: String, args: Vec<String>) -> Result<ExecResult, String> {
+    use std::process::Command;
+    #[cfg(windows)]
+    use std::os::windows::process::CommandExt;
+
+    let mut cmd = Command::new(&program);
+    cmd.args(&args);
+    
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW: 隐藏执行时的黑色命令行窗口
+
+    let output = cmd.output().map_err(|e| format!("Failed to execute '{}': {}", program, e))?;
+
+    Ok(ExecResult {
+        stdout: String::from_utf8_lossy(&output.stdout).trim().to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        exit_code: output.status.code().unwrap_or(-1),
+    })
+}
+
+#[tauri::command]
+pub async fn open_detached_output(app_handle: tauri::AppHandle, channel: String) -> Result<(), String> {
+    use tauri::WebviewUrl;
+    use tauri::WebviewWindowBuilder;
+
+    let label = format!("output-window-{}", channel);
+    
+    // 如果窗口已存在，则聚焦
+    if let Some(win) = app_handle.get_webview_window(&label) {
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    // 创建新窗口，URL 加上 query 参数让前端知道只显示日志
+    let url = WebviewUrl::App(format!("index.html?mode=output&channel={}", channel).into());
+    
+    WebviewWindowBuilder::new(&app_handle, label, url)
+        .title(format!("绣智助手日志 - {}", channel))
+        .inner_size(800.0, 500.0)
+        .resizable(true)
+        .decorations(true) // 启用原生装饰，自带关闭/最小化按钮
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn system_exit_all_windows(app_handle: tauri::AppHandle) -> Result<(), String> {
+    for (label, w) in app_handle.webview_windows() {
+        if label != "main" {
+            let _ = w.close();
+        }
+    }
+    // 最后退出整个应用
+    app_handle.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
 pub fn show_main_window(
     app_handle: tauri::AppHandle,
     width: f64, 

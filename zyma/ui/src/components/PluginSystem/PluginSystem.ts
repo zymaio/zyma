@@ -8,60 +8,7 @@ import { views } from '../ViewSystem/ViewRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import { statusBar } from '../StatusBar/StatusBarRegistry';
 import type { StatusBarItem } from '../StatusBar/StatusBarRegistry';
-
-export interface PluginManifest {
-    name: string;
-    version: string;
-    author: string;
-    entry: string;
-    description?: string;
-    icon?: string;
-    path?: string;
-    isBuiltin?: boolean;
-}
-
-export interface ZymaAPI {
-    editor: {
-        insertText: (text: string) => void;
-        getContent: () => string;
-        showDiff: (originalPath: string, modifiedContent: string, title?: string) => Promise<void>;
-    };
-    commands: {
-        register: (command: Command) => void;
-        execute: (id: string, ...args: any[]) => Promise<any>;
-    };
-    views: {
-        register: (view: View) => void;
-    };
-    workspace: {
-        readFile: (path: string) => Promise<string>;
-        writeFile: (path: string, content: string) => Promise<void>;
-    };
-    statusBar: {
-        registerItem: (item: StatusBarItem) => void;
-    };
-    menus: {
-        registerFileMenu: (item: { label: string, commandId: string, order?: number }) => void;
-    };
-    window: {
-        create: (label: string, options: any) => Promise<void>;
-        close: (label: string) => Promise<void>;
-    };
-    events: {
-        on: (event: string, handler: (payload: any) => void) => Promise<UnlistenFn>;
-    };
-    storage: {
-        get: (key: string) => Promise<any>;
-        set: (key: string, value: any) => Promise<void>;
-    };
-    ui: {
-        notify: (message: string) => void;
-    };
-    system: {
-        version: string;
-        invoke: (cmd: string, args?: any) => Promise<any>;
-    };
-}
+import type { PluginManifest, ZymaAPI, FileSystemWatcher } from './types';
 
 export class PluginManager {
     private plugins: Map<string, any> = new Map();
@@ -136,7 +83,19 @@ export class PluginManager {
             },
             workspace: {
                 readFile: (path: string) => invoke('read_file', { path }),
-                writeFile: (path: string, content: string) => invoke('write_file', { path, content }),
+                writeFile: (path, content) => invoke('write_file', { path, content }),
+                stat: (path: string) => invoke('fs_stat', { path }),
+                readDirectory: (path: string) => invoke('read_dir', { path }),
+                findFiles: (baseDir: string, include: string, exclude?: string) => invoke('fs_find_files', { baseDir, include, exclude }),
+                createFileSystemWatcher: (path: string): FileSystemWatcher => {
+                    invoke('fs_watch', { path });
+                    return {
+                        onDidCreate: (handler) => listen('fs-event', (e: any) => { if (e.payload.kind === 'Create') handler(e.payload.paths[0]); }),
+                        onDidChange: (handler) => listen('fs-event', (e: any) => { if (e.payload.kind === 'Modify') handler(e.payload.paths[0]); }),
+                        onDidDelete: (handler) => listen('fs-event', (e: any) => { if (e.payload.kind === 'Remove') handler(e.payload.paths[0]); }),
+                        dispose: () => invoke('fs_unwatch', { path })
+                    };
+                }
             },
             statusBar: {
                 registerItem: (item: StatusBarItem) => {
@@ -168,6 +127,14 @@ export class PluginManager {
                 close: async (label: string) => {
                     const win = await WebviewWindow.getByLabel(label);
                     if (win) await win.close();
+                },
+                createOutputChannel: (name: string) => {
+                    return {
+                        append: (val: string) => invoke('output_append', { channel: name, content: val }),
+                        appendLine: (val: string) => invoke('output_append', { channel: name, content: val + '\n' }),
+                        clear: () => invoke('output_clear', { channel: name }),
+                        show: () => commands.executeCommand('workbench.action.output.show', name)
+                    };
                 }
             },
             events: {
@@ -198,6 +165,8 @@ export class PluginManager {
             },
             system: {
                 version: "0.1.0",
+                getEnv: (name: string) => invoke('system_get_env', { name }),
+                exec: (command: string, args: string[]) => invoke('system_exec', { program: command, args }),
                 invoke: (cmd: string, args?: any) => invoke(cmd, args)
             }
         };
