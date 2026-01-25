@@ -53,17 +53,17 @@ export function useAppInitialization(fm: any, i18n: any) {
 
                 if (!pluginManager.current) {
                     pluginManager.current = new PluginManager({
-                        insertText: (text) => {
+                        insertText: (text: string) => {
                             const active = fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath);
                             if (active) fm.handleEditorChange(active.content + text);
                         }, 
                         getContent: () => fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath)?.content || '', 
-                        notify: (m) => alert('[Plugin] ' + m),
+                        notify: (m: string) => alert('[Plugin] ' + m),
                         onMenuUpdate: () => {
                             setPluginMenus(pluginManager.current?.getFileMenuItems() || []);
                             forceUpdate(n => n + 1);
                         },
-                        showDiff: async (path, content, title) => {
+                        showDiff: async (path: string, content: string, title?: string) => {
                             const confirmed = await ask('是否应用 [' + (title || 'AI') + '] 对文件 ' + path + ' 的建议修改？', { title: 'Zyma Diff', kind: 'info' });
                             if (confirmed) {
                                 try {
