@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 import { commands } from '../CommandSystem/CommandRegistry';
 import type { Command } from '../CommandSystem/CommandRegistry';
 import { views } from '../ViewSystem/ViewRegistry';
@@ -16,24 +17,76 @@ export interface PluginManifest {
     description?: string;
     icon?: string;
     path?: string;
-    isBuiltin?: boolean; // 新增：标记内置
+    isBuiltin?: boolean;
+}
+
+export interface ZymaAPI {
+    editor: {
+        insertText: (text: string) => void;
+        getContent: () => string;
+        showDiff: (originalPath: string, modifiedContent: string, title?: string) => Promise<void>;
+    };
+    commands: {
+        register: (command: Command) => void;
+        execute: (id: string, ...args: any[]) => Promise<any>;
+    };
+    views: {
+        register: (view: View) => void;
+    };
+    workspace: {
+        readFile: (path: string) => Promise<string>;
+        writeFile: (path: string, content: string) => Promise<void>;
+    };
+    statusBar: {
+        registerItem: (item: StatusBarItem) => void;
+    };
+    menus: {
+        registerFileMenu: (item: { label: string, commandId: string, order?: number }) => void;
+    };
+    window: {
+        create: (label: string, options: any) => Promise<void>;
+        close: (label: string) => Promise<void>;
+    };
+    events: {
+        on: (event: string, handler: (payload: any) => void) => Promise<UnlistenFn>;
+    };
+    storage: {
+        get: (key: string) => Promise<any>;
+        set: (key: string, value: any) => Promise<void>;
+    };
+    ui: {
+        notify: (message: string) => void;
+    };
+    system: {
+        version: string;
+        invoke: (cmd: string, args?: any) => Promise<any>;
+    };
 }
 
 export class PluginManager {
     private plugins: Map<string, any> = new Map();
     private manifests: Map<string, PluginManifest> = new Map();
-    private unlisteners: Map<string, (() => void)[]> = new Map();
+    private unlisteners: Map<string, UnlistenFn[]> = new Map();
     private pluginResources: Map<string, { views: string[], statusItems: string[], commands: string[] }> = new Map();
     private fileMenuItems: { label: string, commandId: string, order?: number, pluginName: string }[] = [];
     private listeners: (() => void)[] = [];
-
-    constructor(private callbacks: { 
+    private callbacks: { 
         insertText: (text: string) => void,
         getContent: () => string,
         notify: (msg: string) => void,
         showDiff: (originalPath: string, modifiedContent: string, title?: string) => Promise<void>,
         onMenuUpdate?: () => void
-    }) {}
+    };
+
+    constructor(callbacks: { 
+        insertText: (text: string) => void,
+        getContent: () => string,
+        notify: (msg: string) => void,
+        showDiff: (originalPath: string, modifiedContent: string, title?: string) => Promise<void>,
+        onMenuUpdate?: () => void
+    }) {
+        this.callbacks = callbacks;
+    }
 
     subscribe(listener: () => void) {
         this.listeners.push(listener);
@@ -59,7 +112,7 @@ export class PluginManager {
     }
 
     private createAPI(manifest: PluginManifest): ZymaAPI {
-        const resources = { views: [], statusItems: [], commands: [] };
+        const resources: { views: string[], statusItems: string[], commands: string[] } = { views: [], statusItems: [], commands: [] };
         this.pluginResources.set(manifest.name, resources);
 
         return {
@@ -69,36 +122,36 @@ export class PluginManager {
                 showDiff: this.callbacks.showDiff,
             },
             commands: {
-                register: (cmd) => {
+                register: (cmd: Command) => {
                     resources.commands.push(cmd.id);
                     commands.registerCommand(cmd);
                 },
-                execute: (id, ...args) => commands.executeCommand(id, ...args),
+                execute: (id: string, ...args: any[]) => commands.executeCommand(id, ...args),
             },
             views: {
-                register: (view) => {
+                register: (view: View) => {
                     resources.views.push(view.id);
                     views.registerView(view);
                 },
             },
             workspace: {
-                readFile: (path) => invoke('read_file', { path }),
-                writeFile: (path, content) => invoke('write_file', { path, content }),
+                readFile: (path: string) => invoke('read_file', { path }),
+                writeFile: (path: string, content: string) => invoke('write_file', { path, content }),
             },
             statusBar: {
-                registerItem: (item) => {
+                registerItem: (item: StatusBarItem) => {
                     resources.statusItems.push(item.id);
                     statusBar.registerItem(item);
                 },
             },
             menus: {
-                registerFileMenu: (item) => {
+                registerFileMenu: (item: { label: string, commandId: string, order?: number }) => {
                     this.fileMenuItems.push({ ...item, pluginName: manifest.name });
                     this.notify();
                 }
             },
             window: {
-                create: async (label, options) => {
+                create: async (label: string, options: any) => {
                     const webview = new WebviewWindow(label, {
                         title: options.title || label,
                         width: options.width || 800,
@@ -107,18 +160,18 @@ export class PluginManager {
                         url: options.url || 'index.html',
                         ...options
                     });
-                    return new Promise((resolve, reject) => {
+                    return new Promise<void>((resolve, reject) => {
                         webview.once('tauri://created', () => resolve());
                         webview.once('tauri://error', (e) => reject(e));
                     });
                 },
-                close: async (label) => {
+                close: async (label: string) => {
                     const win = await WebviewWindow.getByLabel(label);
                     if (win) await win.close();
                 }
             },
             events: {
-                on: async (event, handler) => {
+                on: async (event: string, handler: (payload: any) => void) => {
                     const unlisten = await listen(event, (eventData) => {
                         handler(eventData.payload);
                     });
@@ -130,12 +183,12 @@ export class PluginManager {
                 }
             },
             storage: {
-                get: async (key) => {
+                get: async (key: string) => {
                     const fullKey = `plugin:${manifest.name}:${key}`;
                     const val = localStorage.getItem(fullKey);
                     return val ? JSON.parse(val) : null;
                 },
-                set: async (key, value) => {
+                set: async (key: string, value: any) => {
                     const fullKey = `plugin:${manifest.name}:${key}`;
                     localStorage.setItem(fullKey, JSON.stringify(value));
                 }
@@ -145,7 +198,7 @@ export class PluginManager {
             },
             system: {
                 version: "0.1.0",
-                invoke: (cmd, args) => invoke(cmd, args)
+                invoke: (cmd: string, args?: any) => invoke(cmd, args)
             }
         };
     }
@@ -182,7 +235,7 @@ export class PluginManager {
             runPlugin(pluginModule, pluginModule.exports, api, ReactInstance, LucideIcons);
             const pluginInstance: any = pluginModule.exports;
             if (pluginInstance.activate) {
-                const res = pluginInstance.activate();
+                const res = pluginInstance.activate(api, ReactInstance, LucideIcons);
                 if (res instanceof Promise) await res;
             }
             this.plugins.set(manifest.name, pluginInstance);

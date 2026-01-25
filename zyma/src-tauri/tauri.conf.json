@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm run dev --prefix ../ui",
+    "beforeBuildCommand": "npm run build --prefix ../ui"
   },
   "app": {
     "windows": [
@@ -28,6 +28,18 @@
     }
   },
   "plugins": {
+    "cli": {
+      "description": "Zyma Code Editor",
+      "args": [
+        {
+          "name": "plugin-dir",
+          "short": "p",
+          "description": "Path to additional plugins directory",
+          "takesValue": true,
+          "multiple": true
+        }
+      ]
+    },
     "updater": {
       "endpoints": [
         "https://raw.githubusercontent.com/fourthz/zyma/master/update.json",

@@ -1,11 +1,12 @@
 use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
+use tauri::State;
 
 /// 剥离 Windows 下 canonicalize 产生的 \\?\ 前缀
 fn simplify_path(p: PathBuf) -> String {
     let s = p.to_string_lossy().to_string();
-    if s.starts_with(r"\\\\") {
+    if s.starts_with(r"\\?\") {
         s[4..].to_string()
     } else {
         s
@@ -13,7 +14,9 @@ fn simplify_path(p: PathBuf) -> String {
 }
 
 #[tauri::command]
-pub fn list_plugins() -> Result<Vec<(String, PluginManifest, bool)>, String> {
+pub fn list_plugins(
+    external_plugins: State<'_, crate::ExternalPlugins>
+) -> Result<Vec<(String, PluginManifest, bool)>, String> {
     let mut plugins = Vec::new();
     let mut seen_names = std::collections::HashSet::new();
 
@@ -27,6 +30,11 @@ pub fn list_plugins() -> Result<Vec<(String, PluginManifest, bool)>, String> {
         scan_dir(&p_dir, true, &mut plugins, &mut seen_names);
     }
     scan_dir(&user_path, false, &mut plugins, &mut seen_names);
+
+    // 扫描通过命令行参数传入的动态路径
+    for p_dir in &external_plugins.0 {
+        scan_dir(p_dir, false, &mut plugins, &mut seen_names);
+    }
 
     Ok(plugins)
 }
@@ -66,11 +74,35 @@ fn get_user_plugins_dir() -> PathBuf {
 
 #[tauri::command]
 pub fn read_plugin_file(path: String) -> Result<String, String> { 
-    let p = Path::new(&path);
-    // 安全校验：确保只读取包含 manifest.json 的插件目录内的文件
-    let parent = p.parent().unwrap_or(Path::new(""));
-    if !parent.join("manifest.json").exists() && !p.ends_with("manifest.json") {
-        return Err("Unauthorized: Cannot read files outside plugin scope".to_string());
+    let mut p = PathBuf::from(&path);
+    // 尝试规范化路径以处理分隔符问题
+    if let Ok(canon) = fs::canonicalize(&p) {
+        p = canon;
+    }
+
+    // 安全校验：向上查找直到找到 manifest.json (防止读取系统任意文件)
+    let mut current = p.parent();
+    let mut found = false;
+    // 最多向上找 5 层
+    for _ in 0..5 {
+        if let Some(dir) = current {
+            if dir.join("manifest.json").exists() {
+                found = true;
+                break;
+            }
+            current = dir.parent();
+        } else {
+            break;
+        }
+    }
+    
+    // 特殊情况：如果读取的就是 manifest.json 本身
+    if !found && p.file_name().and_then(|n| n.to_str()) == Some("manifest.json") {
+         found = true;
+    }
+
+    if !found {
+        return Err(format!("Unauthorized: Cannot read files outside plugin scope. Path: {}", path));
     }
     fs::read_to_string(p).map_err(|e| e.to_string()) 
 }

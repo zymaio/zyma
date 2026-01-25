@@ -2,7 +2,11 @@ pub mod models;
 pub mod commands;
 
 use tauri::{Emitter, Manager};
+use tauri_plugin_cli::CliExt;
 use std::fs;
+use std::path::PathBuf;
+
+pub struct ExternalPlugins(pub Vec<PathBuf>);
 
 fn get_config_path() -> std::path::PathBuf {
     let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE"))
@@ -13,6 +17,7 @@ fn get_config_path() -> std::path::PathBuf {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_cli::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -49,6 +54,21 @@ pub fn run() {
         commands::plugins::read_plugin_file
     ])
     .setup(|app| {
+        // 解析 CLI 参数
+        let mut external_paths = Vec::new();
+        if let Ok(matches) = app.cli().matches() {
+            if let Some(arg) = matches.args.get("plugin-dir") {
+                if let Some(values) = arg.value.as_array() {
+                    for val in values {
+                        if let Some(path_str) = val.as_str() {
+                            external_paths.push(PathBuf::from(path_str));
+                        }
+                    }
+                }
+            }
+        }
+        app.manage(ExternalPlugins(external_paths));
+
         let main_window = app.get_webview_window("main").unwrap();
         let config_path = get_config_path();
 

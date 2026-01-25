@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Settings, Info } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, ask } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 import './i18n';
@@ -356,7 +356,11 @@ function App() {
                             const view = views.getView(sidebarTab);
                             if (!view) return null;
                             const Content = view.component;
-                            return typeof Content === 'function' ? <Content /> : Content;
+                            if (typeof Content === 'function') {
+                                const Component = Content as React.ComponentType;
+                                return <Component />;
+                            }
+                            return Content;
                         })()}
                     </div>
                     <div style={{ width: '4px', cursor: 'col-resize', zIndex: 10 }} className="resize-handle" onMouseDown={startResizing} />
