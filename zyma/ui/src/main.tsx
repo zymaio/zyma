@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import OutputPanel from './components/PluginSystem/OutputPanel.tsx'
-import TitleBar from './components/TitleBar/TitleBar.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 
 const urlParams = new URLSearchParams(window.location.search);

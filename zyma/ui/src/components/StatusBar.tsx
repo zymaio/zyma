@@ -2,7 +2,6 @@ import React from 'react';
 import { Info } from 'lucide-react';
 import { statusBar } from './StatusBar/StatusBarRegistry';
 import { commands } from './CommandSystem/CommandRegistry';
-import { useTranslation } from 'react-i18next';
 
 interface StatusBarProps {
     isAdmin: boolean;

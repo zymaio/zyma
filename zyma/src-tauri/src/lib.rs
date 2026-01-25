@@ -15,6 +15,7 @@ pub struct AppState {
     pub external_plugins: Vec<PathBuf>,
     pub watcher: commands::watcher::WatcherState,
     pub output: commands::output::OutputState,
+    pub workspace_path: Mutex<PathBuf>, // 新增：保存当前权威工作区路径
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -47,14 +48,24 @@ pub fn run() {
             }
 
             // 2. 初始化全局状态
+            let current_cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
             app.manage(AppState {
                 external_plugins: external_paths,
                 watcher: commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) },
                 output: commands::output::OutputState { channels: Mutex::new(HashMap::new()) },
+                workspace_path: Mutex::new(current_cwd),
             });
 
             // 3. 恢复窗口状态
             restore_window_state(app.handle())?;
+
+            // 核心：监听窗口焦点变化并广播
+            let handle = app.handle().clone();
+            app.get_webview_window("main").unwrap().on_window_event(move |event| {
+                if let tauri::WindowEvent::Focused(focused) = event {
+                    let _ = handle.emit("window-state-changed", *focused);
+                }
+            });
 
             Ok(())
         })

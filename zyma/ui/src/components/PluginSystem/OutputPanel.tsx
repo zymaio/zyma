@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Monitor, Trash2, X, ExternalLink, Copy, Check } from 'lucide-react';
+import { Monitor, Trash2, X, Copy, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
 
 interface OutputLine {
     content: string;
-    timestamp: u64;
+    timestamp: number;
 }
 
 interface OutputPanelProps {
@@ -23,25 +23,23 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (channels.length > 0 && !selectedChannel) {
+            setSelectedChannel(channels[0]);
+        }
+    }, [channels]);
+
+    useEffect(() => {
         if (!selectedChannel) return;
 
-        // 1. 获取历史内容
         invoke<OutputLine[]>('output_get_content', { channel: selectedChannel })
             .then(setLines);
 
-        // 2. 监听实时内容
-        const unlisten = listen<OutputLine>(`output-${selectedChannel}`, (event) => {
+        const unlisten = listen<OutputLine>(`output_${selectedChannel}`, (event) => {
             setLines(prev => [...prev.slice(-999), event.payload]); 
         });
 
-        return () => { 
-            unlisten.then(f => f()); 
-            // 卸载时（如果是独立窗口）保存状态
-            if (hideHeader) {
-                invoke('save_window_state').catch(() => {});
-            }
-        };
-    }, [selectedChannel, hideHeader]);
+        return () => { unlisten.then(f => f()); };
+    }, [selectedChannel]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -60,11 +58,6 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         });
-    };
-
-    const handlePopOut = async () => {
-        await invoke('open_detached_output', { channel: selectedChannel });
-        if (onClose) onClose(); 
     };
 
     return (
@@ -86,12 +79,20 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         {isCopied ? (
-                            <Check size={14} style={{ color: '#4caf50' }} title={t('CopySuccess')} />
+                            <span title={t('CopySuccess')} style={{ display: 'flex', alignItems: 'center' }}><Check size={14} style={{ color: '#4caf50' }} /></span>
                         ) : (
-                            <Copy size={14} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={handleCopyAll} title={t('CopyOutput')} />
+                            <span title={t('CopyOutput')} onClick={handleCopyAll} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+                                <Copy size={14} />
+                            </span>
                         )}
-                        <Trash2 size={14} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={handleClear} title={t('ClearOutput')} />
-                        {onClose && <X size={16} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={onClose} title={t('Close')} />}
+                        <span title={t('ClearOutput')} onClick={handleClear} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+                            <Trash2 size={14} />
+                        </span>
+                        {onClose && (
+                            <span title={t('Close')} onClick={onClose} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+                                <X size={16} />
+                            </span>
+                        )}
                     </div>
                 </div>
             )}
@@ -128,7 +129,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                         <div key={i} style={{ 
                             marginBottom: '4px', 
                             color: color, 
-                            fontWeight: fontWeight,
+                            fontWeight: fontWeight as any,
                             opacity: color === 'var(--text-primary)' ? 0.8 : 1 
                         }}>
                             {text}

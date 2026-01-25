@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { EditorView } from '@codemirror/view';
+import { pathUtils } from '../utils/pathUtils';
 
 export interface OpenedFile {
     path: string;
@@ -23,14 +24,12 @@ export function useFileManagement(t: (key: string) => string) {
     }, [openFiles, activeFilePath, untitledCount]);
 
     const handleFileSelect = useCallback(async (path: string, name: string) => {
-        // 全系统唯一路径标准：正斜杠 + 小写
-        const normalizePath = (p: string) => p.replace(/^"(.*)"$/, '$1').replace(/\\/g, '/').toLowerCase();
-        const cleanPath = normalizePath(path);
+        const cleanPath = pathUtils.normalize(path);
 
         // 1. 立即检查是否已存在
         const existing = stateRef.current.openFiles.find(f => {
             if (!f.path) return false;
-            return normalizePath(f.path) === cleanPath;
+            return pathUtils.normalize(f.path) === cleanPath;
         });
         
         if (existing) {
@@ -49,7 +48,7 @@ export function useFileManagement(t: (key: string) => string) {
             };
             
             setOpenFiles(prev => {
-                if (prev.some(f => f.path && normalizePath(f.path) === cleanPath)) {
+                if (prev.some(f => f.path && pathUtils.normalize(f.path) === cleanPath)) {
                     return prev;
                 }
                 return [...prev, newFile];
@@ -66,7 +65,7 @@ export function useFileManagement(t: (key: string) => string) {
         setUntitledCount(prev => prev + 1);
     }, [t]);
 
-    const doSave = async (targetFile: OpenedFile | null, forceDialog = false) => {
+    const doSave = useCallback(async (targetFile: OpenedFile | null, forceDialog = false) => {
         if (!targetFile) return false;
         let savePath = targetFile.path;
         if (!savePath || forceDialog) {
@@ -84,7 +83,7 @@ export function useFileManagement(t: (key: string) => string) {
             setActiveFilePath(savePath);
             return true;
         } catch (e) { alert('Save failed: ' + e); return false; }
-    };
+    }, []);
 
     const handleEditorChange = useCallback((v: string) => {
         setOpenFiles(prev => prev.map(f => 
@@ -99,7 +98,7 @@ export function useFileManagement(t: (key: string) => string) {
         }
     }, []);
 
-    return {
+    return useMemo(() => ({
         openFiles,
         setOpenFiles,
         activeFilePath,
@@ -113,5 +112,5 @@ export function useFileManagement(t: (key: string) => string) {
         handleEditorChange,
         closeFile,
         stateRef
-    };
+    }), [openFiles, activeFilePath, untitledCount, handleFileSelect, handleNewFile, doSave, handleEditorChange, closeFile]);
 }

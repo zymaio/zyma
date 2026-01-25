@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Settings, Info, Monitor } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { open, ask } from '@tauri-apps/plugin-dialog';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import './i18n';
 import Sidebar from './components/Sidebar/Sidebar';
@@ -23,34 +20,25 @@ import { SearchQuery, setSearchQuery, findNext, findPrevious } from '@codemirror
 import { undo, redo } from '@codemirror/commands';
 import { views } from './components/ViewSystem/ViewRegistry';
 import { statusBar } from './components/StatusBar/StatusBarRegistry';
-import { keybindings } from './components/KeybindingSystem/KeybindingManager';
-import { PluginManager } from './components/PluginSystem/PluginSystem';
 import { commands } from './components/CommandSystem/CommandRegistry';
 import { useFileManagement } from './hooks/useFileManagement';
 import { useAppInitialization } from './hooks/useAppInitialization';
+import { useKeybindings } from './hooks/useKeybindings';
+import { useWindowManagement } from './hooks/useWindowManagement';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
-import * as LucideIcons from 'lucide-react';
-import './App.css';
-import './components/ResizeHandle.css';
-
-const DynamicIcon = ({ icon, size = 24 }: { icon: any, size?: number }) => {
-    if (typeof icon !== 'string') return icon;
-    const Icon = (LucideIcons as any)[icon];
-    if (Icon) return <Icon size={size} />;
-    return <span style={{ fontSize: '12px' }}>{icon}</span>;
-};
-
 import PluginsPanel from './components/PluginSystem/PluginsPanel';
-import OutputPanel from './components/PluginSystem/OutputPanel';
 import ActivityBar from './components/ActivityBar';
 import StatusBar from './components/StatusBar';
+import { pathUtils } from './utils/pathUtils';
+import './App.css';
+import './components/ResizeHandle.css';
 
 function App() {
   const { t, i18n } = useTranslation();
   const fm = useFileManagement(t);
   const {
-      ready, settings, setSettings, isAdmin, platform, appVersion, hasUpdate,
-      activeChannels, pluginMenus, pluginManager, handleAppExit, isExiting
+      ready, settings, setSettings, isAdmin, platform, appVersion,
+      pluginMenus, pluginManager, handleAppExit, isExiting
   } = useAppInitialization(fm, i18n);
   
   const [rootPath, setRootPath] = useState<string>(".");
@@ -58,17 +46,19 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [aboutState, setAboutState] = useState<{show: boolean, autoCheck: boolean, data: any}>({ show: false, autoCheck: false, data: null });
+  const [aboutState, setAboutState] = useState({ show: false, autoCheck: false, data: null as any });
   const [isClosingApp, setIsClosingApp] = useState(false);
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const [showBottomPanel, setShowBottomPanel] = useState(false);
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(200);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
   const isResizingRef = useRef(false);
+  const [, forceUpdate] = useState(0);
 
-  // 统一的状态引用
+  // 1. 抽离的 Hooks 逻辑
+  useKeybindings();
+  useWindowManagement(rootPath, isExiting, fm, handleAppExit, setIsClosingApp);
+
   const appStateRef = useRef({ settings, cursorPos });
   useEffect(() => { appStateRef.current = { settings, cursorPos }; }, [settings, cursorPos]);
 
@@ -79,18 +69,13 @@ function App() {
 
   const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
   
-  // 计算相对路径
   const relativePath = useMemo(() => {
     if (!activeFile) return t('NoFile');
     const path = activeFile.path || activeFile.name;
-    // 同时也对 rootPath 做一次标准化对比
-    const normRoot = rootPath.replace(/\\/g, '/');
-    return path.startsWith(normRoot) 
-      ? path.replace(normRoot, '').replace(/^[\\\/]/, '') 
-      : path;
+    const normRoot = pathUtils.toForwardSlashes(rootPath);
+    return path.startsWith(normRoot) ? path.replace(normRoot, '').replace(/^[\\\/]/, '') : path;
   }, [activeFile, rootPath, t]);
 
-  // 计算语言模式显示
   const getLanguageMode = () => {
       if (!activeFile) return '';
       const ext = activeFile.name.split('.').pop()?.toLowerCase() || '';
@@ -103,15 +88,10 @@ function App() {
       return t(langKey);
   };
 
-  const [, forceUpdate] = useState(0);
-
   useEffect(() => {
     const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
     const unsubStatus = statusBar.subscribe(() => forceUpdate(n => n + 1));
-    return () => {
-        unsubViews();
-        unsubStatus();
-    };
+    return () => { unsubViews(); unsubStatus(); };
   }, []);
 
   const startResizing = useCallback(() => {
@@ -129,68 +109,43 @@ function App() {
   }, []);
 
   useEffect(() => {
-      const unlistenClose = getCurrentWindow().onCloseRequested(async (e) => {
-          if (isExiting) return;
-          e.preventDefault();
-          if (fm.stateRef.current.openFiles.some(f => f.content !== f.originalContent)) setIsClosingApp(true);
-          else handleAppExit(false);
-      });
-
-      return () => { 
-          unlistenClose.then(f => f()); 
-      };
-  }, [isExiting, handleAppExit, fm.stateRef]);
-
-  useEffect(() => {
       if (!ready) return;
+      commands.registerCommand({
+          id: 'workspace.openFolder',
+          title: t('OpenFolder'),
+          callback: async () => {
+              const sel = await open({ directory: true });
+              if (sel) {
+                  const newPath = sel as string;
+                  setRootPath(newPath);
+                  fm.setOpenFiles([]);
+                  fm.setActiveFilePath(null);
+                  await invoke('fs_set_cwd', { path: newPath });
+              }
+          }
+      });
       setupWorkbench(t, {
           handleNewFile: fm.handleNewFile,
-          handleSave: (force) => fm.doSave(fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null, force),
-          handleSaveSettings: async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); try { await invoke('save_settings', { settings: ns }); } catch (e) { alert(e); } },
+          handleSave: (force: boolean) => fm.doSave(fm.openFiles.find(f => (f.path || f.name) === fm.activeFilePath) || null, force),
+          handleSaveSettings: async (ns: AppSettings) => { setSettings(ns); i18n.changeLanguage(ns.language); try { await invoke('save_settings', { settings: ns }); } catch (e) { alert(e); } },
           getSettings: () => appStateRef.current.settings,
           setShowCommandPalette,
           setShowSearch, 
-          setSidebarTab: (id) => setSidebarTab(id as any), 
+          setSidebarTab: (id: string) => setSidebarTab(id as any), 
           toggleSidebar: () => setShowSidebar(prev => !prev),
           components: {
-              Sidebar: <Sidebar 
-                  rootPath={rootPath} 
-                  onFileSelect={fm.handleFileSelect} 
-                  onFileDelete={fm.closeFile} 
-                  activeFilePath={fm.activeFilePath} 
-                  pluginMenuItems={pluginMenus} 
-              />,
+              Sidebar: <Sidebar rootPath={rootPath} onFileSelect={fm.handleFileSelect} onFileDelete={fm.closeFile} activeFilePath={fm.activeFilePath} pluginMenuItems={pluginMenus} />,
               SearchPanel: <SearchPanel rootPath={rootPath} onFileSelect={fm.handleFileSelect} />,
-              PluginList: () => (
-                  <PluginsPanel 
-                      pluginManager={pluginManager.current} 
-                      onUpdate={() => forceUpdate(n => n + 1)} 
-                  />
-              )
+              PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />
           }
       });
-  }, [ready, rootPath, pluginMenus, t, fm, i18n]);
+  }, [ready, rootPath, pluginMenus, t, fm, i18n, settings]);
 
   useEffect(() => {
     document.body.classList.remove('theme-dark', 'theme-light');
     document.body.classList.add(`theme-${settings.theme}`);
     document.documentElement.style.setProperty('--ui-font-size', (settings.ui_font_size || 13) + 'px');
   }, [settings.theme, settings.ui_font_size]);
-
-  useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => { if (keybindings.handleKeyEvent(e)) e.stopPropagation(); };
-      window.addEventListener('keydown', handleKeyDown, true);
-      return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, []);
-
-  useEffect(() => {
-    const updateTitle = async () => {
-        const win = getCurrentWindow();
-        const displayPath = rootPath === '.' ? 'Zyma' : rootPath;
-        await win.setTitle(`${displayPath} - 智码 (Zyma)`);
-    };
-    updateTitle();
-  }, [rootPath]);
 
   if (!ready) return <div style={{ width: '100vw', height: '100vh', backgroundColor: '#1e1e1e' }}></div>;
 
@@ -199,7 +154,7 @@ function App() {
         <TitleBar onAction={(action) => {
             switch (action) {
                 case 'new_file': commands.executeCommand('file.new'); break;
-                case 'open_folder': open({ directory: true }).then(sel => { if (sel) { setRootPath(sel as string); fm.setOpenFiles([]); fm.setActiveFilePath(null); } }); break;
+                case 'open_folder': commands.executeCommand('workspace.openFolder'); break;
                 case 'save': commands.executeCommand('file.save'); break;
                 case 'save_as': commands.executeCommand('file.saveAs'); break;
                 case 'exit': handleAppExit(false); break;
@@ -211,59 +166,29 @@ function App() {
             }
         }} themeMode={settings.theme} isAdmin={isAdmin} platform={platform} />
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <ActivityBar 
-                sidebarTab={sidebarTab} 
-                showSidebar={showSidebar} 
-                setSidebarTab={setSidebarTab} 
-                setShowSidebar={setShowSidebar} 
-                activeChannels={activeChannels} 
-                onShowSettings={() => setShowSettings(true)} 
-                showSettings={showSettings} 
-            />
+            <ActivityBar sidebarTab={sidebarTab} showSidebar={showSidebar} setSidebarTab={setSidebarTab} setShowSidebar={setShowSidebar} onShowSettings={() => setShowSettings(true)} showSettings={showSettings} />
             {showSidebar && (
                 <>
                     <div style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                         {(() => {
-                            // 核心修复：如果是内置的扩展面板，直接渲染稳定组件，不经过动态 ViewRegistry 转发匿名函数
-                            if (sidebarTab === 'plugins') {
-                                return <PluginsPanel 
-                                    pluginManager={pluginManager.current} 
-                                    onUpdate={() => forceUpdate(n => n + 1)} 
-                                />;
-                            }
+                            if (sidebarTab === 'plugins') return <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />;
                             const view = views.getView(sidebarTab);
                             if (!view) return null;
                             const Content = view.component;
-                            if (typeof Content === 'function') {
-                                const Component = Content as React.ComponentType;
-                                return <Component />;
-                            }
-                            return Content;
+                            if (typeof Content === 'function') { const Component = Content as React.ComponentType; return <Component />; }
+                            return Content as React.ReactNode;
                         })()}
                     </div>
                     <div style={{ width: '4px', cursor: 'col-resize', zIndex: 10 }} className="resize-handle" onMouseDown={startResizing} />
                 </>
             )}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <TabBar 
-                    files={fm.openFiles.map(f => ({ 
-                        path: f.path || f.name, 
-                        name: f.name, 
-                        isDirty: f.content !== f.originalContent 
-                    }))} 
-                    activePath={fm.activeFilePath} 
-                    onSwitch={(id) => fm.setActiveFilePath(id)} 
-                    onClose={(id) => { 
-                        const f = fm.openFiles.find(x => (x.path || x.name) === id); 
-                        if (f && f.content !== f.originalContent) setPendingCloseId(id); 
-                        else fm.closeFile(id); 
-                    }} 
-                />
+                <TabBar files={fm.openFiles.map(f => ({ path: f.path || f.name, name: f.name, isDirty: f.content !== f.originalContent }))} activePath={fm.activeFilePath} onSwitch={(id) => fm.setActiveFilePath(id)} onClose={(id) => { const f = fm.openFiles.find(x => (x.path || x.name) === id); if (f && f.content !== f.originalContent) setPendingCloseId(id); else fm.closeFile(id); }} />
                 <Breadcrumbs path={fm.activeFilePath} />
                 {activeFile ? (
                     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                        <div style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={(activeFile.path || activeFile.name).replace(/\\/g, '/').toLowerCase()}>
-                            <Editor content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} onCursorUpdate={(l, c) => setCursorPos({ line: l, col: c })} editorRef={fm.editorViewRef} />
+                        <div style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={pathUtils.normalize(activeFile.path || activeFile.name)}>
+                            <Editor content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} onCursorUpdate={(l, c) => { setCursorPos({ line: l, col: c }); invoke('emit_global_event', { event: 'selection_changed', payload: JSON.stringify({ path: activeFile.path || activeFile.name, line: l, col: c }) }).catch(() => {}); }} editorRef={fm.editorViewRef} />
                         </div>
                         <EditorSearch visible={showSearch} onClose={() => setShowSearch(false)} onSearch={(q, o) => { if (!fm.editorViewRef.current) return; const query = new SearchQuery({ search: q, caseSensitive: o.matchCase, wholeWord: o.wholeWord, regexp: o.useRegex }); fm.editorViewRef.current.dispatch({ effects: setSearchQuery.of(query) }); }} onNext={() => fm.editorViewRef.current && findNext(fm.editorViewRef.current)} onPrev={() => fm.editorViewRef.current && findPrevious(fm.editorViewRef.current)} />
                         {isMarkdown && <div style={{ flex: 1, height: '100%', overflow: 'hidden', borderLeft: '1px solid var(--border-color)' }}><Preview content={activeFile.content} themeMode={settings.theme} /></div>}
@@ -274,18 +199,9 @@ function App() {
             </div>
         </div>
 
-        <StatusBar 
-            isAdmin={isAdmin} 
-            relativePath={relativePath} 
-            activeFile={activeFile} 
-            cursorPos={cursorPos} 
-            getLanguageMode={getLanguageMode} 
-            hasUpdate={hasUpdate} 
-            appVersion={appVersion} 
-            t={t} 
-        />
+        <StatusBar isAdmin={isAdmin} relativePath={relativePath} activeFile={activeFile} cursorPos={cursorPos} getLanguageMode={getLanguageMode} hasUpdate={false} appVersion={appVersion} t={t} />
         {showSettings && <SettingsModal currentSettings={settings} onSave={async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); await invoke('save_settings', { settings: ns }); }} onClose={() => setShowSettings(false)} platform={platform} />}
-        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.autoCheck} version={appVersion} />}
+        {aboutState.show && <AboutModal onClose={() => setAboutState({ ...aboutState, show: false })} autoCheck={aboutState.show} version={appVersion} />}
         <CommandPalette visible={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
         {pendingCloseId && <ConfirmModal title={t('File')} message={t('SaveBeforeClose', { name: fm.openFiles.find(f => (f.path || f.name) === pendingCloseId)?.name })} onSave={async () => { const f = fm.openFiles.find(x => (x.path || x.name) === pendingCloseId); if (await fm.doSave(f || null)) fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onDontSave={() => { fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onCancel={() => setPendingCloseId(null)} />}
         {isClosingApp && <ConfirmModal title="zyma" message={t('SaveBeforeClose', { name: t('AllFiles') })} onSave={() => handleAppExit(true)} onDontSave={() => handleAppExit(false)} onCancel={() => setIsClosingApp(false)} />}

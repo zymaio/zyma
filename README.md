@@ -8,41 +8,21 @@
   <b>智码 (Zyma)</b>
 </p>
 
-**智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能文本编辑器/IDE。
+**智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能文本编辑器/IDE 基座。
 
-### 💡 核心理念：简洁 · 快速 · 高效
-我们坚信优秀的工具应当隐于无形。智码不堆砌臃肿的功能，而是致力于在保持极致启动速度和极低资源占用的同时，提供最核心、最顺手的编辑体验。无论是作为记事本的替代品，还是作为轻量级开发环境，智码都主张：**秒级响应，心无旁骛。**
+### 💡 核心理念：简洁 · 模块化 · 高性能
+Zyma 不仅仅是一个记事本的替代品，更是一个专为开发者设计的、高度可扩展的 IDE 平台。通过 Rust 内核承载重型任务，结合灵活的 JS 插件系统，实现毫秒级响应与无限扩展可能。
 
 [简体中文](./README.md) | [English](./README_EN.md)
 
-## 🌍 官方仓库
-
-- **主仓库**: [GitHub - fourthz/zyma](https://github.com/zymaio/zyma) (**下载安装包请至此处的 Releases**)
-- **镜像库**: [Gitee - fourthz/zyma](https://gitee.com/fourthz/zyma) (国内访问加速)
-
-## 📦 如何下载安装
-
-由于 GitHub 访问限制，我们提供两个下载渠道：
-
-- **渠道 A (推荐)**: [GitHub Releases](https://github.com/zymaio/zyma/releases) (包含全平台最新自动构建)
-- **渠道 B (国内加速)**: [Gitee 发行版](https://gitee.com/fourthz/zyma/releases) (由开发者手动同步，国内下载飞快)
-
-### 系统要求
-- **Windows**: 10 或更高版本 (当前仅支持 Windows，其他平台适配中)
-- **macOS/Linux**: 计划在未来版本中提供支持 (Coming Soon)
-
 ## ✨ 核心特性
 
-- 🚀 **极致性能**：基于 Rust 内核，通过并行异步初始化实现**毫秒级启动**，内存占用极低。
-- 📝 **全能编辑**：支持 20+ 种主流编程语言语法高亮，多标签页管理。
-- 📖 **Markdown 增强**：内置分屏实时预览，GitHub 风格渲染。
-- 🔍 **全局搜索**：极速扫描项目目录，快速定位代码。
-- 🎨 **高度定制**：支持深色/浅色模式动态切换，支持字体动态缩放。
-- 🌐 **国际化**：内置简体中文、繁体中文、英文支持。
-- 🖱️ **系统集成**：一键添加右键菜单“在智码中编辑”；配备专业的“关于”对话框，快速访问社区。
-- 🧩 **高级插件系统**：支持 JS 插件扩展，提供对标 VS Code 的核心 API（文件操作、外部命令执行、Glob 搜索等），由 Rust 性能引擎驱动。
-- 📊 **按需输出控制台**：支持多频道日志输出，具备自动显示/隐藏逻辑，支持独立窗口弹出监控。
-- 🤖 **未来规划**：深度 AI 协作增强、Git 集成、更丰富的 LSP 支持等。
+- 🚀 **极致响应**：并行异步初始化，核心逻辑（搜索、监听、日志）全部由 Rust 驱动。
+- 🧩 **工业级插件系统**：提供对标 VS Code 的标准 API，支持“零编译”JS 插件扩展。
+- 📡 **事件驱动架构**：复刻 VS Code 事件模型，支持文件保存、标签切换、窗口焦点等实时感知。
+- 🔍 **高性能搜索**：集成 `globset` 引擎，毫秒级扫描万级文件目录。
+- 📊 **智能输出系统**：支持多频道日志、语法染色及独立窗口监控，具备多屏位置记忆。
+- 🛠️ **开发者友好**：内置全系统路径标准化、快捷键管理及窗口生命周期调度。
 
 ## 📸 界面预览
 
@@ -55,15 +35,8 @@
   <img src="docs/screenshots/conding_typescript.png" width="45%" alt="Coding TypeScript">
 </p>
 
-### 📖 Markdown 实时预览
-内置分屏实时预览功能，支持 GitHub 风格渲染。
-
-<p align="center">
-  <img src="docs/screenshots/markdown_preview.png" width="90%" alt="Markdown Preview">
-</p>
-
-### 🎨 主题切换与系统设置
-支持深色/浅色模式动态切换，配置自动持久化。
+### 🎨 模块化布局与设置
+支持深色/浅色模式，UI 字体随设置同步无抖动缩放。
 
 <p align="center">
   <img src="docs/screenshots/setting.png" width="60%" alt="Settings">
@@ -71,45 +44,15 @@
 
 ## 🛠️ 技术栈
 
-- **Core**: Rust + Tauri v2
-- **Frontend**: React + TypeScript + Vite
+- **Core**: Rust + Tauri v2 (Modular Backend)
+- **Frontend**: React + TypeScript + Vite (Hook-based Architecture)
 - **Editor**: CodeMirror 6
-- **Icons**: Lucide React Core
-
-## 📦 如何构建
-
-### 前置要求
-- [Node.js](https://nodejs.org/) (推荐 v18+)
-- [Rust](https://www.rust-lang.org/) (推荐 1.77+)
-- Tauri CLI: `cargo install tauri-cli`
-
-### 构建步骤
-1. 克隆仓库
-   ```bash
-   git clone https://github.com/zymaio/zyma.git
-   cd zyma
-   ```
-2. 安装前端依赖
-   ```bash
-   cd zyma/ui
-   npm install
-   cd ..
-   ```
-3. 运行开发版本
-   ```bash
-   cargo tauri dev
-   ```
-4. 打包发布版本
-   ```bash
-   cargo tauri build
-   ```
+- **IPC**: Event-driven Messaging Bridge
 
 ## 📄 开源协议
 
 本项目采用 **MIT OR Apache-2.0** 双协议开源。
-- **核心代码**: 遵循上述开源协议。
-- **品牌资源**: 智码 (Zyma) 的闪电图标 (Logo) 为原创美术作品，版权归智码贡献者所有，并同样授权在本项目及其衍生作品中使用。
-- **插件部分**: 允许闭源开发。
+- **插件部分**: 支持闭源/商业插件开发。
 
 ---
 

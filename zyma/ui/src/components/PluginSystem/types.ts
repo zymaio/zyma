@@ -40,6 +40,19 @@ export interface FileSystemWatcher {
     dispose: () => void;
 }
 
+export interface TextDocument {
+    uri: string; // 在 Zyma 中即为文件完整路径
+}
+
+export interface TextEditorSelectionChangeEvent {
+    textEditor: { uri: string };
+    selections: { line: number, col: number }[]; // 简化版选区
+}
+
+export interface WindowState {
+    focused: boolean;
+}
+
 export interface ZymaAPI {
     editor: {
         insertText: (text: string) => void;
@@ -60,6 +73,11 @@ export interface ZymaAPI {
         readDirectory: (path: string) => Promise<any[]>;
         findFiles: (baseDir: string, include: string, exclude?: string) => Promise<string[]>;
         createFileSystemWatcher: (path: string) => FileSystemWatcher;
+        onDidSaveTextDocument: (listener: (doc: TextDocument) => void) => Promise<UnlistenFn>;
+        onDidCreateFiles: (listener: (path: string) => void) => Promise<UnlistenFn>;
+        onDidChangeFiles: (listener: (path: string) => void) => Promise<UnlistenFn>;
+        onDidDeleteFiles: (listener: (path: string) => void) => Promise<UnlistenFn>;
+        onDidOpenTextDocument: (listener: (doc: TextDocument) => void) => Promise<UnlistenFn>;
     };
     statusBar: {
         registerItem: (item: StatusBarItem) => void;
@@ -71,6 +89,9 @@ export interface ZymaAPI {
         create: (label: string, options: any) => Promise<void>;
         close: (label: string) => Promise<void>;
         createOutputChannel: (name: string) => OutputChannel;
+        onDidChangeActiveTextEditor: (listener: (doc: TextDocument | null) => void) => Promise<UnlistenFn>;
+        onDidChangeWindowState: (listener: (state: WindowState) => void) => Promise<UnlistenFn>;
+        onDidChangeTextEditorSelection: (listener: (e: TextEditorSelectionChangeEvent) => void) => Promise<UnlistenFn>;
     };
     events: {
         on: (event: string, handler: (payload: any) => void) => Promise<UnlistenFn>;

@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+﻿use std::sync::Mutex;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 use tauri::Emitter;
@@ -35,13 +35,14 @@ pub fn output_append(
     entry.push(line.clone());
     if entry.len() > 1000 { entry.remove(0); }
 
-    // 如果是新频道，通知前端显示图标
+    // 统一修正为下划线格式，确保前端能监听到
     if is_new {
-        let _ = app_handle.emit("output-channel-created", channel.clone());
+        let _ = app_handle.emit("output_channel_created", channel.clone());
     }
 
-    // 实时广播给前端内容
-    let _ = app_handle.emit(&format!("output-{}", channel), line);
+    // 修正内容广播名，支持前端 OutputPanel 的监听
+    let event_name = format!("output_{}", channel);
+    let _ = app_handle.emit(&event_name, line);
 }
 
 #[tauri::command]
@@ -62,4 +63,12 @@ pub fn output_clear(
     if let Some(entry) = channels.get_mut(&channel) {
         entry.clear();
     }
+}
+
+#[tauri::command]
+pub fn output_list_channels(
+    state: tauri::State<'_, crate::AppState>
+) -> Vec<String> {
+    let channels = state.output.channels.lock().unwrap();
+    channels.keys().cloned().collect()
 }
