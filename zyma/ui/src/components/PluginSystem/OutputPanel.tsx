@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Monitor, Trash2, X, ExternalLink } from 'lucide-react';
+import { Monitor, Trash2, X, ExternalLink, Copy, Check } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { useTranslation } from 'react-i18next';
 
 interface OutputLine {
     content: string;
@@ -15,8 +16,10 @@ interface OutputPanelProps {
 }
 
 const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader }) => {
+    const { t } = useTranslation();
     const [selectedChannel, setSelectedChannel] = useState(channels[0] || "");
     const [lines, setLines] = useState<OutputLine[]>([]);
+    const [isCopied, setIsCopied] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -31,8 +34,14 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
             setLines(prev => [...prev.slice(-999), event.payload]); 
         });
 
-        return () => { unlisten.then(f => f()); };
-    }, [selectedChannel]);
+        return () => { 
+            unlisten.then(f => f()); 
+            // 卸载时（如果是独立窗口）保存状态
+            if (hideHeader) {
+                invoke('save_window_state').catch(() => {});
+            }
+        };
+    }, [selectedChannel, hideHeader]);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -45,9 +54,17 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
         setLines([]);
     };
 
+    const handleCopyAll = () => {
+        const fullText = lines.map(l => l.content).join('\n');
+        navigator.clipboard.writeText(fullText).then(() => {
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        });
+    };
+
     const handlePopOut = async () => {
         await invoke('open_detached_output', { channel: selectedChannel });
-        if (onClose) onClose(); // 弹出后关闭当前在主界面的面板
+        if (onClose) onClose(); 
     };
 
     return (
@@ -67,10 +84,16 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                             {channels.map(c => <option key={c} value={c} style={{ backgroundColor: 'var(--bg-dropdown)' }}>{c}</option>)}
                         </select>
                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <Trash2 size={14} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={handleClear} title="清空日志" />
-                                        {onClose && <X size={16} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={onClose} title="关闭面板" />}
-                                    </div>                </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        {isCopied ? (
+                            <Check size={14} style={{ color: '#4caf50' }} title={t('CopySuccess')} />
+                        ) : (
+                            <Copy size={14} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={handleCopyAll} title={t('CopyOutput')} />
+                        )}
+                        <Trash2 size={14} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={handleClear} title={t('ClearOutput')} />
+                        {onClose && <X size={16} style={{ cursor: 'pointer', opacity: 0.6 }} onClick={onClose} title={t('Close')} />}
+                    </div>
+                </div>
             )}
             <div 
                 ref={scrollRef}
@@ -79,7 +102,9 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     fontFamily: 'var(--ui-font-family, inherit)', 
                     fontSize: 'var(--ui-font-size)',
                     lineHeight: '1.5',
-                    whiteSpace: 'pre-wrap', wordBreak: 'break-all' 
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                    userSelect: 'text',
+                    WebkitUserSelect: 'text'
                 }}
             >
                 {lines.map((line, i) => {
@@ -87,17 +112,16 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     let color = 'var(--text-primary)';
                     let fontWeight = 'normal';
 
-                    // 简单的染色引擎逻辑
                     const lowerText = text.toLowerCase();
                     if (lowerText.includes('[error]') || lowerText.includes('[fatal]') || lowerText.includes('failed')) {
-                        color = '#f44336'; // 红色
+                        color = '#f44336'; 
                         fontWeight = 'bold';
                     } else if (lowerText.includes('[warning]') || lowerText.includes('warn')) {
-                        color = '#ff9800'; // 橙色
+                        color = '#ff9800'; 
                     } else if (lowerText.includes('[success]') || lowerText.includes('[done]') || lowerText.includes('成功')) {
-                        color = '#4caf50'; // 绿色
+                        color = '#4caf50'; 
                     } else if (lowerText.includes('[info]') || lowerText.includes('[system]') || lowerText.includes('[restore]')) {
-                        color = '#2196f3'; // 蓝色
+                        color = '#2196f3'; 
                     }
 
                     return (
@@ -111,7 +135,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                         </div>
                     );
                 })}
-                {lines.length === 0 && <div style={{ opacity: 0.3, textAlign: 'center', marginTop: '20px', fontSize: 'var(--ui-font-size)' }}>无输出内容</div>}
+                {lines.length === 0 && <div style={{ opacity: 0.3, textAlign: 'center', marginTop: '20px', fontSize: 'var(--ui-font-size)' }}>{t('NoOutput')}</div>}
             </div>
         </div>
     );

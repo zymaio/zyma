@@ -33,6 +33,7 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<Wry>) -> bool {
         system::system_get_env,
         system::system_exec,
         system::open_detached_output,
+        system::show_window,
         system::is_admin, 
         system::exit_app,
         system::kill_process,

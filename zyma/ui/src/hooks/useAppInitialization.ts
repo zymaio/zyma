@@ -33,6 +33,7 @@ export function useAppInitialization(fm: any, i18n: any) {
         }
         isExitingRef.current = true;
         try { 
+            // 逐个保存所有窗口的状态 (由后端根据当前调用窗口的 label 自动识别)
             await invoke('save_window_state');
         } catch (e) {}
         await getCurrentWindow().destroy();

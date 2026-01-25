@@ -23,41 +23,57 @@ pub fn is_admin() -> bool {
     #[cfg(not(windows))] { true }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+pub struct WindowState {
+    pub width: f64,
+    pub height: f64,
+    pub x: i32,
+    pub y: i32,
+    pub is_maximized: bool,
+}
+
 #[tauri::command]
-pub fn save_window_state(window: tauri::Window) -> Result<(), String> {
-    let mut settings = crate::commands::config::load_settings().unwrap_or_else(|_| {
-        crate::models::AppSettings {
-            theme: "dark".to_string(),
-            font_size: 14,
-            ui_font_size: 13,
-            tab_size: 4,
-            language: "zh-CN".to_string(),
-            context_menu: false,
-            single_instance: true,
-            auto_update: true,
-            window_width: 800.0,
-            window_height: 600.0,
-            window_x: None,
-            window_y: None,
-            is_maximized: false,
-        }
-    });
+pub fn save_window_state(window: tauri::WebviewWindow) -> Result<(), String> {
+    let label = window.label().to_string();
+    let config_path = crate::commands::config::get_config_path();
+    let mut config_val = if config_path.exists() {
+        let content = std::fs::read_to_string(&config_path).unwrap_or_default();
+        serde_json::from_str::<serde_json::Value>(&content).unwrap_or(serde_json::json!({}))
+    } else {
+        serde_json::json!({})
+    };
 
     let is_maximized = window.is_maximized().unwrap_or(false);
-    settings.is_maximized = is_maximized;
+    
+    // 使用逻辑像素 (Logical Pixels) 以支持多屏 DPI 差异
+    let factor = window.scale_factor().unwrap_or(1.0);
+    let size = window.outer_size().unwrap_or_default().to_logical::<f64>(factor);
+    let pos = window.outer_position().unwrap_or_default().to_logical::<i32>(factor);
 
-    if !is_maximized {
-        if let Ok(size) = window.outer_size() {
-            settings.window_width = size.width as f64;
-            settings.window_height = size.height as f64;
+    let state = WindowState {
+        width: size.width,
+        height: size.height,
+        x: pos.x,
+        y: pos.y,
+        is_maximized,
+    };
+
+    if label == "main" {
+        config_val["window_width"] = serde_json::json!(state.width);
+        config_val["window_height"] = serde_json::json!(state.height);
+        config_val["window_x"] = serde_json::json!(state.x);
+        config_val["window_y"] = serde_json::json!(state.y);
+        config_val["is_maximized"] = serde_json::json!(state.is_maximized);
+    } else {
+        if config_val.get("windows").is_none() {
+            config_val["windows"] = serde_json::json!({});
         }
-        if let Ok(pos) = window.outer_position() {
-            settings.window_x = Some(pos.x);
-            settings.window_y = Some(pos.y);
-        }
+        config_val["windows"][&label] = serde_json::to_value(state).unwrap();
     }
 
-    crate::commands::config::save_settings(settings)
+    let new_content = serde_json::to_string_pretty(&config_val).map_err(|e| e.to_string())?;
+    std::fs::write(config_path, new_content).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -173,23 +189,74 @@ pub async fn open_detached_output(app_handle: tauri::AppHandle, channel: String)
 
     let label = format!("output-window-{}", channel);
     
-    // 如果窗口已存在，则聚焦
     if let Some(win) = app_handle.get_webview_window(&label) {
         let _ = win.set_focus();
         return Ok(());
     }
 
-    // 创建新窗口，URL 加上 query 参数让前端知道只显示日志
+    // 1. 读取历史状态
+    let config_path = crate::commands::config::get_config_path();
+    let mut saved_state: Option<WindowState> = None;
+    if config_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&config_path) {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                if let Some(windows) = val.get("windows").and_then(|v| v.as_object()) {
+                    if let Some(state_val) = windows.get(&label) {
+                        saved_state = serde_json::from_value(state_val.clone()).ok();
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. 准备 Builder (初始不可见)
     let url = WebviewUrl::App(format!("index.html?mode=output&channel={}", channel).into());
-    
-    WebviewWindowBuilder::new(&app_handle, label, url)
+    let mut builder = WebviewWindowBuilder::new(&app_handle, &label, url)
         .title(format!("绣智助手日志 - {}", channel))
         .inner_size(800.0, 500.0)
         .resizable(true)
-        .decorations(true) // 启用原生装饰，自带关闭/最小化按钮
-        .build()
-        .map_err(|e| e.to_string())?;
+        .visible(false) 
+        .decorations(true);
 
+    // 3. 应用状态并进行越界检查
+    if let Some(state) = saved_state {
+        // 简单的越界检查：如果坐标在极小负数或极大正数之外（防止丢失窗口）
+        // 更严谨的做法是获取当前 monitor 信息，这里我们先做基础过滤
+        if state.x > -10000 && state.x < 10000 && state.y > -10000 && state.y < 10000 {
+            builder = builder.position(state.x as f64, state.y as f64)
+                             .inner_size(state.width, state.height);
+        }
+    }
+    
+    let window = builder.build().map_err(|e| e.to_string())?;
+
+    // 4. 监听事件
+    let window_clone = window.clone();
+    window.on_window_event(move |event| {
+        match event {
+            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                let _ = save_window_state(window_clone.clone());
+            },
+            _ => {}
+        }
+    });
+
+    // 5. 核心优化：确保渲染准备就绪后再显示 (参考主窗口逻辑)
+    let w = window.clone();
+    tauri::async_runtime::spawn(async move {
+        // 稍微等待渲染引擎初始化 (100ms 往往足以消除白屏闪烁)
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        let _ = w.show();
+        let _ = w.set_focus();
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn show_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
     Ok(())
 }
 
