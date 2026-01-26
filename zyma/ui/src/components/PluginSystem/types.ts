@@ -103,6 +103,27 @@ export interface ZymaAPI {
     ui: {
         notify: (message: string) => void;
     };
+    auth: {
+        registerAuthenticationProvider: (provider: {
+            id: string,
+            label: string,
+            accountName?: string,
+            onLogin: () => Promise<void>,
+            onLogout: () => Promise<void>
+        }) => void;
+        unregisterAuthenticationProvider: (id: string) => void;
+    };
+    chat: {
+        registerChatParticipant: (participant: {
+            id: string,
+            name: string,
+            fullName: string,
+            description?: string,
+            icon?: string,
+            commands?: { name: string, description: string }[],
+            handler: (request: any, stream: any) => Promise<void>
+        }) => void;
+    };
     system: {
         version: string;
         getEnv: (name: string) => Promise<string | null>;

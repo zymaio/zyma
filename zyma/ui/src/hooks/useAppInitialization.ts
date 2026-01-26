@@ -6,7 +6,7 @@ import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginSystem';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
-export function useAppInitialization(fm: any, i18n: any) {
+export function useAppInitialization(fm: any, i18n: any, components?: { ChatPanel: any }) {
     const [ready, setReady] = useState(false);
     const [settings, setSettings] = useState<AppSettings>({
         theme: 'dark', font_size: 14, ui_font_size: 13, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
@@ -71,6 +71,9 @@ export function useAppInitialization(fm: any, i18n: any) {
                                     fm.handleEditorChange(content);
                                 } catch (e) { alert('Error: ' + e); }
                             }
+                        },
+                        components: {
+                            ChatPanel: components?.ChatPanel
                         }
                     });
                     pluginManager.current.loadAll();
@@ -92,7 +95,7 @@ export function useAppInitialization(fm: any, i18n: any) {
         startApp();
 
         return () => { if (unlistenSingleInstance) unlistenSingleInstance(); };
-    }, [fm.openFiles, fm.activeFilePath, fm.handleEditorChange, fm.handleFileSelect, i18n]);
+    }, [fm.openFiles, fm.activeFilePath, fm.handleEditorChange, fm.handleFileSelect, i18n, components]);
 
     return useMemo(() => ({
         ready, settings, setSettings, isAdmin, platform, appVersion, 

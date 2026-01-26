@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Monitor } from 'lucide-react';
+import { Settings, Monitor, User } from 'lucide-react';
 import { views } from './ViewSystem/ViewRegistry';
+import { authRegistry } from './PluginSystem/AuthRegistry';
+import AccountMenu from './PluginSystem/AccountMenu';
 import * as LucideIcons from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
@@ -28,6 +30,13 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
 }) => {
     const { t } = useTranslation();
     const [hasOutput, setHasOutput] = useState(false);
+    const [authProviders, setAuthProviders] = useState(authRegistry.getProviders());
+    const [showAccountMenu, setShowAccountMenu] = useState(false);
+
+    useEffect(() => {
+        const unsub = authRegistry.subscribe(() => setAuthProviders(authRegistry.getProviders()));
+        return () => unsub();
+    }, []);
 
     useEffect(() => {
         // 1. 启动即刻同步：检查当前后端是否已有活跃频道
@@ -67,7 +76,28 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                 ))}
             </div>
             <div style={{ flex: 1 }}></div>
-            <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
+            <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', position: 'relative' }}>
+                {/* 账户中心入口：仅在有插件注册时显示 */}
+                {authProviders.length > 0 && (
+                    <>
+                        <div 
+                            className={`activity-icon ${showAccountMenu ? 'active' : ''}`} 
+                            onClick={() => setShowAccountMenu(!showAccountMenu)}
+                            title={t('Accounts')}
+                        >
+                            <User size={24} />
+                            {authProviders.some(p => p.accountName) && (
+                                <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid var(--bg-activity-bar)' }} />
+                            )}
+                        </div>
+                        <AccountMenu 
+                            visible={showAccountMenu} 
+                            onClose={() => setShowAccountMenu(false)} 
+                            position={{ bottom: 100, left: 55 }} 
+                        />
+                    </>
+                )}
+                
                 {/* 核心逻辑：初始隐藏，一旦有输出则永久显示 */}
                 {hasOutput && (
                     <div 

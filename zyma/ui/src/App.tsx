@@ -27,6 +27,7 @@ import { useKeybindings } from './hooks/useKeybindings';
 import { useWindowManagement } from './hooks/useWindowManagement';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
 import PluginsPanel from './components/PluginSystem/PluginsPanel';
+import ChatPanel from './components/Chat/ChatPanel';
 import ActivityBar from './components/ActivityBar';
 import StatusBar from './components/StatusBar';
 import { pathUtils } from './utils/pathUtils';
@@ -136,7 +137,24 @@ function App() {
           components: {
               Sidebar: <Sidebar rootPath={rootPath} onFileSelect={fm.handleFileSelect} onFileDelete={fm.closeFile} activeFilePath={fm.activeFilePath} pluginMenuItems={pluginMenus} />,
               SearchPanel: <SearchPanel rootPath={rootPath} onFileSelect={fm.handleFileSelect} />,
-              PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />
+              PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />,
+              ChatPanel: <ChatPanel getContext={async () => {
+                  const editor = fm.editorViewRef.current;
+                  let selection = null;
+                  let fileContent = null;
+                  if (editor) {
+                      const sel = editor.state.selection.main;
+                      if (!sel.empty) {
+                          selection = editor.state.doc.sliceString(sel.from, sel.to);
+                      }
+                      fileContent = editor.state.doc.toString();
+                  }
+                  return {
+                      filePath: fm.activeFilePath,
+                      selection,
+                      fileContent
+                  };
+              }} />
           }
       });
   }, [ready, rootPath, pluginMenus, t, fm, i18n, settings]);

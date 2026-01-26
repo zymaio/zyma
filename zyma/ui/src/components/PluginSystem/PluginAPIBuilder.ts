@@ -7,6 +7,8 @@ import { views } from '../ViewSystem/ViewRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import { statusBar } from '../StatusBar/StatusBarRegistry';
 import type { StatusBarItem } from '../StatusBar/StatusBarRegistry';
+import { chatRegistry } from '../Chat/Registry/ChatRegistry';
+import { authRegistry } from './AuthRegistry';
 import type { PluginManifest, ZymaAPI, FileSystemWatcher } from './types';
 
 /**
@@ -32,6 +34,39 @@ export class PluginAPIBuilder {
                     commands.registerCommand(cmd);
                 },
                 execute: (id: string, ...args: any[]) => commands.executeCommand(id, ...args),
+            },
+            auth: {
+                registerAuthenticationProvider: (provider: any) => {
+                    authRegistry.registerProvider(provider);
+                    onNotify();
+                },
+                unregisterAuthenticationProvider: (id: string) => {
+                    authRegistry.unregisterProvider(id);
+                    onNotify();
+                }
+            },
+            chat: {
+                registerChatParticipant: (participant: any) => {
+                    chatRegistry.registerParticipant(participant);
+                    
+                    // 如果插件要求显示视图，则自动注册一个视图到侧边栏
+                    if (participant.showView !== false) {
+                        const viewId = `chat-${participant.id}`;
+                        resources.views.push(viewId);
+                        
+                        // 动态图标处理
+                        const Icon = participant.icon || 'MessageSquare';
+                        
+                        views.registerView({
+                            id: viewId,
+                            title: participant.fullName || participant.name,
+                            icon: Icon,
+                            component: callbacks.components.ChatPanel, // 使用从 App 传进来的组件
+                            order: 10
+                        });
+                    }
+                    onNotify();
+                }
             },
             views: {
                 register: (view: View) => {

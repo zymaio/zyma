@@ -17,6 +17,7 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
         Sidebar: React.ReactNode,
         SearchPanel: React.ReactNode,
         PluginList: React.ComponentType,
+        ChatPanel: (props: { getContext?: any }) => React.ReactNode,
     }
 }) {
     // 1. 注册核心命令
@@ -50,7 +51,7 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
         title: t('Extensions'),
         icon: <Puzzle size={24} />,
         component: <handlers.components.PluginList />,
-        order: 3
+        order: 4
     });
 
     // 3. 注册初始状态栏项
