@@ -28,7 +28,7 @@ const Editor: React.FC<EditorProps> = (props) => {
                 height: '100%', 
                 width: '100%', 
                 fontSize: `${props.fontSize}px`,
-                backgroundColor: '#282c34' // 初始背景占位，防止闪烁
+                backgroundColor: 'var(--bg-editor)'
             }} 
         />
     );

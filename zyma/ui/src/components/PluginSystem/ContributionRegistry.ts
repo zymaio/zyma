@@ -33,12 +33,15 @@ export class ContributionRegistry {
                 if (!res.views.includes(viewDef.id)) {
                     res.views.push(viewDef.id);
                     
-                    // 默认将声明式视图映射到 ChatPanel，并注入 ID
-                    const ChatPanel = this.callbacks.components.ChatPanel;
-                    const component = React.createElement(ChatPanel, { 
-                        participantId: viewDef.id,
-                        title: viewDef.title 
-                    });
+                    // 存储为一个动态渲染函数，确保每次获取视图时都从最新的 callbacks 中读取组件
+                    const component = () => {
+                        const ChatPanel = this.callbacks.components.ChatPanel;
+                        if (!ChatPanel) return React.createElement('div', { style: { padding: '20px', opacity: 0.5 } }, 'Loading Component...');
+                        return React.createElement(ChatPanel, { 
+                            participantId: viewDef.id,
+                            title: viewDef.title 
+                        });
+                    };
 
                     views.registerView({
                         id: viewDef.id,

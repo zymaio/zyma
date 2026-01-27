@@ -142,19 +142,6 @@ const PluginsPanel: React.FC<PluginsPanelProps> = ({ pluginManager, onUpdate }) 
                     </div>
                 ))}
             </div>
-
-            <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)' }}>
-                <button 
-                    onMouseDown={() => commands.executeCommand('dev.createTemplate')}
-                    style={{ 
-                        width: '100%', padding: '10px', backgroundColor: 'var(--accent-color)', border: 'none', color: '#fff', 
-                        borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                    }}
-                >
-                    <PlusCircle size={16} />
-                    {t('NewFile')}
-                </button>
-            </div>
         </div>
     );
 };

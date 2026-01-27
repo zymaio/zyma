@@ -1,35 +1,217 @@
-import React from 'react';
-import { Files, Search, Puzzle } from 'lucide-react';
-import { commands } from '../components/CommandSystem/CommandRegistry';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import Sidebar from '../components/Sidebar/Sidebar';
+import TabBar from '../components/TabBar/TabBar';
+import Breadcrumbs from '../components/Breadcrumbs/Breadcrumbs';
+import Editor from '../components/Editor/Editor';
+import Preview from '../components/Preview/Preview';
+import SearchPanel from '../components/SearchPanel/SearchPanel';
+import TitleBar from '../components/TitleBar/TitleBar';
+import SettingsModal from '../components/SettingsModal/SettingsModal';
+import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
+import AboutModal from '../components/AboutModal/AboutModal';
+import CommandPalette from '../components/CommandSystem/CommandPalette';
+import EditorSearch from '../components/EditorSearch/EditorSearch';
+import PluginsPanel from '../components/PluginSystem/PluginsPanel';
+import ActivityBar from '../components/ActivityBar';
+import StatusBar from '../components/StatusBar';
 import { views } from '../components/ViewSystem/ViewRegistry';
-import { statusBar } from '../components/StatusBar/StatusBarRegistry';
+import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBarRegistry';
+import { commands } from '../components/CommandSystem/CommandRegistry';
+import { undo, redo } from '@codemirror/commands';
+import { pathUtils } from '../utils/pathUtils';
+import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
+import { setupWorkbench } from './workbenchInit';
+import { useKeybindings } from '../hooks/useKeybindings';
+import { useWindowManagement } from '../hooks/useWindowManagement';
 
-export function setupWorkbench(t: (key: string) => string, handlers: {
-    handleNewFile: () => void,
-    handleSave: (force: boolean) => void,
-    handleSaveSettings: (settings: any) => void,
-    getSettings: () => any,
-    setShowCommandPalette: (show: boolean) => void,
-    setShowSearch: (show: boolean) => void,
-    setSidebarTab: (id: string) => void,
-    toggleSidebar: () => void,
-    components: {
-        Sidebar: React.ReactNode,
-        SearchPanel: React.ReactNode,
-        PluginList: React.ComponentType,
-        ChatPanel: (props: { getContext?: any }) => React.ReactNode,
-    }
-}) {
-    commands.registerCommand({ id: 'file.new', title: t('NewFile'), category: 'File', callback: handlers.handleNewFile });
-    commands.registerCommand({ id: 'file.save', title: t('Save'), category: 'File', callback: () => handlers.handleSave(false) });
-    commands.registerCommand({ id: 'view.toggleTheme', title: t('ToggleTheme'), category: 'View', callback: () => {
-        const current = handlers.getSettings();
-        handlers.handleSaveSettings({ ...current, theme: current.theme === 'dark' ? 'light' : 'dark' });
-    }});
-
-    views.registerView({ id: 'explorer', title: t('Explorer'), icon: <Files size={24} />, component: handlers.components.Sidebar, order: 1 });
-    views.registerView({ id: 'search', title: t('Search'), icon: <Search size={24} />, component: handlers.components.SearchPanel, order: 2 });
-    views.registerView({ id: 'plugins', title: t('Extensions'), icon: <Puzzle size={24} />, component: <handlers.components.PluginList />, order: 4 });
-
-    statusBar.registerItem({ id: 'editor-cursor', text: `${t('Ln')} 1, ${t('Col')} 1`, alignment: 'right', priority: 200 });
+interface WorkbenchProps {
+    fm: any;
+    tabSystem: any;
+    sidebarResize: any;
+    appInit: any;
+    chatComponents: any;
 }
+
+const Workbench: React.FC<WorkbenchProps> = ({ fm, tabSystem, sidebarResize, appInit, chatComponents }) => {
+    const { t, i18n } = useTranslation();
+    const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = tabSystem;
+    const { sidebarWidth, startResizing } = sidebarResize;
+    const { ready, settings, setSettings, isAdmin, platform, appVersion, pluginMenus, pluginManager, handleAppExit } = appInit;
+
+    const [rootPath, setRootPath] = useState<string>(".");
+    const [sidebarTab, setSidebarTab] = useState<string>('explorer');
+    const [showSettings, setShowSettings] = useState(false);
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
+    const [aboutState, setAboutState] = useState({ show: false, autoCheck: false });
+    const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+    const [showSidebar, setShowSidebar] = useState(true);
+    const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
+    const [, forceUpdate] = useState(0);
+
+    // 逻辑 Hook 归位
+    useKeybindings();
+    useWindowManagement(rootPath, false, fm, handleAppExit, () => {});
+
+    const appStateRef = useRef({ settings, cursorPos });
+    useEffect(() => { appStateRef.current = { settings, cursorPos }; }, [settings, cursorPos]);
+
+    const activeFile = useMemo(() => {
+        if (activeTab?.type === 'file') {
+            return fm.openFiles.find((f: any) => (f.path || f.name) === activeTab.id) || null;
+        }
+        return null;
+    }, [activeTab, fm.openFiles]);
+
+    const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
+    
+    const relativePath = useMemo(() => {
+        if (!activeFile) return t('NoFile');
+        const path = activeFile.path || activeFile.name;
+        const normRoot = pathUtils.toForwardSlashes(rootPath);
+        return path.startsWith(normRoot) ? path.replace(normRoot, '').replace(/^[\/]/, '') : path;
+    }, [activeFile, rootPath, t]);
+
+    const getLanguageMode = () => {
+        if (!activeFile) return '';
+        const ext = activeFile.name.split('.').pop()?.toLowerCase() || '';
+        const map: Record<string, string> = {
+            'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
+            'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
+            'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
+        };
+        return t(map[ext] || 'Plaintext');
+    };
+
+    useEffect(() => {
+        const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
+        const unsubStatus = statusBarRegistry.subscribe(() => forceUpdate(n => n + 1));
+        return () => { unsubViews(); unsubStatus(); };
+    }, []);
+
+    useEffect(() => {
+        if (!ready) return;
+        commands.registerCommand({
+            id: 'workspace.openFolder',
+            title: t('OpenFolder'),
+            callback: async () => {
+                const sel = await open({ directory: true });
+                if (sel) {
+                    const newPath = sel as string;
+                    setRootPath(newPath);
+                    fm.setOpenFiles([]);
+                    fm.setActiveFilePath(null);
+                    setActiveTabId(null);
+                    await invoke('fs_set_cwd', { path: newPath });
+                }
+            }
+        });
+        setupWorkbench(t, {
+            handleNewFile: fm.handleNewFile,
+            handleSave: (force: boolean) => fm.doSave(fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath) || null, force),
+            handleSaveSettings: async (ns: AppSettings) => { setSettings(ns); i18n.changeLanguage(ns.language); try { await invoke('save_settings', { settings: ns }); } catch (e) { alert(e); } },
+            getSettings: () => appStateRef.current.settings,
+            setShowCommandPalette,
+            setShowSearch, 
+            setSidebarTab: (id: string) => setSidebarTab(id as any), 
+            toggleSidebar: () => setShowSidebar(prev => !prev),
+            components: {
+                Sidebar: <Sidebar rootPath={rootPath} onFileSelect={fm.handleFileSelect} onFileDelete={fm.closeFile} activeFilePath={fm.activeFilePath} pluginMenuItems={pluginMenus} />,
+                SearchPanel: <SearchPanel rootPath={rootPath} onFileSelect={fm.handleFileSelect} />,
+                PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />,
+                ChatPanel: chatComponents.ChatPanel
+            },
+            openCustomView
+        });
+    }, [ready, rootPath, pluginMenus, t, fm, i18n, settings, openCustomView, chatComponents, setActiveTabId]);
+
+    if (!ready) return null;
+
+    return (
+        <div className={`app-root theme-${settings.theme}`} style={{ display: 'flex', height: '100vh', width: '100vw', flexDirection: 'column', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+            <TitleBar onAction={(action) => {
+                switch (action) {
+                    case 'new_file': commands.executeCommand('file.new'); break;
+                    case 'open_folder': commands.executeCommand('workspace.openFolder'); break;
+                    case 'save': commands.executeCommand('file.save'); break;
+                    case 'exit': handleAppExit(false); break;
+                    case 'undo': if (fm.editorViewRef.current) undo(fm.editorViewRef.current); break;
+                    case 'redo': if (fm.editorViewRef.current) redo(fm.editorViewRef.current); break;
+                    case 'toggle_theme': commands.executeCommand('view.toggleTheme'); break;
+                    case 'about': setAboutState({ show: true, autoCheck: false }); break;
+                }
+            }} themeMode={settings.theme} isAdmin={isAdmin} platform={platform} />
+            
+            <div className="main-workbench" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                <ActivityBar sidebarTab={sidebarTab} showSidebar={showSidebar} setSidebarTab={setSidebarTab} setShowSidebar={setShowSidebar} onShowSettings={() => setShowSettings(true)} showSettings={showSettings} />
+                
+                {showSidebar && (
+                    <>
+                        <div className="sidebar-container" style={{ width: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}>
+                            {(() => {
+                                if (sidebarTab === 'plugins') return <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => forceUpdate(n => n + 1)} />;
+                                const view = views.getView(sidebarTab);
+                                if (!view) return null;
+                                const Content = view.component;
+                                if (typeof Content === 'function') {
+                                    const Component = Content as React.ComponentType<any>;
+                                    return <Component />;
+                                }
+                                return Content as React.ReactNode;
+                            })()}
+                        </div>
+                        <div style={{ width: '4px', cursor: 'col-resize', zIndex: 10 }} className="resize-handle" onMouseDown={startResizing} />
+                    </>
+                )}
+
+                <div className="editor-group-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', backgroundColor: 'var(--bg-editor)' }}>
+                    <TabBar 
+                        files={activeTabs.map((t: any) => {
+                            const file = fm.openFiles.find((f: any) => (f.path || f.name) === t.id);
+                            return { path: t.id, name: t.title, type: t.type, isDirty: file ? file.content !== file.originalContent : false };
+                        })} 
+                        activePath={activeTabId} 
+                        onSwitch={(id) => { 
+                            setActiveTabId(id); 
+                            if (activeTabs.find((t: any) => t.id === id)?.type === 'file') fm.setActiveFilePath(id); 
+                        }} 
+                        onClose={closeTab} 
+                    />
+                    
+                    <Breadcrumbs path={activeTab?.type === 'file' ? activeTabId : null} />
+                    
+                    <div className="main-content-area" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+                        {activeTab?.type === 'file' && activeFile ? (
+                            <div className="editor-instance-wrapper" style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={activeFile.path || activeFile.name}>
+                                <Editor content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} onCursorUpdate={(l, c) => setCursorPos({ line: l, col: c })} editorRef={fm.editorViewRef} />
+                                {isMarkdown && <div className="markdown-preview-pane" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%', borderLeft: '1px solid var(--border-color)', backgroundColor: settings.theme === 'abyss' ? '#000c18' : 'var(--bg-primary)' }}><Preview content={activeFile.content} themeMode={settings.theme} /></div>}
+                            </div>
+                        ) : activeTab?.type === 'view' ? (
+                            <div className="custom-view-wrapper" style={{ flex: 1, height: '100%', backgroundColor: 'var(--bg-primary)' }}>{activeTab.component}</div>
+                        ) : (
+                            <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.3 }}>
+                                <div className="logo-text" style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '10px' }}>智码 (zyma)</div>
+                                <div>{t('NoFile')}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <StatusBar isAdmin={isAdmin} relativePath={relativePath} activeFile={activeFile} cursorPos={cursorPos} getLanguageMode={getLanguageMode} hasUpdate={false} appVersion={appVersion} t={t} />
+            
+            {showSettings && <SettingsModal currentSettings={settings} onSave={async (ns) => { setSettings(ns); i18n.changeLanguage(ns.language); await invoke('save_settings', { settings: ns }); }} onClose={() => setShowSettings(false)} platform={platform} />}
+            
+            {aboutState.show && <AboutModal version={appVersion} autoCheck={aboutState.autoCheck} onClose={() => setAboutState({ ...aboutState, show: false })} />}
+
+            <CommandPalette visible={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+            
+            {pendingCloseId && <ConfirmModal title={t('File')} message={t('SaveBeforeClose', { name: fm.openFiles.find((f: any) => (f.path || f.name) === pendingCloseId)?.name })} onSave={async () => { const f = fm.openFiles.find((x: any) => (x.path || x.name) === pendingCloseId); if (await fm.doSave(f || null)) fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onDontSave={() => { fm.closeFile(pendingCloseId); setPendingCloseId(null); }} onCancel={() => setPendingCloseId(null)} />}
+        </div>
+    );
+};
+
+export default Workbench;

@@ -52,8 +52,7 @@ export function useFileManagement(t: any) {
 
     const closeFile = useCallback((path: string) => {
         setOpenFiles(prev => prev.filter(f => (f.path || f.name) !== path));
-        if (activeFilePath === path) setActiveFilePath(null);
-    }, [activeFilePath]);
+    }, []);
 
     const handleNewFile = useCallback(() => {
         const name = `Untitled-${openFiles.length + 1}`;

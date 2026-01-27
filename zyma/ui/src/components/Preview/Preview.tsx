@@ -5,28 +5,29 @@ import 'github-markdown-css/github-markdown.css';
 
 interface PreviewProps {
     content: string;
-    themeMode: 'dark' | 'light';
+    themeMode: 'dark' | 'light' | 'abyss';
 }
 
 const Preview: React.FC<PreviewProps> = ({ content, themeMode }) => {
+  const isDark = themeMode === 'dark' || themeMode === 'abyss';
+  
   return (
     <div 
+        data-theme={isDark ? 'dark' : 'light'}
         style={{
             flex: 1,
             height: '100%',
             overflowY: 'auto',
             padding: '20px',
-            backgroundColor: 'var(--preview-bg)',
-            borderLeft: '1px solid var(--border-color)',
-            color: 'var(--preview-color)'
+            backgroundColor: themeMode === 'abyss' ? '#000c18' : 'var(--bg-editor)',
+            color: 'var(--text-primary)'
         }}
     >
       <div 
-        className={`markdown-body ${themeMode === 'dark' ? 'markdown-body-dark' : ''}`} 
+        className="markdown-body" 
         style={{ 
             backgroundColor: 'transparent', 
-            fontSize: '14px',
-            color: 'var(--preview-color)' 
+            fontSize: '14px'
         }}
       >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>

@@ -3,8 +3,8 @@ import React from 'react';
 export interface View {
     id: string;
     title: string;
-    icon: React.ReactNode | string; // 支持组件或图标名字符串
-    component: React.ReactNode;
+    icon: React.ReactNode | string;
+    component: React.ReactNode | React.ComponentType<any>;
     order?: number;
 }
 

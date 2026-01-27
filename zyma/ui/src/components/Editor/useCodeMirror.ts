@@ -51,20 +51,7 @@ export function useCodeMirror(props: {
 
         // 根据 themeMode 选择基础配色扩展
         const themeExtensions = [];
-        let baseBg = "#282c34";
-        let gutterBg = "#282c34";
-        let activeLineBg = "rgba(255,255,255,0.03)";
-
-        if (props.themeMode === 'light') {
-            baseBg = "#ffffff";
-            gutterBg = "#f6f8fa";
-            activeLineBg = "rgba(0,0,0,0.03)";
-        } else if (props.themeMode === 'abyss') {
-            themeExtensions.push(oneDark);
-            baseBg = "#000c18";
-            gutterBg = "#001126";
-            activeLineBg = "rgba(0, 191, 255, 0.05)";
-        } else {
+        if (props.themeMode !== 'light') {
             themeExtensions.push(oneDark);
         }
 
@@ -82,12 +69,13 @@ export function useCodeMirror(props: {
                         props.onCursorUpdate(line.number, pos - line.from + 1);
                     }
                 }),
-                // 工业级美化样式
+                // 使用 CSS 变量，彻底解决主题同步问题
                 EditorView.theme({
                     "&": { 
                         height: "100%", 
                         fontSize: "inherit",
-                        backgroundColor: baseBg
+                        backgroundColor: "var(--bg-editor)",
+                        color: "var(--text-primary)"
                     },
                     "&.cm-focused": { outline: "none" },
                     ".cm-content": {
@@ -99,13 +87,15 @@ export function useCodeMirror(props: {
                         lineHeight: "1.6" 
                     },
                     ".cm-gutters": { 
-                        backgroundColor: gutterBg,
+                        backgroundColor: "var(--bg-editor)",
                         border: "none",
-                        color: props.themeMode === 'light' ? "#888" : "#4b5263",
+                        borderRight: "1px solid var(--border-color)",
+                        color: "var(--text-secondary)",
                         minWidth: "45px"
                     },
-                    ".cm-activeLine": { backgroundColor: activeLineBg },
-                    ".cm-activeLineGutter": { backgroundColor: "transparent", color: props.themeMode === 'light' ? "#000" : "#abb2bf" }
+                    ".cm-activeLine": { backgroundColor: "var(--active-bg)" },
+                    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--accent-color)" },
+                    ".cm-selectionBackground, ::selection": { backgroundColor: "var(--accent-color) !important", opacity: "0.3" }
                 })
             ],
         });
