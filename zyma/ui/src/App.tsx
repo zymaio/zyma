@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,8 @@ import { useFileManagement } from './hooks/useFileManagement';
 import { useAppInitialization } from './hooks/useAppInitialization';
 import { useKeybindings } from './hooks/useKeybindings';
 import { useWindowManagement } from './hooks/useWindowManagement';
+import { useTabSystem } from './hooks/useTabSystem';
+import { useSidebarResize } from './hooks/useSidebarResize';
 import type { AppSettings } from './components/SettingsModal/SettingsModal';
 import PluginsPanel from './components/PluginSystem/PluginsPanel';
 import ChatPanel from './components/Chat/ChatPanel';
@@ -34,27 +36,15 @@ import { pathUtils } from './utils/pathUtils';
 import './App.css';
 import './components/ResizeHandle.css';
 
-type TabItem = {
-    id: string;
-    title: string;
-    type: 'file' | 'view';
-    component?: React.ReactNode;
-};
-
 function App() {
   const { t, i18n } = useTranslation();
   const fm = useFileManagement(t);
   
-  const [activeTabs, setActiveTabs] = useState<TabItem[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
-
-  const openCustomView = useCallback((id: string, title: string, component: React.ReactNode) => {
-      setActiveTabs(prev => {
-          if (prev.some(t => t.id === id)) return prev;
-          return [...prev, { id, title, type: 'view', component }];
-      });
-      setActiveTabId(id);
-  }, []);
+  // 1. 使用拆分后的 Tab 系统 Hook
+  const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = useTabSystem(fm);
+  
+  // 2. 使用拆分后的缩放 Hook
+  const { sidebarWidth, startResizing } = useSidebarResize(250);
 
   const chatComponents = useMemo(() => ({ 
       ChatPanel: (props: any) => <ChatPanel {...props} getContext={async () => {
@@ -84,9 +74,7 @@ function App() {
   const [isClosingApp, setIsClosingApp] = useState(false);
   const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
-  const [sidebarWidth, setSidebarWidth] = useState(250);
   const [showSidebar, setShowSidebar] = useState(true);
-  const isResizingRef = useRef(false);
   const [, forceUpdate] = useState(0);
 
   useKeybindings();
@@ -95,22 +83,6 @@ function App() {
   const appStateRef = useRef({ settings, cursorPos });
   useEffect(() => { appStateRef.current = { settings, cursorPos }; }, [settings, cursorPos]);
 
-  useEffect(() => {
-      setActiveTabs(prev => {
-          const viewTabs = prev.filter(t => t.type === 'view');
-          const fileTabs: TabItem[] = fm.openFiles.map(f => ({ id: f.path || f.name, title: f.name, type: 'file' }));
-          return [...fileTabs, ...viewTabs];
-      });
-  }, [fm.openFiles]);
-
-  // 关键修复：当文件管理器切换活跃文件时，同步更新 Tab 系统 ID
-  useEffect(() => {
-      if (fm.activeFilePath) {
-          setActiveTabId(fm.activeFilePath);
-      }
-  }, [fm.activeFilePath]);
-
-  const activeTab = useMemo(() => activeTabs.find(t => t.id === activeTabId), [activeTabs, activeTabId]);
   const activeFile = useMemo(() => {
       if (activeTab?.type === 'file') {
           return fm.openFiles.find(f => (f.path || f.name) === activeTab.id) || null;
@@ -142,20 +114,6 @@ function App() {
     const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
     const unsubStatus = statusBar.subscribe(() => forceUpdate(n => n + 1));
     return () => { unsubViews(); unsubStatus(); };
-  }, []);
-
-  const startResizing = useCallback(() => {
-      isResizingRef.current = true;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none'; 
-  }, []);
-
-  useEffect(() => {
-      const handleMouseMove = (e: MouseEvent) => { if (isResizingRef.current) setSidebarWidth(Math.min(Math.max(100, e.clientX - 48), 600)); };
-      const handleMouseUp = () => { isResizingRef.current = false; document.body.style.cursor = ''; document.body.style.userSelect = ''; };
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, []);
 
   useEffect(() => {
@@ -192,7 +150,7 @@ function App() {
           },
           openCustomView
       });
-  }, [ready, rootPath, pluginMenus, t, fm, i18n, settings, openCustomView, chatComponents]);
+  }, [ready, rootPath, pluginMenus, t, fm, i18n, settings, openCustomView, chatComponents, setActiveTabId]);
 
   useEffect(() => {
     document.body.classList.remove('theme-dark', 'theme-light');
@@ -200,7 +158,7 @@ function App() {
     document.documentElement.style.setProperty('--ui-font-size', (settings.ui_font_size || 13) + 'px');
   }, [settings.theme, settings.ui_font_size]);
 
-  if (!ready) return <div style={{ width: '100vw', height: '100vh', backgroundColor: 'var(--bg-primary)' }}></div>;
+  if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: 'var(--bg-primary)' }}></div>;
 
   return (
     <div className={`app-root theme-${settings.theme}`} style={{ display: 'flex', height: '100vh', width: '100vw', flexDirection: 'column', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
@@ -243,15 +201,11 @@ function App() {
                         return { path: t.id, name: t.title, isDirty: file ? file.content !== file.originalContent : false };
                     })} 
                     activePath={activeTabId} 
-                    onSwitch={(id) => { setActiveTabId(id); if (activeTabs.find(t => t.id === id)?.type === 'file') fm.setActiveFilePath(id); }} 
-                    onClose={(id) => { 
-                        const tab = activeTabs.find(t => t.id === id);
-                        if (tab?.type === 'file') {
-                            const f = fm.openFiles.find(x => (x.path || x.name) === id);
-                            if (f && f.content !== f.originalContent) setPendingCloseId(id);
-                            else fm.closeFile(id);
-                        } else setActiveTabs(prev => prev.filter(t => t.id !== id));
+                    onSwitch={(id) => { 
+                        setActiveTabId(id); 
+                        if (activeTabs.find(t => t.id === id)?.type === 'file') fm.setActiveFilePath(id); 
                     }} 
+                    onClose={closeTab} 
                 />
                 
                 <Breadcrumbs path={activeTab?.type === 'file' ? activeTabId : null} />

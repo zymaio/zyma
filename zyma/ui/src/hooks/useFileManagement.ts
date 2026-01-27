@@ -1,116 +1,77 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { save } from '@tauri-apps/plugin-dialog';
-import { EditorView } from '@codemirror/view';
-import { pathUtils } from '../utils/pathUtils';
+import { useState, useCallback, useRef } from 'react';
+import type { EditorView } from '@codemirror/view';
+import { useFileIO } from './useFileIO';
 
-export interface OpenedFile {
-    path: string;
+export interface FileData {
     name: string;
+    path: string | null;
     content: string;
     originalContent: string;
 }
 
-export function useFileManagement(t: (key: string) => string) {
-    const [openFiles, setOpenFiles] = useState<OpenedFile[]>([]);
+export function useFileManagement(t: any) {
+    const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
-    const [untitledCount, setUntitledCount] = useState(1);
     const editorViewRef = useRef<EditorView | null>(null);
+    
+    const { readFile, writeFile } = useFileIO();
 
-    // 辅助引用，解决闭包陷阱
-    const stateRef = useRef({ openFiles, activeFilePath, untitledCount });
-    useEffect(() => {
-        stateRef.current = { openFiles, activeFilePath, untitledCount };
-    }, [openFiles, activeFilePath, untitledCount]);
-
+    // 1. 打开文件逻辑
     const handleFileSelect = useCallback(async (path: string, name: string) => {
-        const cleanPath = pathUtils.normalize(path);
-
-        // 1. 立即检查是否已存在
-        const existing = stateRef.current.openFiles.find(f => {
-            if (!f.path) return false;
-            return pathUtils.normalize(f.path) === cleanPath;
-        });
-        
-        if (existing) {
-            setActiveFilePath(existing.path);
+        if (openFiles.find(f => f.path === path)) {
+            setActiveFilePath(path);
             return;
         }
-
-        // 2. 如果不存在，再执行异步读取
         try {
-            const content = await invoke<string>('read_file', { path: cleanPath });
-            const newFile: OpenedFile = { 
-                path: cleanPath, 
-                name: name.replace(/^"(.*)"$/, '$1'), 
-                content, 
-                originalContent: content 
-            };
-            
-            setOpenFiles(prev => {
-                if (prev.some(f => f.path && pathUtils.normalize(f.path) === cleanPath)) {
-                    return prev;
-                }
-                return [...prev, newFile];
-            });
-            setActiveFilePath(cleanPath);
-        } catch (error) { console.error('File open error:', error); }
-    }, []);
+            const content = await readFile(path);
+            const newFile: FileData = { name, path, content, originalContent: content };
+            setOpenFiles(prev => [...prev, newFile]);
+            setActiveFilePath(path);
+        } catch (e) { console.error('Failed to open file:', e); }
+    }, [openFiles, readFile]);
+
+    // 2. 保存文件逻辑
+    const doSave = useCallback(async (file: FileData | null, force: boolean = false) => {
+        if (!file || (!force && file.content === file.originalContent)) return true;
+        if (!file.path) return false;
+
+        try {
+            await writeFile(file.path, file.content);
+            setOpenFiles(prev => prev.map(f => f.path === file.path ? { ...f, originalContent: file.content } : f));
+            return true;
+        } catch (e) {
+            console.error('Save failed:', e);
+            return false;
+        }
+    }, [writeFile]);
+
+    // 3. 内容变更同步
+    const handleEditorChange = useCallback((content: string) => {
+        setOpenFiles(prev => prev.map(f => (f.path || f.name) === activeFilePath ? { ...f, content } : f));
+    }, [activeFilePath]);
+
+    const closeFile = useCallback((path: string) => {
+        setOpenFiles(prev => prev.filter(f => (f.path || f.name) !== path));
+        if (activeFilePath === path) setActiveFilePath(null);
+    }, [activeFilePath]);
 
     const handleNewFile = useCallback(() => {
-        const name = `${t('NewFile')}-${stateRef.current.untitledCount}`;
-        const newFile: OpenedFile = { path: "", name, content: "", originalContent: "" };
+        const name = `Untitled-${openFiles.length + 1}`;
+        const newFile: FileData = { name, path: null, content: '', originalContent: '' };
         setOpenFiles(prev => [...prev, newFile]);
         setActiveFilePath(name);
-        setUntitledCount(prev => prev + 1);
-    }, [t]);
+    }, [openFiles.length]);
 
-    const doSave = useCallback(async (targetFile: OpenedFile | null, forceDialog = false) => {
-        if (!targetFile) return false;
-        let savePath = targetFile.path;
-        if (!savePath || forceDialog) {
-            const selected = await save({ defaultPath: savePath || targetFile.name });
-            if (!selected) return false;
-            savePath = selected as string;
-        }
-        try {
-            await invoke('write_file', { path: savePath, content: targetFile.content });
-            const newName = savePath.split(/[\/]/).pop() || targetFile.name;
-            setOpenFiles(prev => prev.map(f => 
-                (f.path === targetFile.path && f.name === targetFile.name) 
-                ? { ...f, path: savePath, name: newName, originalContent: f.content } : f
-            ));
-            setActiveFilePath(savePath);
-            return true;
-        } catch (e) { alert('Save failed: ' + e); return false; }
-    }, []);
-
-    const handleEditorChange = useCallback((v: string) => {
-        setOpenFiles(prev => prev.map(f => 
-            (f.path || f.name) === stateRef.current.activeFilePath ? { ...f, content: v } : f
-        ));
-    }, []);
-
-    const closeFile = useCallback((id: string) => {
-        setOpenFiles(prev => prev.filter(x => (x.path || x.name) !== id));
-        if (stateRef.current.activeFilePath === id) {
-            setActiveFilePath(null);
-        }
-    }, []);
-
-    return useMemo(() => ({
+    return {
         openFiles,
         setOpenFiles,
         activeFilePath,
         setActiveFilePath,
-        untitledCount,
-        setUntitledCount,
         editorViewRef,
         handleFileSelect,
-        handleNewFile,
-        doSave,
         handleEditorChange,
+        doSave,
         closeFile,
-        stateRef
-    }), [openFiles, activeFilePath, untitledCount, handleFileSelect, handleNewFile, doSave, handleEditorChange, closeFile]);
+        handleNewFile
+    };
 }

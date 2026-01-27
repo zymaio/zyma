@@ -1,23 +1,25 @@
 import React from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { commands } from '../CommandSystem/CommandRegistry';
-import { views } from '../ViewSystem/ViewRegistry';
-import { statusBar } from '../StatusBar/StatusBarRegistry';
+import { ask } from '@tauri-apps/plugin-dialog';
 import type { PluginManifest } from './types';
 import { PluginAPIBuilder } from './PluginAPIBuilder';
+import { ContributionRegistry } from './ContributionRegistry';
 
 export class PluginManager {
     private plugins: Map<string, any> = new Map();
     private manifests: Map<string, PluginManifest> = new Map();
     private unlisteners: Map<string, UnlistenFn[]> = new Map();
-    private pluginResources: Map<string, { views: string[], statusItems: string[], commands: string[] }> = new Map();
-    private fileMenuItems: { label: string, commandId: string, order?: number, pluginName: string }[] = [];
+    private contributionRegistry: ContributionRegistry;
     private listeners: (() => void)[] = [];
     private callbacks: any;
 
     constructor(callbacks: any) {
         this.callbacks = callbacks;
+        this.contributionRegistry = new ContributionRegistry({
+            components: callbacks.components,
+            addFileMenuItem: (item) => callbacks.addFileMenuItem(item)
+        });
     }
 
     subscribe(listener: () => void) {
@@ -30,14 +32,12 @@ export class PluginManager {
         if (this.callbacks.onMenuUpdate) this.callbacks.onMenuUpdate();
     }
 
-    getFileMenuItems() { return this.fileMenuItems.sort((a, b) => (a.order || 0) - (b.order || 0)); }
+    getFileMenuItems() { return this.contributionRegistry.getFileMenuItems(); }
 
     getLoadedPlugins() {
         const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
         return Array.from(this.manifests.values()).map(m => ({
-            ...m,
-            id: m.name,
-            enabled: !disabled.includes(m.name)
+            ...m, id: m.name, enabled: !disabled.includes(m.name)
         }));
     }
 
@@ -46,9 +46,8 @@ export class PluginManager {
             const disabledPlugins = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
             const pluginList = await invoke<[string, PluginManifest, boolean][]>('list_plugins');
             
-            for (const name of Array.from(this.manifests.keys())) {
-                await this.unloadPlugin(name, true);
-            }
+            // 清理
+            for (const name of Array.from(this.manifests.keys())) { await this.unloadPlugin(name, true); }
             this.manifests.clear();
 
             for (const [dirPath, manifest, isBuiltin] of pluginList) {
@@ -56,60 +55,12 @@ export class PluginManager {
                 this.manifests.set(manifest.name, { ...manifest, path: dirPath, isBuiltin });
                 
                 if (isEnabled) {
-                    this.handleContributions(manifest, dirPath);
+                    this.contributionRegistry.handle(manifest);
                     await this.loadPlugin(dirPath, manifest);
                 }
             }
             this.notifyUI();
-        } catch (e) { console.error("[PluginSystem] Load failed", e); this.notifyUI(); }
-    }
-
-    private handleContributions(manifest: PluginManifest, _dirPath: string) {
-        if (!this.pluginResources.has(manifest.name)) {
-            this.pluginResources.set(manifest.name, { views: [], statusItems: [], commands: [] });
-        }
-        const resources = this.pluginResources.get(manifest.name)!;
-
-        if (manifest.contributes) {
-            console.log(`>>> [PluginSystem] Found 'contributes' field for ${manifest.name}:`, manifest.contributes);
-            
-            if (manifest.contributes.views) {
-                console.log(`>>> [PluginSystem] Found 'views' in contributions:`, manifest.contributes.views);
-                
-                manifest.contributes.views.forEach(viewDef => {
-                    const viewId = viewDef.id;
-                    if (!resources.views.includes(viewId)) {
-                        resources.views.push(viewId);
-                        
-                                            console.log(`>>> [PluginSystem] REGISTERING VIEW: ${viewId} | Icon: ${viewDef.icon}`);
-                                            
-                                            // 核心改进：创建一个绑定了 ID 的 ChatPanel 实例
-                                            const ChatPanel = this.callbacks.components.ChatPanel;
-                                            const component = React.createElement(ChatPanel, { 
-                                                participantId: viewId,
-                                                title: viewDef.title 
-                                            });
-                        
-                                                                views.registerView({
-                        
-                                                                    id: viewId,
-                        
-                                                                    title: viewDef.title,
-                        
-                                                                    icon: viewDef.icon || manifest.icon || 'Puzzle',
-                        
-                                                                    component: component, 
-                        
-                                                                    order: 100 // 默认排序调至 100
-                        
-                                                                });                    } else {
-                        console.log(`>>> [PluginSystem] Skipped duplicate view: ${viewId}`);
-                    }
-                });
-            }
-        } else {
-            console.log(`>>> [PluginSystem] No 'contributes' field found in manifest for ${manifest.name}`);
-        }
+        } catch (e) { console.error("[PluginManager] Load failed", e); this.notifyUI(); }
     }
 
     private async loadPlugin(dirPath: string, manifest: PluginManifest) {
@@ -121,13 +72,12 @@ export class PluginManager {
             const ReactInstance = await import('react');
             const LucideIcons = await import('lucide-react');
 
-            const resources = this.pluginResources.get(manifest.name) || { views: [], statusItems: [], commands: [] };
-            if (!this.pluginResources.has(manifest.name)) this.pluginResources.set(manifest.name, resources);
+            const resources = this.contributionRegistry.getResourceHandle(manifest.name);
 
             const api = PluginAPIBuilder.create(
                 manifest, 
                 resources, 
-                { ...this.callbacks, addFileMenuItem: (item: any) => this.fileMenuItems.push({ ...item, pluginName: manifest.name }) },
+                { ...this.callbacks, addFileMenuItem: (item: any) => this.contributionRegistry.addFileMenuItem(item) },
                 () => this.notifyUI(),
                 (un: any) => {
                     if (!this.unlisteners.has(manifest.name)) this.unlisteners.set(manifest.name, []);
@@ -171,15 +121,7 @@ export class PluginManager {
             this.unlisteners.delete(name);
         }
 
-        const resources = this.pluginResources.get(name);
-        if (resources) {
-            resources.views.forEach(id => views.unregisterView(id));
-            resources.statusItems.forEach(id => statusBar.unregisterItem(id));
-            resources.commands.forEach(id => commands.unregisterCommand(id));
-            this.pluginResources.delete(name);
-        }
-        
-        this.fileMenuItems = this.fileMenuItems.filter(item => item.pluginName !== name);
+        this.contributionRegistry.unload(name);
         this.plugins.delete(name);
         if (!keepManifest) this.manifests.delete(name);
     }

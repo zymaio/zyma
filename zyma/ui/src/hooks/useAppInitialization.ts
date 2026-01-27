@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
-import { PluginManager } from '../components/PluginSystem/PluginSystem';
+import { PluginManager } from '../components/PluginSystem/PluginManager';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
 export function useAppInitialization(fm: any, i18n: any, components?: { ChatPanel: any }, openCustomView?: (id: string, title: string, component: any) => void) {

@@ -1,42 +1,12 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Settings, Monitor, User, Puzzle } from 'lucide-react';
+import { Settings, Monitor, User } from 'lucide-react';
 import { views } from './ViewSystem/ViewRegistry';
 import { authRegistry } from './PluginSystem/AuthRegistry';
 import AccountMenu from './PluginSystem/AccountMenu';
-import * as LucideIcons from 'lucide-react';
+import { DynamicIcon } from './Common/DynamicIcon'; // 使用新提取的组件
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-
-const DynamicIcon = ({ icon, size = 24 }: { icon: any, size?: number }) => {
-    if (!icon) return <Puzzle size={size} />;
-    if (React.isValidElement(icon)) return icon;
-    
-    if (typeof icon === 'string') {
-        const IconComponent = (LucideIcons as any)[icon];
-        if (IconComponent) return <IconComponent size={size} />;
-        
-        // 关键修复：文字图标加大
-        return (
-            <div style={{ 
-                width: size, 
-                height: size, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                fontSize: '14px', // 增大字体
-                fontWeight: 800, // 超粗体
-                fontFamily: 'system-ui, sans-serif',
-                lineHeight: 1,
-                userSelect: 'none',
-                letterSpacing: '-0.5px'
-            }}>
-                {icon.substring(0, 2).toUpperCase()}
-            </div>
-        );
-    }
-    return <Puzzle size={size} />;
-};
 
 interface ActivityBarProps {
     sidebarTab: string;
@@ -91,19 +61,25 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     return (
         <div className="activity-bar">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', width: '100%', paddingTop: '10px' }}>
+                {/* 核心内置图标 */}
                 {activeViews.filter(v => ['explorer', 'search', 'plugins'].includes(v.id)).map(view => (
                     <div key={view.id} className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} onClick={() => { setSidebarTab(view.id); setShowSidebar(true); }} title={view.title}>
                         <DynamicIcon icon={view.icon} />
                     </div>
                 ))}
+                
                 {topViews.length > 0 && <div style={{ width: '20px', height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '5px 0' }} />}
+
+                {/* 插件扩展图标 */}
                 {topViews.map(view => (
                     <div key={view.id} className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} onClick={() => { setSidebarTab(view.id); setShowSidebar(true); }} title={view.title}>
                         <DynamicIcon icon={view.icon} />
                     </div>
                 ))}
             </div>
+
             <div style={{ flex: 1 }}></div>
+            
             <div style={{ paddingBottom: '15px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
                 {authProviders.length > 0 && (
                     <div style={{ position: 'relative' }}>
