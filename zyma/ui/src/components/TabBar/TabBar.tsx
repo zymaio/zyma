@@ -8,6 +8,7 @@ interface TabData {
     path: string;
     name: string;
     isDirty: boolean;
+    type?: 'file' | 'view';
 }
 
 interface TabBarProps {
@@ -80,6 +81,9 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
       ];
   };
 
+  // 找到第一个 'view' 类型的 Tab 的索引，用于设置 margin-left: auto
+  const firstViewIndex = files.findIndex(f => f.type === 'view');
+
   return (
     <div style={{
       height: '35px',
@@ -90,13 +94,15 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
       scrollbarWidth: 'none',
       position: 'relative'
     }} className="no-scrollbar">
-      {files.map((file) => (
+      {files.map((file, index) => (
         <TabItem 
             key={file.path}
             path={file.path}
             name={file.name} 
+            type={file.type}
             active={isMatching(activePath, file.path)} 
             isDirty={file.isDirty}
+            style={index === firstViewIndex ? { marginLeft: 'auto', borderLeft: '1px solid var(--border-color)' } : {}}
             onClick={() => onSwitch(file.path)}
             onClose={() => onClose(file.path)}
             onContextMenu={(e) => handleContextMenu(e, file.path)}
@@ -120,14 +126,33 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
 interface TabItemProps {
   path: string;
   name: string;
+  type?: 'file' | 'view';
   active: boolean;
   isDirty: boolean;
+  style?: React.CSSProperties;
   onClick: () => void;
   onClose: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
-const TabItem: React.FC<TabItemProps> = ({ name, active, isDirty, onClick, onClose, onContextMenu }) => {
+const TabItem: React.FC<TabItemProps> = ({ name, type, active, isDirty, style, onClick, onClose, onContextMenu }) => {
+  const isView = type === 'view';
+  
+  // 基础颜色逻辑
+  let backgroundColor = active ? 'var(--bg-tab-active)' : 'transparent';
+  let color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
+  let borderTopColor = active ? 'var(--accent-color)' : 'transparent';
+
+  // 针对 View (Chat 等) 的特殊样式
+  if (isView) {
+      if (active) {
+          backgroundColor = 'var(--bg-secondary)'; // 稍微区别于文件 Tab 的活跃色
+          borderTopColor = '#10b981'; // 比如用绿色代表 AI/插件视图
+      } else {
+          backgroundColor = 'rgba(0,0,0,0.1)'; // 非活跃时也带点底色
+      }
+  }
+
   return (
     <div 
         onClick={onClick}
@@ -136,16 +161,17 @@ const TabItem: React.FC<TabItemProps> = ({ name, active, isDirty, onClick, onClo
             display: 'flex',
             alignItems: 'center',
             padding: '0 10px',
-            minWidth: '120px',
+            minWidth: isView ? '100px' : '120px',
             maxWidth: '220px',
-            backgroundColor: active ? 'var(--bg-tab-active)' : 'transparent',
+            backgroundColor,
             borderRight: '1px solid var(--border-color)',
-            borderTop: active ? '1px solid var(--accent-color)' : '1px solid transparent',
-            color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+            borderTop: `1px solid ${borderTopColor}`,
+            color,
             cursor: 'pointer',
             fontSize: 'var(--ui-font-size)',
             userSelect: 'none',
-            position: 'relative'
+            position: 'relative',
+            ...style
         }}
     >
       <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '10px' }}>

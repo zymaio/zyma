@@ -10,6 +10,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 interface ChatPanelProps {
     participantId?: string; // 新增：指定连接哪个参与者
     title?: string;
+    settings?: any; // 新增：设置
     getContext?: () => Promise<{
         filePath: string | null;
         selection: string | null;
@@ -17,7 +18,7 @@ interface ChatPanelProps {
     }>;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, settings, getContext }) => {
     const [messages, setMessages] = useState<IChatMessage[]>([
         {
             id: 'welcome',
@@ -147,8 +148,14 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext 
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
-            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '10px' }}>
+        <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%', 
+            backgroundColor: 'var(--bg-sidebar)',
+            fontSize: (settings?.ui_font_size || 13) + 'px' 
+        }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px 15px 10px 15px' }}>
                 {messages.map(msg => (
                     <ChatMessage key={msg.id} message={msg} />
                 ))}

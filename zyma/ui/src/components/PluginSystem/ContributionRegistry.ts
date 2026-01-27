@@ -13,6 +13,10 @@ export class ContributionRegistry {
 
     constructor(private callbacks: { components: { ChatPanel: any }, addFileMenuItem: (item: any) => void }) {}
 
+    updateComponents(components: any) {
+        this.callbacks.components = components;
+    }
+
     /**
      * 处理插件的贡献声明
      */

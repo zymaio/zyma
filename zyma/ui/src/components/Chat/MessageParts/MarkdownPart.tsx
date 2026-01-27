@@ -9,7 +9,7 @@ interface MarkdownPartProps {
 
 const MarkdownPart: React.FC<MarkdownPartProps> = ({ content }) => {
     return (
-        <div className="markdown-body" style={{ backgroundColor: 'transparent', fontSize: '13px' }}>
+        <div className="markdown-body" style={{ backgroundColor: 'transparent', fontSize: 'inherit' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}
             </ReactMarkdown>

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 
 export interface AppSettings {
-    theme: 'dark' | 'light';
+    theme: 'dark' | 'light' | 'abyss';
     font_size: number;
     ui_font_size: number;
     tab_size: number;
@@ -82,11 +82,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         <label style={{ fontSize: '12px', fontWeight: 'bold' }}>{t('Theme')}</label>
                         <select 
                             value={currentSettings.theme}
-                            onChange={(e) => updateSetting('theme', e.target.value as 'dark' | 'light')}
+                            onChange={(e) => updateSetting('theme', e.target.value as 'dark' | 'light' | 'abyss')}
                             style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: modalFontSize }}
                         >
                             <option value="dark">Dark</option>
                             <option value="light">Light</option>
+                            <option value="abyss">Abyss</option>
                         </select>
                     </div>
 

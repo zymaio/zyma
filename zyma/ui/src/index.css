@@ -61,6 +61,32 @@
   --input-bg: var(--bg-editor);
 }
 
+.theme-abyss {
+  --bg-editor: #000c18;
+  --bg-sidebar: #001126;
+  --bg-activity: #001126;
+  --bg-status: #000c18;
+  --bg-tabs: #001126;
+  --bg-active-tab: #000c18;
+  --text-main: #bbbbbb;
+  --text-muted: #667788;
+  --text-active: #00bfff;
+  --border-color: #002244;
+  --accent-color: #007acc;
+  --active-bg: #001c3d;
+  --active-text: #00bfff;
+  color: var(--text-main);
+  background-color: var(--bg-editor);
+  --bg-dark: var(--bg-editor);
+  --bg-activity-bar: var(--bg-activity);
+  --bg-titlebar: var(--bg-activity); 
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+  --bg-dropdown: var(--bg-sidebar);
+  --dropdown-hover: var(--active-bg);
+  --input-bg: var(--bg-editor);
+}
+
 body {
   margin: 0;
   overflow: hidden;

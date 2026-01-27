@@ -17,6 +17,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 export function useCodeMirror(props: {
     content: string,
     fileName: string,
+    themeMode: string,
     onChange: (val: string) => void,
     onCursorUpdate?: (line: number, col: number) => void
 }) {
@@ -48,11 +49,30 @@ export function useCodeMirror(props: {
     useEffect(() => {
         if (!editorRef.current) return;
 
+        // 根据 themeMode 选择基础配色扩展
+        const themeExtensions = [];
+        let baseBg = "#282c34";
+        let gutterBg = "#282c34";
+        let activeLineBg = "rgba(255,255,255,0.03)";
+
+        if (props.themeMode === 'light') {
+            baseBg = "#ffffff";
+            gutterBg = "#f6f8fa";
+            activeLineBg = "rgba(0,0,0,0.03)";
+        } else if (props.themeMode === 'abyss') {
+            themeExtensions.push(oneDark);
+            baseBg = "#000c18";
+            gutterBg = "#001126";
+            activeLineBg = "rgba(0, 191, 255, 0.05)";
+        } else {
+            themeExtensions.push(oneDark);
+        }
+
         const state = EditorState.create({
             doc: props.content,
             extensions: [
                 basicSetup,
-                oneDark,
+                ...themeExtensions,
                 getLanguage(props.fileName),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) props.onChange(update.state.doc.toString());
@@ -62,11 +82,12 @@ export function useCodeMirror(props: {
                         props.onCursorUpdate(line.number, pos - line.from + 1);
                     }
                 }),
-                // 工业级美化样式：舒适、清爽、对齐
+                // 工业级美化样式
                 EditorView.theme({
                     "&": { 
                         height: "100%", 
-                        fontSize: "inherit" 
+                        fontSize: "inherit",
+                        backgroundColor: baseBg
                     },
                     "&.cm-focused": { outline: "none" },
                     ".cm-content": {
@@ -78,13 +99,13 @@ export function useCodeMirror(props: {
                         lineHeight: "1.6" 
                     },
                     ".cm-gutters": { 
-                        backgroundColor: "#282c34", // 精确匹配 One Dark 背景
+                        backgroundColor: gutterBg,
                         border: "none",
-                        color: "#4b5263",
+                        color: props.themeMode === 'light' ? "#888" : "#4b5263",
                         minWidth: "45px"
                     },
-                    ".cm-activeLine": { backgroundColor: "rgba(255,255,255,0.03)" },
-                    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "#abb2bf" }
+                    ".cm-activeLine": { backgroundColor: activeLineBg },
+                    ".cm-activeLineGutter": { backgroundColor: "transparent", color: props.themeMode === 'light' ? "#000" : "#abb2bf" }
                 })
             ],
         });
@@ -93,7 +114,7 @@ export function useCodeMirror(props: {
         const view = new EditorView({ state, parent: editorRef.current });
         viewRef.current = view;
         return () => view.destroy();
-    }, [props.fileName]);
+    }, [props.fileName, props.themeMode]); // 当文件名或主题模式变化时重新初始化
 
     // 处理外部内容更新 (如 AI 写入)
     useEffect(() => {

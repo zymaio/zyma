@@ -6,7 +6,7 @@ import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginManager';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
-export function useAppInitialization(fm: any, i18n: any, components?: { ChatPanel: any }, openCustomView?: (id: string, title: string, component: any) => void) {
+export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: string, title: string, component: any) => void) {
     const [ready, setReady] = useState(false);
     const [settings, setSettings] = useState<AppSettings>({
         theme: 'dark', font_size: 14, ui_font_size: 13, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
@@ -48,9 +48,9 @@ export function useAppInitialization(fm: any, i18n: any, components?: { ChatPane
         initSystem();
     }, []); // 仅挂载时运行一次
 
-    // 插件管理器初始化：独立于 ready 状态，避免被 ready 变化触发死循环
+    // 插件管理器初始化：不再依赖 components 参数
     useEffect(() => {
-        if (!pluginManager.current && components?.ChatPanel) {
+        if (!pluginManager.current) {
             console.log("[useAppInitialization] Initializing PluginManager...");
             pluginManager.current = new PluginManager({
                 insertText: (text: string) => {
@@ -72,12 +72,12 @@ export function useAppInitialization(fm: any, i18n: any, components?: { ChatPane
                         } catch (e) { alert('Error: ' + e); }
                     }
                 },
-                components: { ChatPanel: components.ChatPanel },
+                components: { ChatPanel: null }, // 初始为空
                 openCustomView
             });
             pluginManager.current.loadAll();
         }
-    }, [components, openCustomView]); // 只有当组件或回调函数引用变化时才运行
+    }, [openCustomView]); // 仅依赖 openCustomView
 
     return useMemo(() => ({
         ready, settings, setSettings, isAdmin, platform, appVersion, 

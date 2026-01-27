@@ -45,7 +45,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onClear, disabled, sugges
     }, [text]);
 
     return (
-        <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
+        <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-sidebar)', position: 'relative' }}>
             {showSuggestions && (
                 <div style={{ 
                     position: 'absolute', bottom: '100%', left: '10px', right: '10px',

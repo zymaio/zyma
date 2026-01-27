@@ -46,8 +46,13 @@ function App() {
   // 2. 使用拆分后的缩放 Hook
   const { sidebarWidth, startResizing } = useSidebarResize(250);
 
+  const {
+      ready, settings, setSettings, isAdmin, platform, appVersion,
+      pluginMenus, pluginManager, handleAppExit, openCustomView: initOpenCustomView
+  } = useAppInitialization(fm, i18n, openCustomView);
+
   const chatComponents = useMemo(() => ({ 
-      ChatPanel: (props: any) => <ChatPanel {...props} getContext={async () => {
+      ChatPanel: (props: any) => <ChatPanel {...props} settings={settings} getContext={async () => {
           const editor = fm.editorViewRef.current;
           let selection = null;
           let fileContent = null;
@@ -58,12 +63,13 @@ function App() {
           }
           return { filePath: fm.activeFilePath, selection, fileContent };
       }} />
-  }), [fm.activeFilePath]);
+  }), [fm.activeFilePath, settings]);
 
-  const {
-      ready, settings, setSettings, isAdmin, platform, appVersion,
-      pluginMenus, pluginManager, handleAppExit
-  } = useAppInitialization(fm, i18n, chatComponents, openCustomView);
+  useEffect(() => {
+      if (ready && pluginManager.current) {
+          pluginManager.current.setComponents({ ChatPanel: chatComponents.ChatPanel });
+      }
+  }, [ready, chatComponents]);
   
   const [rootPath, setRootPath] = useState<string>(".");
   const [sidebarTab, setSidebarTab] = useState<string>('explorer');
@@ -198,7 +204,12 @@ function App() {
                 <TabBar 
                     files={activeTabs.map(t => {
                         const file = fm.openFiles.find(f => (f.path || f.name) === t.id);
-                        return { path: t.id, name: t.title, isDirty: file ? file.content !== file.originalContent : false };
+                        return { 
+                            path: t.id, 
+                            name: t.title, 
+                            type: t.type,
+                            isDirty: file ? file.content !== file.originalContent : false 
+                        };
                     })} 
                     activePath={activeTabId} 
                     onSwitch={(id) => { 

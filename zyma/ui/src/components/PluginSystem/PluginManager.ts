@@ -34,6 +34,11 @@ export class PluginManager {
 
     getFileMenuItems() { return this.contributionRegistry.getFileMenuItems(); }
 
+    setComponents(components: any) {
+        this.callbacks.components = components;
+        this.contributionRegistry.updateComponents(components);
+    }
+
     getLoadedPlugins() {
         const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
         return Array.from(this.manifests.values()).map(m => ({
