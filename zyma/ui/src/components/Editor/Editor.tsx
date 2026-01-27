@@ -14,7 +14,6 @@ interface EditorProps {
 const Editor: React.FC<EditorProps> = (props) => {
     const { editorRef, viewRef } = useCodeMirror(props);
 
-    // 将内部 view 暴露给外部 ref (用于搜索/命令调用)
     useEffect(() => {
         if (props.editorRef) {
             props.editorRef.current = viewRef.current;
@@ -29,7 +28,7 @@ const Editor: React.FC<EditorProps> = (props) => {
                 height: '100%', 
                 width: '100%', 
                 fontSize: `${props.fontSize}px`,
-                backgroundColor: 'var(--bg-editor)'
+                backgroundColor: '#282c34' // 初始背景占位，防止闪烁
             }} 
         />
     );
