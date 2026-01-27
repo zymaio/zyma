@@ -57,12 +57,12 @@ export function useTabSystem(fm: any) {
 
     const activeTab = useMemo(() => activeTabs.find(t => t.id === activeTabId), [activeTabs, activeTabId]);
 
-    return {
+    return useMemo(() => ({
         activeTabs,
         activeTabId,
         activeTab,
         setActiveTabId,
         openCustomView,
         closeTab
-    };
+    }), [activeTabs, activeTabId, activeTab, openCustomView, closeTab]);
 }

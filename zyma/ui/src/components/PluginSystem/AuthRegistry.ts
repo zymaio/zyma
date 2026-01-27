@@ -24,6 +24,14 @@ export class AuthRegistry {
     }
 
     registerProvider(p: AuthProvider) {
+        const existing = this.providers.get(p.id);
+        if (existing && 
+            existing.label === p.label && 
+            existing.accountName === p.accountName && 
+            existing.onLogin === p.onLogin && 
+            existing.onLogout === p.onLogout) {
+            return;
+        }
         this.providers.set(p.id, p);
         this.notify();
     }

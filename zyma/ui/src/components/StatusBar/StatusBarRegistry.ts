@@ -35,6 +35,15 @@ export class StatusBarRegistry {
     }
 
     registerItem(item: StatusBarItem): void {
+        const existing = this.items.get(item.id);
+        if (existing && 
+            existing.text === item.text && 
+            existing.alignment === item.alignment && 
+            existing.priority === item.priority && 
+            existing.tooltip === item.tooltip && 
+            existing.onClick === item.onClick) {
+            return;
+        }
         this.items.set(item.id, item);
         this.notify();
     }

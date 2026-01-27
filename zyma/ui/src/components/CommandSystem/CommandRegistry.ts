@@ -41,8 +41,17 @@ export class CommandRegistry {
      * 注册一个命令
      */
     registerCommand(command: Command): void {
-        if (this.commands.has(command.id)) {
-            console.warn(`Command ${command.id} is already registered. Overwriting.`);
+        const existing = this.commands.get(command.id);
+        if (existing && 
+            existing.title === command.title && 
+            existing.category === command.category && 
+            existing.callback === command.callback && 
+            existing.description === command.description && 
+            existing.keybinding === command.keybinding) {
+            return;
+        }
+        if (existing) {
+            // console.warn(`Command ${command.id} is already registered. Overwriting.`);
         }
         this.commands.set(command.id, command);
         this.notify();

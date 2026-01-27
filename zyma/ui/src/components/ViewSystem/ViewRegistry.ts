@@ -34,6 +34,14 @@ export class ViewRegistry {
     }
 
     registerView(view: View): void {
+        const existing = this.views.get(view.id);
+        if (existing && 
+            existing.title === view.title && 
+            existing.icon === view.icon && 
+            existing.component === view.component && 
+            existing.order === view.order) {
+            return;
+        }
         this.views.set(view.id, view);
         this.notify();
     }

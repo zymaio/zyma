@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useFileIO } from './useFileIO';
 
@@ -62,7 +62,7 @@ export function useFileManagement(t: any) {
         setActiveFilePath(name);
     }, [openFiles.length]);
 
-    return {
+    return useMemo(() => ({
         openFiles,
         setOpenFiles,
         activeFilePath,
@@ -73,5 +73,5 @@ export function useFileManagement(t: any) {
         doSave,
         closeFile,
         handleNewFile
-    };
+    }), [openFiles, activeFilePath, handleFileSelect, handleEditorChange, doSave, closeFile, handleNewFile]);
 }

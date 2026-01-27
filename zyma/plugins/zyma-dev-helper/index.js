@@ -26,10 +26,12 @@ exports.activate = async function() {
         icon: 'Terminal',
         component: () => {
             return React.createElement('div', { 
+                key: 'dev-helper-root',
                 style: { padding: '15px', color: 'var(--text-primary)', fontSize: 'var(--ui-font-size)' } 
             }, [
-                React.createElement('h3', null, 'Zyma Dev Tools'),
+                React.createElement('h3', { key: 'h3' }, 'Zyma Dev Tools'),
                 React.createElement('button', {
+                    key: 'btn',
                     onClick: () => zyma.commands.execute('dev.scaffoldPlugin'),
                     style: { width: '100%', padding: '8px', backgroundColor: 'var(--accent-color)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', marginTop: '10px' }
                 }, '创建新插件')

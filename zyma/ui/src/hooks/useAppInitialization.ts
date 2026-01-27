@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -79,8 +79,8 @@ export function useAppInitialization(fm: any, i18n: any, components?: { ChatPane
         }
     }, [components, openCustomView]); // 只有当组件或回调函数引用变化时才运行
 
-    return {
+    return useMemo(() => ({
         ready, settings, setSettings, isAdmin, platform, appVersion, 
         pluginMenus, pluginManager, handleAppExit
-    };
+    }), [ready, settings, isAdmin, platform, appVersion, pluginMenus, handleAppExit]);
 }
