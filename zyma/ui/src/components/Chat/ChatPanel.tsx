@@ -8,6 +8,8 @@ import type { ChatResponseStream } from './Registry/ChatRegistry';
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 interface ChatPanelProps {
+    participantId?: string; // 新增：指定连接哪个参与者
+    title?: string;
     getContext?: () => Promise<{
         filePath: string | null;
         selection: string | null;
@@ -15,21 +17,20 @@ interface ChatPanelProps {
     }>;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ getContext }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext }) => {
     const [messages, setMessages] = useState<IChatMessage[]>([
         {
             id: 'welcome',
             role: 'agent',
             timestamp: Date.now(),
-            parts: [{ type: 'markdown', content: 'Hello! I am Zyma Assistant. Install an AI extension to get started.' }]
+            parts: [{ type: 'markdown', content: `Hello! I am ${title || 'Zyma Assistant'}. How can I help you today?` }]
         }
     ]);
     const [isProcessing, setIsProcessing] = useState(false);
     const [, forceUpdate] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const participants = useMemo(() => chatRegistry.getParticipants(), [forceUpdate]);
-
+    // 订阅逻辑变更
     useEffect(() => {
         return chatRegistry.subscribe(() => forceUpdate(n => n + 1));
     }, []);
@@ -38,20 +39,23 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ getContext }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    const currentParticipant = useMemo(() => {
+        const all = chatRegistry.getParticipants();
+        return participantId ? all.find(p => p.id === participantId) : all[0];
+    }, [participantId, forceUpdate]);
+
     const handleSend = async (text: string) => {
-        const participants = chatRegistry.getParticipants();
-        if (participants.length === 0) {
+        const participant = currentParticipant;
+
+        if (!participant) {
             setMessages(prev => [...prev, {
                 id: generateId(),
                 role: 'agent',
                 timestamp: Date.now(),
-                parts: [{ type: 'markdown', content: 'No AI extension registered. Please install an extension like **shov-agent**.' }]
+                parts: [{ type: 'markdown', content: `No handler found for **${participantId || 'default'}**. Please ensure the extension is enabled.` }]
             }]);
             return;
         }
-
-        // Simple routing: for now use the first participant
-        const participant = participants[0];
 
         const userMsg: IChatMessage = {
             id: generateId(),
@@ -73,10 +77,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ getContext }) => {
         };
         setMessages(prev => [...prev, initialAgentMsg]);
 
-        // Build request
         const ctx = getContext ? await getContext() : { filePath: null, selection: null, fileContent: null };
-        
-        // Extract history (convert complex parts to simple text for the agent)
         const history = messages.map(m => ({
             role: m.role,
             content: m.parts.filter(p => p.type === 'markdown').map(p => (p as any).content).join('\n')
@@ -91,7 +92,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ getContext }) => {
         }
 
         const stream: ChatResponseStream = {
-            // ... (keep existing stream logic)
             markdown: (content) => {
                 setMessages(prev => prev.map(m => m.id === agentMsgId ? {
                     ...m,
@@ -158,7 +158,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ getContext }) => {
                 onSend={handleSend} 
                 onClear={handleClear} 
                 disabled={isProcessing} 
-                suggestions={participants[0]?.commands?.map(c => ({ cmd: `/${c.name}`, desc: c.description }))}
+                suggestions={currentParticipant?.commands?.map(c => ({ cmd: `/${c.name}`, desc: c.description }))}
             />
         </div>
     );

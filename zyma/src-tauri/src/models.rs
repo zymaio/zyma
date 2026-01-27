@@ -33,10 +33,24 @@ pub struct AppSettings {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PluginViewDef {
+    pub id: String,
+    pub title: String,
+    pub icon: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PluginContributions {
+    pub views: Option<Vec<PluginViewDef>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PluginManifest {
     pub name: String,
     pub version: String,
     pub author: String,
     pub entry: String,
     pub description: Option<String>,
+    pub icon: Option<String>, // 顺便加上顶层 icon 字段
+    pub contributes: Option<PluginContributions>,
 }

@@ -1,3 +1,4 @@
+import React from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { commands } from '../CommandSystem/CommandRegistry';
@@ -29,9 +30,7 @@ export class PluginManager {
         if (this.callbacks.onMenuUpdate) this.callbacks.onMenuUpdate();
     }
 
-    getFileMenuItems() {
-        return this.fileMenuItems.sort((a, b) => (a.order || 0) - (b.order || 0));
-    }
+    getFileMenuItems() { return this.fileMenuItems.sort((a, b) => (a.order || 0) - (b.order || 0)); }
 
     getLoadedPlugins() {
         const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
@@ -46,14 +45,71 @@ export class PluginManager {
         try {
             const disabledPlugins = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
             const pluginList = await invoke<[string, PluginManifest, boolean][]>('list_plugins');
-            this.manifests.clear();
-            for (const [dirPath, manifest, isBuiltin] of pluginList) {
-                this.manifests.set(manifest.name, { ...manifest, path: dirPath, isBuiltin });
+            
+            for (const name of Array.from(this.manifests.keys())) {
+                await this.unloadPlugin(name, true);
             }
-            const pluginsToLoad = pluginList.filter(([_, m]) => !disabledPlugins.includes(m.name) && !this.plugins.has(m.name));
-            await Promise.all(pluginsToLoad.map(([dirPath, manifest]) => this.loadPlugin(dirPath, manifest)));
+            this.manifests.clear();
+
+            for (const [dirPath, manifest, isBuiltin] of pluginList) {
+                const isEnabled = !disabledPlugins.includes(manifest.name);
+                this.manifests.set(manifest.name, { ...manifest, path: dirPath, isBuiltin });
+                
+                if (isEnabled) {
+                    this.handleContributions(manifest, dirPath);
+                    await this.loadPlugin(dirPath, manifest);
+                }
+            }
             this.notifyUI();
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("[PluginSystem] Load failed", e); this.notifyUI(); }
+    }
+
+    private handleContributions(manifest: PluginManifest, _dirPath: string) {
+        if (!this.pluginResources.has(manifest.name)) {
+            this.pluginResources.set(manifest.name, { views: [], statusItems: [], commands: [] });
+        }
+        const resources = this.pluginResources.get(manifest.name)!;
+
+        if (manifest.contributes) {
+            console.log(`>>> [PluginSystem] Found 'contributes' field for ${manifest.name}:`, manifest.contributes);
+            
+            if (manifest.contributes.views) {
+                console.log(`>>> [PluginSystem] Found 'views' in contributions:`, manifest.contributes.views);
+                
+                manifest.contributes.views.forEach(viewDef => {
+                    const viewId = viewDef.id;
+                    if (!resources.views.includes(viewId)) {
+                        resources.views.push(viewId);
+                        
+                                            console.log(`>>> [PluginSystem] REGISTERING VIEW: ${viewId} | Icon: ${viewDef.icon}`);
+                                            
+                                            // 核心改进：创建一个绑定了 ID 的 ChatPanel 实例
+                                            const ChatPanel = this.callbacks.components.ChatPanel;
+                                            const component = React.createElement(ChatPanel, { 
+                                                participantId: viewId,
+                                                title: viewDef.title 
+                                            });
+                        
+                                                                views.registerView({
+                        
+                                                                    id: viewId,
+                        
+                                                                    title: viewDef.title,
+                        
+                                                                    icon: viewDef.icon || manifest.icon || 'Puzzle',
+                        
+                                                                    component: component, 
+                        
+                                                                    order: 100 // 默认排序调至 100
+                        
+                                                                });                    } else {
+                        console.log(`>>> [PluginSystem] Skipped duplicate view: ${viewId}`);
+                    }
+                });
+            }
+        } else {
+            console.log(`>>> [PluginSystem] No 'contributes' field found in manifest for ${manifest.name}`);
+        }
     }
 
     private async loadPlugin(dirPath: string, manifest: PluginManifest) {
@@ -65,13 +121,13 @@ export class PluginManager {
             const ReactInstance = await import('react');
             const LucideIcons = await import('lucide-react');
 
-            const resources = { views: [], statusItems: [], commands: [] };
-            this.pluginResources.set(manifest.name, resources);
+            const resources = this.pluginResources.get(manifest.name) || { views: [], statusItems: [], commands: [] };
+            if (!this.pluginResources.has(manifest.name)) this.pluginResources.set(manifest.name, resources);
 
             const api = PluginAPIBuilder.create(
                 manifest, 
                 resources, 
-                { ...this.callbacks, addFileMenuItem: (item: any) => this.fileMenuItems.push(item) },
+                { ...this.callbacks, addFileMenuItem: (item: any) => this.fileMenuItems.push({ ...item, pluginName: manifest.name }) },
                 () => this.notifyUI(),
                 (un: any) => {
                     if (!this.unlisteners.has(manifest.name)) this.unlisteners.set(manifest.name, []);
@@ -86,7 +142,13 @@ export class PluginManager {
                 if (res instanceof Promise) await res;
             }
             this.plugins.set(manifest.name, pluginInstance);
-        } catch (e) { console.error(`Error loading plugin ${manifest.name}:`, e); }
+        } catch (e) { console.error(`Error activating plugin ${manifest.name}:`, e); }
+    }
+
+    async enablePlugin(name: string) {
+        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
+        localStorage.setItem('zyma_disabled_plugins', JSON.stringify(disabled.filter((n: string) => n !== name)));
+        await this.loadAll();
     }
 
     async disablePlugin(name: string) {
@@ -99,17 +161,16 @@ export class PluginManager {
         this.notifyUI();
     }
 
-    async enablePlugin(name: string) {
-        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
-        localStorage.setItem('zyma_disabled_plugins', JSON.stringify(disabled.filter((n: string) => n !== name)));
-        await this.loadAll();
-    }
-
     async unloadPlugin(name: string, keepManifest = false) {
         const pluginInstance = this.plugins.get(name);
-        if (pluginInstance && pluginInstance.deactivate) { try { pluginInstance.deactivate(); } catch (e) {} }
+        if (pluginInstance?.deactivate) { try { pluginInstance.deactivate(); } catch (e) {} }
+        
         const unlisteners = this.unlisteners.get(name);
-        if (unlisteners) { unlisteners.forEach(async (un) => { const f = await un; f(); }); this.unlisteners.delete(name); }
+        if (unlisteners) {
+            for (const un of unlisteners) { try { (await un)(); } catch(e) {} }
+            this.unlisteners.delete(name);
+        }
+
         const resources = this.pluginResources.get(name);
         if (resources) {
             resources.views.forEach(id => views.unregisterView(id));
@@ -117,6 +178,7 @@ export class PluginManager {
             resources.commands.forEach(id => commands.unregisterCommand(id));
             this.pluginResources.delete(name);
         }
+        
         this.fileMenuItems = this.fileMenuItems.filter(item => item.pluginName !== name);
         this.plugins.delete(name);
         if (!keepManifest) this.manifests.delete(name);

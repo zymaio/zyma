@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Monitor, User } from 'lucide-react';
+import React, { useState, useEffect, useReducer } from 'react';
+import { Settings, Monitor, User, Puzzle } from 'lucide-react';
 import { views } from './ViewSystem/ViewRegistry';
 import { authRegistry } from './PluginSystem/AuthRegistry';
 import AccountMenu from './PluginSystem/AccountMenu';
@@ -9,10 +9,33 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 const DynamicIcon = ({ icon, size = 24 }: { icon: any, size?: number }) => {
-    if (typeof icon !== 'string') return icon;
-    const Icon = (LucideIcons as any)[icon];
-    if (Icon) return <Icon size={size} />;
-    return <span style={{ fontSize: '12px' }}>{icon}</span>;
+    if (!icon) return <Puzzle size={size} />;
+    if (React.isValidElement(icon)) return icon;
+    
+    if (typeof icon === 'string') {
+        const IconComponent = (LucideIcons as any)[icon];
+        if (IconComponent) return <IconComponent size={size} />;
+        
+        // 关键修复：文字图标加大
+        return (
+            <div style={{ 
+                width: size, 
+                height: size, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                fontSize: '14px', // 增大字体
+                fontWeight: 800, // 超粗体
+                fontFamily: 'system-ui, sans-serif',
+                lineHeight: 1,
+                userSelect: 'none',
+                letterSpacing: '-0.5px'
+            }}>
+                {icon.substring(0, 2).toUpperCase()}
+            </div>
+        );
+    }
+    return <Puzzle size={size} />;
 };
 
 interface ActivityBarProps {
@@ -32,84 +55,73 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     const [hasOutput, setHasOutput] = useState(false);
     const [authProviders, setAuthProviders] = useState(authRegistry.getProviders());
     const [showAccountMenu, setShowAccountMenu] = useState(false);
+    const [, forceUpdate] = useReducer(x => x + 1, 0);
+    const [activeViews, setActiveViews] = useState(views.getViews());
 
     useEffect(() => {
-        const unsub = authRegistry.subscribe(() => setAuthProviders(authRegistry.getProviders()));
-        return () => unsub();
+        const sync = () => {
+            setActiveViews([...views.getViews()]);
+            setAuthProviders([...authRegistry.getProviders()]);
+            forceUpdate();
+        };
+        const unsubViews = views.subscribe(sync);
+        const unsubAuth = authRegistry.subscribe(sync);
+        sync();
+        return () => { unsubViews(); unsubAuth(); };
     }, []);
 
     useEffect(() => {
-        // 1. 启动即刻同步：检查当前后端是否已有活跃频道
-        invoke<string[]>('output_list_channels').then(res => {
-            if (res && res.length > 0) {
-                setHasOutput(true);
-            }
-        });
-
-        // 2. 动态监听：一旦插件产生新频道，立刻显示图标
+        const checkOutput = async () => {
+            try {
+                const res = await invoke<string[]>('output_list_channels');
+                if (res && res.length > 0) setHasOutput(true);
+            } catch(e) {}
+        };
+        checkOutput();
         const unlisten = listen<string>("output_channel_created", () => {
             setHasOutput(true);
+            forceUpdate();
         });
-
         return () => { unlisten.then(f => f()); };
     }, []);
 
+    const BUILTIN_BOTTOM_IDS = ['output', 'debug', 'terminal', 'accounts', 'settings', 'explorer', 'search', 'plugins'];
+    const topViews = activeViews.filter(v => !BUILTIN_BOTTOM_IDS.includes(v.id));
+
     return (
         <div className="activity-bar">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center', width: '100%' }}>
-                {views.getViews().map(view => (
-                    <div 
-                        key={view.id} 
-                        className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} 
-                        onClick={() => { 
-                            if (sidebarTab === view.id && showSidebar) {
-                                setShowSidebar(false); 
-                            } else { 
-                                setSidebarTab(view.id); 
-                                setShowSidebar(true); 
-                            } 
-                        }} 
-                        title={view.title}
-                    >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', width: '100%', paddingTop: '10px' }}>
+                {activeViews.filter(v => ['explorer', 'search', 'plugins'].includes(v.id)).map(view => (
+                    <div key={view.id} className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} onClick={() => { setSidebarTab(view.id); setShowSidebar(true); }} title={view.title}>
+                        <DynamicIcon icon={view.icon} />
+                    </div>
+                ))}
+                {topViews.length > 0 && <div style={{ width: '20px', height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '5px 0' }} />}
+                {topViews.map(view => (
+                    <div key={view.id} className={`activity-icon ${sidebarTab === view.id && showSidebar ? 'active' : ''}`} onClick={() => { setSidebarTab(view.id); setShowSidebar(true); }} title={view.title}>
                         <DynamicIcon icon={view.icon} />
                     </div>
                 ))}
             </div>
             <div style={{ flex: 1 }}></div>
-            <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center', position: 'relative' }}>
-                {/* 账户中心入口：仅在有插件注册时显示 */}
+            <div style={{ paddingBottom: '15px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', width: '100%' }}>
                 {authProviders.length > 0 && (
-                    <>
-                        <div 
-                            className={`activity-icon ${showAccountMenu ? 'active' : ''}`} 
-                            onClick={() => setShowAccountMenu(!showAccountMenu)}
-                            title={t('Accounts')}
-                        >
+                    <div style={{ position: 'relative' }}>
+                        <div className={`activity-icon ${showAccountMenu ? 'active' : ''}`} onClick={() => setShowAccountMenu(!showAccountMenu)} title={t('Accounts')}>
                             <User size={24} />
-                            {authProviders.some(p => p.accountName) && (
-                                <div style={{ position: 'absolute', bottom: '2px', right: '2px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid var(--bg-activity-bar)' }} />
-                            )}
+                            {authProviders.some(p => p.accountName) && <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid var(--bg-activity-bar)' }} />}
                         </div>
-                        <AccountMenu 
-                            visible={showAccountMenu} 
-                            onClose={() => setShowAccountMenu(false)} 
-                            position={{ bottom: 100, left: 55 }} 
-                        />
-                    </>
+                        <AccountMenu visible={showAccountMenu} onClose={() => setShowAccountMenu(false)} position={{ bottom: 50, left: 50 }} />
+                    </div>
                 )}
-                
-                {/* 核心逻辑：初始隐藏，一旦有输出则永久显示 */}
                 {hasOutput && (
-                    <div 
-                        className="activity-icon" 
-                        onClick={() => invoke('open_detached_output', { channel: "绣智助手日志" })} 
-                        title={t('Output')}
-                        style={{ color: 'var(--accent-color)' }}
-                    >
+                    <div className="activity-icon" onClick={() => invoke('open_detached_output', { channel: "绣智助手日志" })} title={t('Output')} style={{ color: 'var(--accent-color)' }}>
                         <Monitor size={24} />
                     </div>
                 )}
-                <div className={`activity-icon ${showSettings ? 'active' : ''}`} onClick={onShowSettings} title={t('Settings')}><Settings size={24} /></div>
+                <div className={`activity-icon ${showSettings ? 'active' : ''}`} onClick={onShowSettings} title={t('Settings')}>
+                    <Settings size={24} />
+                </div>
             </div>
         </div>
     );

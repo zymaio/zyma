@@ -31,9 +31,9 @@ const AccountMenu: React.FC<AccountMenuProps> = ({ visible, onClose, position })
                 padding: '8px 0',
                 zIndex: 1000,
                 color: 'var(--text-primary)',
-                fontSize: '13px'
+                fontSize: 'var(--ui-font-size)'
             }}>
-                <div style={{ padding: '8px 15px', borderBottom: '1px solid var(--border-color)', opacity: 0.6, fontSize: '11px', fontWeight: 'bold' }}>
+                <div style={{ padding: '8px 15px', borderBottom: '1px solid var(--border-color)', opacity: 0.6, fontSize: '0.85em', fontWeight: 'bold' }}>
                     ACCOUNTS
                 </div>
                 

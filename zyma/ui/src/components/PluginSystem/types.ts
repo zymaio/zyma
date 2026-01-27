@@ -12,6 +12,9 @@ export interface PluginManifest {
     icon?: string;
     path?: string;
     isBuiltin?: boolean;
+    contributes?: {
+        views?: { id: string, title: string, icon?: string }[];
+    };
 }
 
 export interface FileStat {
@@ -88,6 +91,7 @@ export interface ZymaAPI {
     window: {
         create: (label: string, options: any) => Promise<void>;
         close: (label: string) => Promise<void>;
+        openTab: (id: string, title: string, component: any) => void;
         createOutputChannel: (name: string) => OutputChannel;
         onDidChangeActiveTextEditor: (listener: (doc: TextDocument | null) => void) => Promise<UnlistenFn>;
         onDidChangeWindowState: (listener: (state: WindowState) => void) => Promise<UnlistenFn>;
