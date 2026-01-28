@@ -60,10 +60,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                     marginBottom: '4px',
                     padding: '0 4px'
                 }}>
-                    <span style={{ fontWeight: '600', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <span style={{ fontWeight: '600', fontSize: 'var(--ui-font-size)', color: 'var(--text-secondary)' }}>
                         {isUser ? 'You' : 'Agent'}
                     </span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', color: 'var(--text-muted)' }}>
                         {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
@@ -87,7 +87,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                             display: 'flex', 
                             alignItems: 'center', 
                             gap: '8px', 
-                            fontSize: '11px',
+                            fontSize: 'var(--ui-font-size)',
                             color: getStatusColor(),
                             marginBottom: '8px',
                             padding: '4px 8px',
@@ -125,7 +125,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                                         padding: '8px 12px', 
                                         borderRadius: '6px',
                                         margin: '8px 0',
-                                        fontSize: '12px',
+                                        fontSize: 'var(--ui-font-size)',
                                         backgroundColor: 'var(--active-bg)',
                                         display: 'flex',
                                         alignItems: 'center',

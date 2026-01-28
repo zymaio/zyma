@@ -38,7 +38,7 @@ const CodeDiffPart: React.FC<CodeDiffPartProps> = ({ original, modified, languag
                 display: 'flex', 
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                fontSize: '12px',
+                fontSize: 'calc(var(--ui-font-size) - 1px)',
                 borderBottom: '1px solid var(--border-color)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -51,22 +51,22 @@ const CodeDiffPart: React.FC<CodeDiffPartProps> = ({ original, modified, languag
                             onClick={handleApply}
                             style={{ 
                                 display: 'flex', alignItems: 'center', gap: '4px',
-                                background: 'var(--accent-color)', color: 'white',
+                                background: 'var(--accent-color)', color: 'var(--accent-foreground)',
                                 border: 'none', padding: '2px 8px', borderRadius: '4px',
-                                cursor: 'pointer'
+                                cursor: 'pointer', fontWeight: 'bold'
                             }}
                         >
                             <Check size={12} /> Apply
                         </button>
                     </div>
                 ) : (
-                    <span style={{ color: 'green', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ color: 'var(--status-success)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 'bold' }}>
                         <Check size={12} /> Applied
                     </span>
                 )}
             </div>
             
-            <div style={{ display: 'flex', maxHeight: '300px', overflowY: 'auto', fontSize: '12px' }}>
+            <div style={{ display: 'flex', maxHeight: '300px', overflowY: 'auto', fontSize: 'calc(var(--ui-font-size) - 1px)' }}>
                 {/* 简化版 Diff 视图 */}
                 <div style={{ flex: 1, borderRight: '1px solid var(--border-color)', padding: '8px', opacity: 0.6 }}>
                     <div style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Original</div>

@@ -55,7 +55,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onClear, disabled, sugges
                         <div 
                             key={i} 
                             onClick={() => { setText(text + s.cmd.substring(1) + ' '); setShowSuggestions(false); textareaRef.current?.focus(); }}
-                            style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: i < suggestions.length-1 ? '1px solid var(--border-color)' : 'none' }}
+                            style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 'calc(var(--ui-font-size) - 1px)', borderBottom: i < suggestions.length-1 ? '1px solid var(--border-color)' : 'none' }}
                             className="file-item-hover"
                         >
                             <span style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{s.cmd}</span>
