@@ -9,6 +9,7 @@ import { useTabSystem } from './hooks/useTabSystem';
 import { useSidebarResize } from './hooks/useSidebarResize';
 import ChatPanel from './components/Chat/ChatPanel';
 import Workbench from './core/Workbench';
+import { WorkbenchProvider } from './core/WorkbenchContext';
 import './App.css';
 import './components/ResizeHandle.css';
 
@@ -29,6 +30,7 @@ function App() {
 
   const chatComponents = useMemo(() => ({ 
       ChatPanel: (props: any) => <ChatPanel {...props} settings={settings} getContext={async () => {
+          fm.syncCurrentContent(); // 关键点：抓取前同步内容
           const editor = fm.editorViewRef.current;
           let selection = null;
           let fileContent = null;
@@ -39,7 +41,7 @@ function App() {
           }
           return { filePath: fm.activeFilePath, selection, fileContent };
       }} />
-  }), [fm.activeFilePath, settings]);
+  }), [fm.activeFilePath, settings, fm.syncCurrentContent]);
 
   useEffect(() => {
       if (ready && pluginManager.current) {
@@ -48,7 +50,6 @@ function App() {
   }, [ready, chatComponents]);
 
   useKeybindings();
-  useWindowManagement(".", false, fm, handleAppExit, () => {});
 
   useEffect(() => {
     if (!ready) return;
@@ -60,13 +61,15 @@ function App() {
   if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1b26' }}></div>;
 
   return (
-    <Workbench 
-        fm={fm}
-        tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
-        sidebarResize={{ sidebarWidth, startResizing }}
-        appInit={{ ready, settings, setSettings, isAdmin, platform, appVersion, pluginMenus, pluginManager, handleAppExit }}
-        chatComponents={chatComponents}
-    />
+    <WorkbenchProvider value={{ settings, setSettings, platform, appVersion, isAdmin }}>
+        <Workbench 
+            fm={fm}
+            tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
+            sidebarResize={{ sidebarWidth, startResizing }}
+            appInit={{ ready, settings, setSettings, isAdmin, platform, appVersion, pluginMenus, pluginManager, handleAppExit }}
+            chatComponents={chatComponents}
+        />
+    </WorkbenchProvider>
   );
 }
 

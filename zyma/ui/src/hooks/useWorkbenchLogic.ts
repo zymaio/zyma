@@ -1,0 +1,87 @@
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
+import { views } from '../components/ViewSystem/ViewRegistry';
+import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBarRegistry';
+import { pathUtils } from '../utils/pathUtils';
+
+import { registerWorkspaceCommands } from '../commands/workspace';
+
+interface WorkbenchLogicProps {
+    fm: any;
+    tabSystem: any;
+    appInit: any;
+}
+
+export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProps) {
+    const { t } = useTranslation();
+    const { setActiveTabId } = tabSystem;
+    const { ready } = appInit;
+
+    const [rootPath, setRootPath] = useState<string>(".");
+    const [sidebarTab, setSidebarTab] = useState<string>('explorer');
+    const [showSettings, setShowSettings] = useState(false);
+    const [showCommandPalette, setShowCommandPalette] = useState(false);
+    const [showSearch, setShowSearch] = useState(false);
+    const [aboutState, setAboutState] = useState({ show: false, autoCheck: false });
+    const [showSidebar, setShowSidebar] = useState(true);
+    const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
+    const [, forceUpdate] = useState(0);
+
+    // 订阅 Registry 变化
+    useEffect(() => {
+        const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
+        const unsubStatus = statusBarRegistry.subscribe(() => forceUpdate(n => n + 1));
+        return () => { unsubViews(); unsubStatus(); };
+    }, []);
+
+    // 注册核心命令 (Workspace 相关)
+    useEffect(() => {
+        if (!ready) return;
+        
+        registerWorkspaceCommands(t, {
+            setRootPath,
+            fm,
+            setActiveTabId
+        });
+    }, [ready, t, fm, setActiveTabId]);
+
+    const relativePath = useMemo(() => {
+        const activeTab = tabSystem.activeTab;
+        if (activeTab?.type !== 'file') return t('NoFile');
+        const activeFile = fm.openFiles.find((f: any) => f.id === activeTab.id);
+        if (!activeFile) return t('NoFile');
+        
+        const path = activeFile.path || activeFile.name;
+        const normRoot = pathUtils.toForwardSlashes(rootPath);
+        return path.startsWith(normRoot) ? path.replace(normRoot, '').replace(/^[\/]/, '') : path;
+    }, [tabSystem.activeTab, fm.openFiles, rootPath, t]);
+
+    const getLanguageMode = useCallback(() => {
+        const activeTab = tabSystem.activeTab;
+        if (activeTab?.type !== 'file') return '';
+        const activeFile = fm.openFiles.find((f: any) => f.id === activeTab.id);
+        if (!activeFile) return '';
+        
+        const ext = activeFile.name.split('.').pop()?.toLowerCase() || '';
+        const map: Record<string, string> = {
+            'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
+            'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
+            'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
+        };
+        return t(map[ext] || 'Plaintext');
+    }, [tabSystem.activeTab, fm.openFiles, t]);
+
+    return {
+        rootPath, setRootPath,
+        sidebarTab, setSidebarTab,
+        showSettings, setShowSettings,
+        showCommandPalette, setShowCommandPalette,
+        showSearch, setShowSearch,
+        aboutState, setAboutState,
+        showSidebar, setShowSidebar,
+        pendingCloseId, setPendingCloseId,
+        relativePath, getLanguageMode,
+        forceUpdate
+    };
+}

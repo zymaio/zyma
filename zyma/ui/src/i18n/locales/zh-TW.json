@@ -29,6 +29,8 @@
   "Unsaved": "未儲存",
   "ConfirmDelete": "確定要刪除 \"{{name}}\" 嗎？",
   "NewFile": "新建檔案",
+  "ExitApp": "退出智碼",
+  "UnsavedChangesExit": "您有尚未儲存的更改。是否在退出前儲存所有檔案？",
   "SaveBeforeClose": "檔案 \"{{name}}\" 尚未儲存，是否儲存後關閉？",
   "DontSave": "不儲存",
   "SaveAs": "另存新檔...",

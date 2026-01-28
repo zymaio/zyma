@@ -21,6 +21,8 @@ export class KeybindingManager {
             { key: 'ctrl+b', command: 'workbench.action.toggleSidebarVisibility' },
             { key: 'ctrl+f', command: 'actions.find' },
             { key: 'ctrl+=', command: 'editor.zoomIn' },
+            { key: 'ctrl++', command: 'editor.zoomIn' }, 
+            { key: 'ctrl+shift+=', command: 'editor.zoomIn' }, 
             { key: 'ctrl+-', command: 'editor.zoomOut' },
             { key: 'ctrl+0', command: 'editor.zoomReset' },
         ];

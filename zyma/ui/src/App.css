@@ -1,54 +1,83 @@
-/* Default Variables (Base) */
-:root {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  font-size: var(--ui-font-size);
+/* Workbench Core Layout */
+.app-root {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  flex-direction: column;
+  background-color: var(--bg-editor);
+  color: var(--text-primary);
 }
 
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
+.main-workbench {
+  display: flex;
+  flex: 1;
   overflow: hidden;
-  background-color: var(--bg-dark);
+}
+
+/* Sidebar & ActivityBar */
+.activity-bar {
+  width: 48px;
+  background-color: var(--bg-activity);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 10px;
+  gap: 20px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-color);
+}
+
+.activity-icon {
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.activity-icon.active {
+  color: var(--text-active);
+  border-left: 2px solid var(--accent-color);
+  padding-left: 2px;
+}
+
+.activity-icon:hover {
   color: var(--text-primary);
-  font-size: var(--ui-font-size);
+  filter: drop-shadow(0 0 5px var(--accent-color));
 }
 
-* {
-  box-sizing: border-box;
+.sidebar-container {
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
+/* Editor & Tabs */
+.editor-group-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: var(--bg-editor);
+  border-left: 1px solid var(--border-color);
 }
 
+.tab-close-btn:hover {
+  background-color: var(--active-bg);
+}
+
+/* Interaction States */
 .file-item-hover:hover {
-  background-color: var(--bg-activity-bar); /* Fallback or specific hover color */
-  color: var(--text-primary); 
-  filter: brightness(110%);
+  background-color: var(--active-bg);
+  color: var(--text-active);
 }
 
-/* Adjust hover specifically based on theme */
-body.theme-dark .file-item-hover:hover {
-    background-color: #2a2d2e;
-    color: #fff;
-}
-body.theme-light .file-item-hover:hover {
-    background-color: #e8e8e8;
-    color: #000;
+.menu-item:hover, .dropdown-item:hover {
+  background-color: var(--active-bg);
+  color: var(--text-active);
 }
 
-/* TitleBar Styles */
-.menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-body.theme-light .menu-item:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
+/* Window Controls */
 .window-control {
   width: 46px;
   display: flex;
@@ -58,147 +87,56 @@ body.theme-light .menu-item:hover {
   transition: background-color 0.1s;
 }
 
-.window-control:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-body.theme-light .window-control:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
+.window-control:hover { background-color: var(--active-bg); }
 .window-control.close:hover {
-  background-color: #e81123 !important;
+  background-color: var(--status-error) !important;
   color: #fff !important;
 }
 
-.dropdown-item:hover {
-  background-color: var(--dropdown-hover);
-  color: #fff !important;
-}
-
-/* Layout Styles */
-.empty-state {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: var(--text-secondary);
-    flex-direction: column;
-    background-color: var(--bg-dark);
-}
-
-.logo-text {
-    font-size: 2.5em;
-    font-weight: bold;
-    color: var(--text-primary);
-    margin-bottom: 20px;
-    opacity: 0.8;
-}
-
+/* Status Bar */
 .status-bar {
-    height: 22px;
-    background-color: var(--status-bar-bg, #007acc); /* Fallback to VS Code blue */
-    color: #fff;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    font-size: var(--ui-font-size);
-    user-select: none;
-    flex-shrink: 0;
+  height: 22px;
+  background-color: var(--bg-status);
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: var(--ui-font-size);
+  user-select: none;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border-color);
 }
 
-.activity-bar {
-    width: 48px;
-    background-color: var(--bg-activity-bar);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 10px;
-    gap: 20px;
-    flex-shrink: 0;
-    border-right: 1px solid var(--border-color);
-}
-
-.activity-icon {
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: color 0.2s;
-}
-
-.activity-icon.active {
-    color: var(--text-primary);
-    border-left: 2px solid var(--accent-color);
-    padding-left: 2px;
-}
-
-.activity-icon:hover {
-    color: var(--text-primary);
-}
-
-.tab-close-btn:hover {
-    background-color: rgba(128, 128, 128, 0.3);
-}
-
-.icon-btn {
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-}
-
-.icon-btn:hover {
-    opacity: 1;
-    color: var(--text-primary);
-}
-
-.item-actions {
-    display: none;
-}
-
-.file-item-hover:hover .item-actions {
-    display: flex;
-    align-items: center;
-}
-
-.action-icon {
-    cursor: pointer;
-    opacity: 0.5;
-    transition: opacity 0.2s;
-}
-
-.action-icon:hover {
-    opacity: 1;
-    color: #ff4d4f;
-}
-
-/* Chat Bubble Styles */
+/* Chat & Messages (恢复关键逻辑) */
 @keyframes bubbleIn {
-    from { opacity: 0; transform: translateY(10px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .message-bubble {
-    animation: bubbleIn 0.2s ease-out forwards;
-}
-
-.message-bubble.is-user .markdown-body {
-    color: #fff !important;
-}
-
-.message-bubble.is-user .markdown-body p,
-.message-bubble.is-user .markdown-body li {
-    color: #fff !important;
+  animation: bubbleIn 0.2s ease-out forwards;
 }
 
 .message-bubble .markdown-body {
-    font-size: 13px !important;
-    line-height: 1.5;
+  font-size: 13px !important;
+  line-height: 1.5;
 }
 
 .message-bubble .markdown-body pre {
-    background-color: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--border-color);
 }
 
-.message-bubble.is-user .markdown-body code {
-    background-color: rgba(255, 255, 255, 0.15) !important;
-    color: #fff !important;
+/* Utils */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.icon-btn { cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+.icon-btn:hover { opacity: 1; color: var(--text-primary); }
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-muted);
+  flex-direction: column;
 }

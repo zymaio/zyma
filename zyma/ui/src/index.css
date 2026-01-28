@@ -10,32 +10,62 @@
 }
 
 .theme-dark {
+  /* UI Colors */
   --bg-editor: #1a1b26;
   --bg-sidebar: #16161e;
   --bg-activity: #16161e;
   --bg-status: #1a1b26;
   --bg-tabs: #16161e;
   --bg-active-tab: #1a1b26;
-  --text-main: #e0e6f8; /* 提升亮度 */
-  --text-muted: #9499b8; /* 提升亮度 */
-  --text-active: #ffffff; /* 纯白 */
+  --text-main: #e0e6f8;
+  --text-muted: #9499b8;
+  --text-active: #ffffff;
   --border-color: #24283b;
   --accent-color: #7aa2f7;
   --active-bg: #292e42;
   --active-text: #7aa2f7;
-  color: var(--text-main);
-  background-color: var(--bg-editor);
-  --bg-dark: var(--bg-editor);
-  --bg-activity-bar: var(--bg-activity);
-  --bg-titlebar: var(--bg-activity); 
   --text-primary: var(--text-main);
   --text-secondary: var(--text-muted);
   --bg-dropdown: var(--bg-sidebar);
   --dropdown-hover: var(--active-bg);
   --input-bg: var(--bg-editor);
+  --input-border: var(--border-color);
+  --cursor-color: var(--accent-color);
+
+  /* Status Colors */
+  --status-success: #10b981;
+  --status-error: #ef4444;
+  --status-warning: #f59e0b;
+  --status-info: #3b82f6;
+
+  /* Component Specific */
+  --tab-active-border: var(--accent-color);
+  --ai-bubble-bg: #10b981;
+  --user-bubble-bg: var(--accent-color);
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.5);
+
+  /* Editor Syntax Highlighting (Tokyo Night inspired) */
+  --syn-keyword: #bb9af7;
+  --syn-string: #9ece6a;
+  --syn-comment: #565f89;
+  --syn-function: #7aa2f7;
+  --syn-variable: #e0e6f8;
+  --syn-number: #ff9e64;
+  --syn-operator: #89ddff;
+  --syn-type: #2ac3de;
+  --syn-className: #f7768e;
+  --syn-builtin: #0db9d7;
+  --syn-tag: #f7768e;
+  --syn-attr: #bb9af7;
+  --syn-regex: #b4f9f8;
+  --syn-md-heading: #7aa2f7;
+  --syn-md-bold: #e0e6f8;
+  --syn-md-link: #7ad9ff;
 }
 
 .theme-light {
+  /* UI Colors */
   --bg-editor: #ffffff;
   --bg-sidebar: #f6f8fa;
   --bg-activity: #f6f8fa;
@@ -49,42 +79,100 @@
   --accent-color: #0969da;
   --active-bg: #eaeff4;
   --active-text: #0969da;
-  color: var(--text-main);
-  background-color: var(--bg-editor);
-  --bg-dark: var(--bg-editor);
-  --bg-activity-bar: var(--bg-activity);
-  --bg-titlebar: var(--bg-activity);
   --text-primary: var(--text-main);
   --text-secondary: var(--text-muted);
   --bg-dropdown: #ffffff;
   --dropdown-hover: var(--active-bg);
   --input-bg: var(--bg-editor);
+  --input-border: var(--border-color);
+  --cursor-color: var(--accent-color);
+
+  /* Status Colors */
+  --status-success: #1a7f37;
+  --status-error: #cf222e;
+  --status-warning: #9a6700;
+  --status-info: #0969da;
+
+  /* Component Specific */
+  --tab-active-border: var(--accent-color);
+  --ai-bubble-bg: #dafbe1;
+  --user-bubble-bg: #ddf4ff;
+  --overlay-bg: rgba(255, 255, 255, 0.5);
+  --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.1);
+
+  /* Editor Syntax Highlighting (GitHub Light inspired) */
+  --syn-keyword: #cf222e;
+  --syn-string: #0a3069;
+  --syn-comment: #6e7781;
+  --syn-function: #8250df;
+  --syn-variable: #24292f;
+  --syn-number: #0550ae;
+  --syn-operator: #0550ae;
+  --syn-type: #953800;
+  --syn-className: #953800;
+  --syn-builtin: #0550ae;
+  --syn-tag: #116329;
+  --syn-attr: #0550ae;
+  --syn-regex: #0550ae;
+  --syn-md-heading: #0550ae;
+  --syn-md-bold: #24292f;
+  --syn-md-link: #0969da;
 }
 
 .theme-abyss {
-  --bg-editor: #000c18;
-  --bg-sidebar: #001126;
-  --bg-activity: #001126;
-  --bg-status: #000c18;
-  --bg-tabs: #001126;
-  --bg-active-tab: #000c18;
-  --text-main: #bbbbbb;
-  --text-muted: #667788;
-  --text-active: #00bfff;
-  --border-color: #002244;
-  --accent-color: #007acc;
-  --active-bg: #001c3d;
-  --active-text: #00bfff;
-  color: var(--text-main);
-  background-color: var(--bg-editor);
-  --bg-dark: var(--bg-editor);
-  --bg-activity-bar: var(--bg-activity);
-  --bg-titlebar: var(--bg-activity); 
-  --text-primary: var(--text-main);
-  --text-secondary: var(--text-muted);
-  --bg-dropdown: var(--bg-sidebar);
-  --dropdown-hover: var(--active-bg);
-  --input-bg: var(--bg-editor);
+  /* UI Colors - 纯黑 OLED 增强版 */
+  --bg-editor: #000000;    /* 纯黑编辑区 */
+  --bg-sidebar: #060621;
+  --bg-activity: #051336;
+  --bg-status: #10192c;
+  --bg-tabs: #1c1c2a;
+  --bg-active-tab: #000000;
+  --text-main: #ffffff; 
+  --text-muted: #99aaff; 
+  --text-active: #ffffff; 
+  --border-color: #1a1a3a; /* 稍微加深边框，匹配纯黑 */
+  --accent-color: #fad000; /* 亮金黄 */
+  --accent-foreground: #000000; /* 金黄背景配黑字 */
+  --active-bg: #08286b;
+  --active-text: #ffffff;
+  --text-primary: #ffffff; 
+  --text-secondary: #ccddff;
+  --bg-dropdown: #181f2f;
+  --dropdown-hover: #08286b;
+  --input-bg: #000000;
+  --input-border: #1d4a87;
+  --cursor-color: #fad000;
+
+  /* Status Colors */
+  --status-success: #22aa44;
+  --status-error: #a22d44;
+  --status-warning: #fd971f;
+  --status-info: #6688cc;
+
+  /* Component Specific */
+  --tab-active-border: #80a2c2;
+  --ai-bubble-bg: #051336;
+  --user-bubble-bg: #08286b;
+  --overlay-bg: rgba(0, 12, 24, 0.85);
+  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  /* Editor Syntax Highlighting - 精确 Lingma Abyss 配色 (已提亮) */
+  --syn-keyword: #66aaff;   /* 从深蓝提亮到亮天蓝，解决列表看不清的问题 */
+  --syn-string: #adff00;    /* 亮绿字符串 */
+  --syn-comment: #6b62ad;   /* 提亮注释色 */
+  --syn-function: #fad000;  /* 亮金黄函数 */
+  --syn-variable: #9effff;  /* 亮青色变量 */
+  --syn-number: #ff628c;    /* 粉紫色数字 */
+  --syn-operator: #9effff;
+  --syn-type: #00e8ff;
+  --syn-className: #fad000;
+  --syn-builtin: #fb9e00;
+  --syn-tag: #ff9d00;
+  --syn-attr: #fad000;
+  --syn-regex: #ff628c;
+  --syn-md-heading: #fad000;
+  --syn-md-bold: #ffffff;
+  --syn-md-link: #00e8ff;
 }
 
 body {
@@ -94,6 +182,8 @@ body {
   width: 100vw;
   user-select: none;
   font-size: var(--ui-font-size);
+  color: var(--text-main);
+  background-color: var(--bg-editor);
 }
 
 #root { height: 100%; width: 100%; }
@@ -115,6 +205,44 @@ body {
 .breadcrumb-item:hover { color: var(--text-primary); text-decoration: underline; }
 .breadcrumb-item { transition: color 0.2s; }
 
-.menu-item, .dropdown-item, .breadcrumb-item, .command-palette-item, .context-menu-item, .status-bar, .activity-bar, .sidebar-item-container {
+/* 全局标准按钮样式 - 供插件使用 */
+.btn-primary {
+    background-color: var(--accent-color) !important;
+    color: var(--accent-foreground) !important;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--active-bg) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background-color: var(--border-color) !important;
+}
+
+/* 批量应用全局缩放变量 */
+.menu-item, .dropdown-item, .breadcrumb-item, .command-palette-item, .context-menu-item, .status-bar, .activity-bar, .sidebar-item-container, .tab-item, .btn-primary, .btn-secondary {
     font-size: var(--ui-font-size) !important;
 }

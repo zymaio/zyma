@@ -15,7 +15,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     // 状态样式映射
     const getStatusColor = () => {
         switch (message.status) {
-            case 'error': return '#ef4444';
+            case 'error': return 'var(--status-error)';
             case 'thinking':
             case 'streaming': return 'var(--accent-color)';
             default: return 'var(--text-secondary)';
@@ -34,13 +34,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 width: '28px', 
                 height: '28px', 
                 borderRadius: '50%', 
-                backgroundColor: isUser ? 'var(--accent-color)' : '#10b981',
+                backgroundColor: isUser ? 'var(--user-bubble-bg)' : 'var(--ai-bubble-bg)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'white',
+                color: isUser ? '#fff' : 'var(--text-primary)',
                 flexShrink: 0,
-                marginTop: '4px'
+                marginTop: '4px',
+                border: '1px solid var(--border-color)'
             }}>
                 {isUser ? <User size={16} /> : <Bot size={16} />}
             </div>
@@ -62,7 +63,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                     <span style={{ fontWeight: '600', fontSize: '11px', color: 'var(--text-secondary)' }}>
                         {isUser ? 'You' : 'Agent'}
                     </span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                         {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
@@ -72,9 +73,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                     borderRadius: '12px',
                     borderTopLeftRadius: isUser ? '12px' : '2px',
                     borderTopRightRadius: isUser ? '2px' : '12px',
-                    backgroundColor: isUser ? 'var(--accent-color)' : 'var(--bg-primary)',
-                    color: isUser ? '#fff' : 'var(--text-primary)',
+                    backgroundColor: isUser ? 'var(--user-bubble-bg)' : 'var(--ai-bubble-bg)',
+                    color: 'var(--text-primary)',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    border: '1px solid var(--border-color)',
                     width: 'fit-content',
                     maxWidth: '95%',
                     lineHeight: '1.6'
@@ -86,10 +88,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                             alignItems: 'center', 
                             gap: '8px', 
                             fontSize: '11px',
-                            color: isUser ? 'rgba(255,255,255,0.8)' : getStatusColor(),
+                            color: getStatusColor(),
                             marginBottom: '8px',
                             padding: '4px 8px',
-                            backgroundColor: isUser ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.03)',
+                            backgroundColor: 'rgba(0,0,0,0.05)',
                             borderRadius: '4px',
                             width: 'fit-content'
                         }}>
@@ -124,13 +126,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                                         borderRadius: '6px',
                                         margin: '8px 0',
                                         fontSize: '12px',
-                                        backgroundColor: 'var(--bg-secondary)',
+                                        backgroundColor: 'var(--active-bg)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '8px',
                                         color: 'var(--text-primary)'
                                     }}>
-                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: part.status === 'success' ? '#10b981' : '#f59e0b' }} />
+                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: part.status === 'success' ? 'var(--status-success)' : 'var(--status-warning)' }} />
                                         <span>Using tool: <b>{part.name}</b></span>
                                         {part.status === 'calling' && <Loader2 size={10} className="animate-spin" />}
                                     </div>;

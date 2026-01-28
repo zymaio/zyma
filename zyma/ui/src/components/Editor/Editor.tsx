@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useCodeMirror } from './useCodeMirror';
+import { statusBar } from '../StatusBar/StatusBarRegistry';
 
 interface EditorProps {
     content: string;
@@ -7,12 +8,16 @@ interface EditorProps {
     themeMode: string;
     fontSize: number;
     onChange: (val: string) => void;
-    onCursorUpdate?: (line: number, col: number) => void;
     editorRef?: React.MutableRefObject<any>;
 }
 
 const Editor: React.FC<EditorProps> = (props) => {
-    const { editorRef, viewRef } = useCodeMirror(props);
+    const { editorRef, viewRef } = useCodeMirror({
+        ...props,
+        onCursorUpdate: (line, col) => {
+            statusBar.setCursorPosition(line, col);
+        }
+    });
 
     useEffect(() => {
         if (props.editorRef) {
@@ -27,7 +32,7 @@ const Editor: React.FC<EditorProps> = (props) => {
             style={{ 
                 height: '100%', 
                 width: '100%', 
-                fontSize: `${props.fontSize}px`,
+                fontSize: `calc(${props.fontSize}px * (var(--ui-font-size) / 13))`,
                 backgroundColor: 'var(--bg-editor)'
             }} 
         />

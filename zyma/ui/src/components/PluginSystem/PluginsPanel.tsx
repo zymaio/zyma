@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Puzzle, Trash2, Ban, Play, PlusCircle } from 'lucide-react';
+import { Search, Puzzle, Trash2, Ban, Play } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { commands } from '../CommandSystem/CommandRegistry';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { DynamicIcon } from '../Common/DynamicIcon';
 
@@ -46,12 +45,8 @@ const PluginsPanel: React.FC<PluginsPanelProps> = ({ pluginManager, onUpdate }) 
     const handleDelete = async (e: React.MouseEvent, p: any) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        const confirmed = await ask(
-            `${t('ConfirmDeletePlugin')} \n[${p.name}]`, 
-            { title: 'Zyma Extension', kind: 'warning', okLabel: t('Delete'), cancelLabel: t('Cancel') }
-        );
-        
+        const confirmed = await ask(`${t('ConfirmDeletePlugin')} 
+[${p.name}]`, { title: 'Zyma Extension', kind: 'warning' });
         if (confirmed) {
             try {
                 await pluginManager.unloadPlugin(p.name);
@@ -60,16 +55,23 @@ const PluginsPanel: React.FC<PluginsPanelProps> = ({ pluginManager, onUpdate }) 
                     await pluginManager.loadAll();
                     onUpdate();
                 }
-            } catch (err) {
-                console.error("Delete error:", err);
-            }
+            } catch (err) {}
         }
     };
 
     return (
-        <div className="plugins-panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-sidebar)', color: '#fff' }}>
-            <div style={{ padding: '10px' }}>
-                <div style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px', opacity: 0.7 }}>
+        <div className="plugins-panel" style={{ 
+            display: 'flex', flexDirection: 'column', height: '100%', 
+            backgroundColor: 'var(--bg-sidebar)', color: 'var(--text-primary)' 
+        }}>
+            {/* Header Area */}
+            <div style={{ padding: '15px 10px 10px 10px' }}>
+                <div style={{ 
+                    fontSize: 'calc(var(--ui-font-size) - 1px)', 
+                    fontWeight: '900', textTransform: 'uppercase', 
+                    marginBottom: '12px', color: 'var(--text-muted)',
+                    letterSpacing: '0.5px'
+                }}>
                     {t('Extensions')}
                 </div>
                 <div style={{ position: 'relative' }}>
@@ -79,60 +81,84 @@ const PluginsPanel: React.FC<PluginsPanelProps> = ({ pluginManager, onUpdate }) 
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
-                            width: '100%',
-                            backgroundColor: 'rgba(255,255,255,0.05)',
-                            border: '1px solid var(--border-color)',
-                            color: '#fff',
-                            padding: '4px 8px 4px 28px',
-                            fontSize: '13px',
-                            outline: 'none',
-                            boxSizing: 'border-box'
+                            width: '100%', backgroundColor: 'var(--input-bg)',
+                            border: '1px solid var(--border-color)', color: 'var(--text-primary)',
+                            padding: '8px 8px 8px 32px', fontSize: 'var(--ui-font-size)',
+                            outline: 'none', borderRadius: '4px'
                         }}
                     />
-                    <Search size={14} style={{ position: 'absolute', left: '8px', top: '7px', opacity: 0.5 }} />
+                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-color)' }} />
                 </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                <div style={{ padding: '10px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.6 }}>
+            {/* List Area */}
+            <div style={{ flex: 1, overflowY: 'auto' }} className="no-scrollbar">
+                <div style={{ 
+                    padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', 
+                    fontWeight: 'bold', color: 'var(--text-secondary)'
+                }}>
                     {t('Installed')} ({filteredPlugins.length})
                 </div>
 
                 {filteredPlugins.map((p: any) => (
                     <div key={p.id} style={{ 
-                        display: 'flex', padding: '12px 10px', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        opacity: p.enabled ? 1 : 0.5, transition: 'all 0.2s'
+                        display: 'flex', padding: '12px', gap: '12px', 
+                        borderBottom: '1px solid var(--border-color)',
+                        backgroundColor: p.enabled ? 'transparent' : 'rgba(0,0,0,0.1)'
                     }} className="file-item-hover">
+                        {/* Plugin Icon */}
                         <div style={{ 
-                            width: '42px', height: '42px', 
-                            backgroundColor: p.enabled ? 'var(--accent-color)' : '#444', 
-                            borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 
+                            width: '44px', height: '44px', 
+                            backgroundColor: p.enabled ? 'var(--accent-color)' : 'var(--active-bg)', 
+                            borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            flexShrink: 0, color: p.enabled ? 'var(--accent-foreground)' : 'var(--text-muted)'
                         }}>
-                            <DynamicIcon icon={p.icon} size={24} />
+                            <DynamicIcon icon={p.icon} size={26} />
                         </div>
+
+                        {/* Content */}
                         <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: p.enabled ? 'var(--accent-color)' : '#aaa' }}>{p.name}</div>
-                                    {p.isBuiltin && (
-                                        <span style={{ fontSize: '9px', backgroundColor: 'rgba(122, 162, 247, 0.2)', color: 'var(--accent-color)', padding: '1px 4px', borderRadius: '2px', border: '1px solid rgba(122, 162, 247, 0.3)' }}>
-                                            Built-in
-                                        </span>
-                                    )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                <div style={{ fontWeight: 'bold', fontSize: 'var(--ui-font-size)', color: p.enabled ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                                    {p.name}
                                 </div>
-                                <div style={{ fontSize: '11px', opacity: 0.5 }}>v{p.version}</div>
+                                <div style={{ fontSize: 'calc(var(--ui-font-size) - 3px)', color: 'var(--accent-color)', fontWeight: 'bold' }}>
+                                    v{p.version}
+                                </div>
                             </div>
-                            <div style={{ fontSize: '12px', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: '2px 0' }}>
-                                {p.description || 'No description provided.'}
+                            
+                            <div style={{ 
+                                fontSize: 'calc(var(--ui-font-size) - 2px)', 
+                                color: 'var(--text-secondary)', lineHeight: '1.4',
+                                marginBottom: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                            }}>
+                                {p.description || 'No description.'}
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                                <div style={{ fontSize: '11px', opacity: 0.5 }}>{p.author || 'Zyma'}</div>
-                                <div style={{ display: 'flex', gap: '14px' }}>
-                                    <button onClick={(e) => handleToggle(e, p)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}>
-                                        {p.enabled ? <Ban size={15} /> : <Play size={15} />}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontSize: 'calc(var(--ui-font-size) - 3px)', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                                    {p.author || 'Zyma'}
+                                </div>
+                                <div style={{ display: 'flex', gap: '15px' }}>
+                                    <button 
+                                        onClick={(e) => handleToggle(e, p)} 
+                                        style={{ 
+                                            background: p.enabled ? 'var(--active-bg)' : 'var(--accent-color)', 
+                                            border: 'none', 
+                                            color: p.enabled ? 'var(--text-primary)' : 'var(--accent-foreground)', 
+                                            cursor: 'pointer', padding: '2px 8px', borderRadius: '3px',
+                                            fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 'bold',
+                                            display: 'flex', alignItems: 'center', gap: '4px'
+                                        }}
+                                    >
+                                        {p.enabled ? <><Ban size={12} /> {t('Disable')}</> : <><Play size={12} /> {t('Enable')}</>}
                                     </button>
                                     {!p.isBuiltin && (
-                                        <button onClick={(e) => handleDelete(e, p)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0 }}>
+                                        <button 
+                                            onClick={(e) => handleDelete(e, p)} 
+                                            style={{ background: 'none', border: 'none', color: 'var(--status-error)', cursor: 'pointer', padding: 0 }}
+                                            title={t('Uninstall')}
+                                        >
                                             <Trash2 size={15} />
                                         </button>
                                     )}

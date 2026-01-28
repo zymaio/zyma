@@ -79,7 +79,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                         {isCopied ? (
-                            <span title={t('CopySuccess')} style={{ display: 'flex', alignItems: 'center' }}><Check size={14} style={{ color: '#4caf50' }} /></span>
+                            <span title={t('CopySuccess')} style={{ display: 'flex', alignItems: 'center' }}><Check size={14} style={{ color: 'var(--status-success)' }} /></span>
                         ) : (
                             <span title={t('CopyOutput')} onClick={handleCopyAll} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
                                 <Copy size={14} />
@@ -105,7 +105,8 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     lineHeight: '1.5',
                     whiteSpace: 'pre-wrap', wordBreak: 'break-all',
                     userSelect: 'text',
-                    WebkitUserSelect: 'text'
+                    WebkitUserSelect: 'text',
+                    backgroundColor: 'var(--bg-editor)'
                 }}
             >
                 {lines.map((line, i) => {
@@ -115,14 +116,14 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
 
                     const lowerText = text.toLowerCase();
                     if (lowerText.includes('[error]') || lowerText.includes('[fatal]') || lowerText.includes('failed')) {
-                        color = '#f44336'; 
+                        color = 'var(--status-error)'; 
                         fontWeight = 'bold';
                     } else if (lowerText.includes('[warning]') || lowerText.includes('warn')) {
-                        color = '#ff9800'; 
+                        color = 'var(--status-warning)'; 
                     } else if (lowerText.includes('[success]') || lowerText.includes('[done]') || lowerText.includes('成功')) {
-                        color = '#4caf50'; 
+                        color = 'var(--status-success)'; 
                     } else if (lowerText.includes('[info]') || lowerText.includes('[system]') || lowerText.includes('[restore]')) {
-                        color = '#2196f3'; 
+                        color = 'var(--status-info)'; 
                     }
 
                     return (

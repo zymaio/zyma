@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 
 export type TabItem = {
-    id: string;
+    id: string; // 对应 FileData.id
     title: string;
     type: 'file' | 'view';
     component?: React.ReactNode;
@@ -11,12 +11,12 @@ export function useTabSystem(fm: any) {
     const [activeTabs, setActiveTabs] = useState<TabItem[]>([]);
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-    // 1. 同步文件列表
+    // 1. 同步文件列表 (核心：基于 fm.openFiles 映射，保持 ID 一致)
     useEffect(() => {
         setActiveTabs(prev => {
             const viewTabs = prev.filter(t => t.type === 'view');
             const fileTabs: TabItem[] = fm.openFiles.map((f: any) => ({
-                id: f.path || f.name,
+                id: f.id,
                 title: f.name,
                 type: 'file'
             }));
@@ -42,36 +42,38 @@ export function useTabSystem(fm: any) {
 
     // 4. 关闭 Tab 逻辑
     const closeTab = useCallback((id: string) => {
-        const tabToClose = activeTabs.find(t => t.id === id);
-        if (!tabToClose) return;
+        const index = activeTabs.findIndex(t => t.id === id);
+        if (index === -1) return;
 
-        // 如果关闭的是当前活跃的 Tab，我们需要计算下一个活跃的 ID
+        const tabToClose = activeTabs[index];
+
+        // 自动计算下一个活跃 ID
         let nextActiveId = activeTabId;
         if (activeTabId === id) {
-            const remaining = activeTabs.filter(t => t.id !== id);
-            nextActiveId = remaining.length > 0 ? remaining[remaining.length - 1].id : null;
+            if (activeTabs.length > 1) {
+                // 优先激活右侧，若无则激活左侧
+                nextActiveId = activeTabs[index + 1]?.id || activeTabs[index - 1]?.id;
+            } else {
+                nextActiveId = null;
+            }
         }
 
         if (tabToClose.type === 'file') {
             fm.closeFile(id);
-            // 注意：fm.closeFile 内部已经处理了 setActiveFilePath(null)
-            // 我们这里手动补齐 Tab 层的状态切换
-            if (activeTabId === id) {
-                setActiveTabId(nextActiveId);
-                // 同步更新文件系统的活跃路径
-                if (nextActiveId) {
-                    const nextTab = activeTabs.find(t => t.id === nextActiveId);
-                    if (nextTab?.type === 'file') {
-                        fm.setActiveFilePath(nextActiveId);
-                    }
-                } else {
-                    fm.setActiveFilePath(null);
-                }
-            }
         } else {
             setActiveTabs(prev => prev.filter(t => t.id !== id));
-            if (activeTabId === id) {
-                setActiveTabId(nextActiveId);
+        }
+
+        // 统一处理活跃状态切换
+        if (activeTabId === id) {
+            setActiveTabId(nextActiveId);
+            if (nextActiveId) {
+                const nextTab = activeTabs.find(t => t.id === nextActiveId);
+                if (nextTab?.type === 'file') {
+                    fm.setActiveFilePath(nextActiveId);
+                }
+            } else {
+                fm.setActiveFilePath(null);
             }
         }
     }, [activeTabs, activeTabId, fm]);

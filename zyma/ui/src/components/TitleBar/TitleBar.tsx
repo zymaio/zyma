@@ -84,7 +84,9 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
       setIsMaximized(true);
     }
   };
-  const handleClose = () => getCurrentWindow().close();
+  
+  // 关键：这里不再直接 close()，而是触发 onAction('exit') 让上层处理
+  const handleRequestClose = () => onAction('exit');
 
   return (
     <div 
@@ -107,10 +109,10 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
       {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
       
       <div style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, flexDirection: isMac ? 'row-reverse' : 'row' }}>
-        {/* New Zyma Logo: Red Background + White Bolt */}
+        {/* New Zyma Logo: Theme-aware Background + White Bolt */}
         <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }} data-tauri-drag-region>
           <div style={{ 
-            width: '18px', height: '18px', backgroundColor: '#FF4D4F', borderRadius: '4px',
+            width: '18px', height: '18px', backgroundColor: 'var(--status-error)', borderRadius: '4px',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
             <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -127,7 +129,8 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                         className="menu-item"
                         style={{ 
                             padding: '0 10px', height: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer',
-                            backgroundColor: activeMenu === menu.label ? 'rgba(128,128,128,0.2)' : 'transparent'
+                            backgroundColor: activeMenu === menu.label ? 'var(--active-bg)' : 'transparent',
+                            color: activeMenu === menu.label ? 'var(--text-active)' : 'inherit'
                         }}
                         onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                         onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
@@ -138,7 +141,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                         <div style={{
                             position: 'absolute', top: '30px', left: 0,
                             backgroundColor: 'var(--bg-dropdown)', border: '1px solid var(--border-color)',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.3)', minWidth: '180px', padding: '4px 0', zIndex: 1001
+                            boxShadow: 'var(--shadow-main)', minWidth: '180px', padding: '4px 0', zIndex: 1001
                         }}>
                             {menu.items.map((item: any, idx) => (
                                 item.type === 'separator' ? (
@@ -176,7 +179,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                 <div className="window-control" onClick={handleMaximize}>
                     {isMaximized ? <Copy size={14} /> : <Square size={14} />}
                 </div>
-                <div className="window-control close" onClick={handleClose}><CloseIcon size={16} /></div>
+                <div className="window-control close" onClick={handleRequestClose}><CloseIcon size={16} /></div>
             </>
         )}
       </div>

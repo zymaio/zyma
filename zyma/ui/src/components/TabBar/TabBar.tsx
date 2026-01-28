@@ -87,7 +87,7 @@ const TabBar: React.FC<TabBarProps> = ({ files, activePath, onSwitch, onClose })
   return (
     <div style={{
       height: '35px',
-      backgroundColor: 'var(--bg-tab)',
+      backgroundColor: 'var(--bg-tabs)',
       display: 'flex',
       overflowX: 'auto',
       borderBottom: '1px solid var(--border-color)',
@@ -139,17 +139,17 @@ const TabItem: React.FC<TabItemProps> = ({ name, type, active, isDirty, style, o
   const isView = type === 'view';
   
   // 基础颜色逻辑
-  let backgroundColor = active ? 'var(--bg-tab-active)' : 'transparent';
-  let color = active ? 'var(--text-primary)' : 'var(--text-secondary)';
-  let borderTopColor = active ? 'var(--accent-color)' : 'transparent';
+  let backgroundColor = active ? 'var(--bg-active-tab)' : 'transparent';
+  let color = active ? 'var(--text-active)' : 'var(--text-muted)';
+  let borderTopColor = active ? 'var(--tab-active-border)' : 'transparent';
 
   // 针对 View (Chat 等) 的特殊样式
   if (isView) {
       if (active) {
-          backgroundColor = 'var(--bg-secondary)'; // 稍微区别于文件 Tab 的活跃色
-          borderTopColor = '#10b981'; // 比如用绿色代表 AI/插件视图
+          backgroundColor = 'var(--active-bg)'; 
+          borderTopColor = 'var(--status-success)'; 
       } else {
-          backgroundColor = 'rgba(0,0,0,0.1)'; // 非活跃时也带点底色
+          backgroundColor = 'var(--bg-tabs)'; 
       }
   }
 
@@ -160,7 +160,7 @@ const TabItem: React.FC<TabItemProps> = ({ name, type, active, isDirty, style, o
         style={{
             display: 'flex',
             alignItems: 'center',
-            padding: '0 10px',
+            padding: '0 12px',
             minWidth: isView ? '100px' : '120px',
             maxWidth: '220px',
             backgroundColor,
@@ -171,6 +171,7 @@ const TabItem: React.FC<TabItemProps> = ({ name, type, active, isDirty, style, o
             fontSize: 'var(--ui-font-size)',
             userSelect: 'none',
             position: 'relative',
+            transition: 'background-color 0.2s',
             ...style
         }}
     >

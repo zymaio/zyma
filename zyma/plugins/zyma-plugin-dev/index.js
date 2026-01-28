@@ -34,15 +34,13 @@ exports.activate = function() {
         title: 'Dev Center',
         icon: 'Terminal',
         component: () => {
-            return React.createElement('div', { key: 'dev-root', style: { padding: '16px', color: '#fff' } }, 
+            return React.createElement('div', { key: 'dev-root', style: { padding: '16px', color: 'var(--text-primary)' } }, 
                 React.createElement('h3', { key: 'h3', style: { marginBottom: '16px' } }, '开发中心'),
                 React.createElement('button', {
                     key: 'btn',
+                    className: 'btn-primary',
                     onClick: () => zyma.commands.execute('dev.createTemplate'),
-                    style: {
-                        width: '100%', padding: '10px', backgroundColor: 'var(--accent-color)',
-                        color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer'
-                    }
+                    style: { width: '100%', padding: '10px' }
                 }, '生成新插件到配置目录')
             );
         }

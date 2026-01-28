@@ -152,10 +152,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, settings, g
             display: 'flex', 
             flexDirection: 'column', 
             height: '100%', 
-            backgroundColor: 'var(--bg-sidebar)',
-            fontSize: (settings?.ui_font_size || 13) + 'px' 
+            backgroundColor: 'var(--bg-editor)',
+            color: 'var(--text-primary)',
+            fontSize: 'var(--ui-font-size)' 
         }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '15px 15px 10px 15px' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px 15px 10px 15px' }} className="no-scrollbar">
                 {messages.map(msg => (
                     <ChatMessage key={msg.id} message={msg} />
                 ))}

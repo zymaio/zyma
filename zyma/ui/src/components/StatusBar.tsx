@@ -7,7 +7,6 @@ interface StatusBarProps {
     isAdmin: boolean;
     relativePath: string;
     activeFile: any;
-    cursorPos: { line: number, col: number };
     getLanguageMode: () => string;
     hasUpdate: boolean;
     appVersion: string;
@@ -15,12 +14,21 @@ interface StatusBarProps {
 }
 
 const StatusBar: React.FC<StatusBarProps> = ({ 
-    isAdmin, relativePath, activeFile, cursorPos, getLanguageMode, hasUpdate, appVersion, t 
+    isAdmin, relativePath, activeFile, getLanguageMode, hasUpdate, appVersion, t 
 }) => {
+    const [cursor, setCursor] = React.useState({ line: 1, col: 1 });
+
+    React.useEffect(() => {
+        // 关键点：只在这里订阅高频更新
+        return statusBar.subscribeCursor((pos) => {
+            setCursor(pos);
+        });
+    }, []);
+
     return (
-        <div className="status-bar">
+        <div className="status-bar" style={{ backgroundColor: 'var(--bg-status)', color: 'var(--text-main)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {isAdmin && <span style={{ backgroundColor: '#e81123', color: '#fff', padding: '0 4px', borderRadius: '2px', fontSize: 'calc(var(--ui-font-size) - 3px)', fontWeight: 'bold' }}>{t('Administrator')}</span>}
+                {isAdmin && <span style={{ backgroundColor: 'var(--status-error)', color: '#fff', padding: '0 4px', borderRadius: '2px', fontSize: 'calc(var(--ui-font-size) - 3px)', fontWeight: 'bold' }}>{t('Administrator')}</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.9 }} title={activeFile?.path || ''}>
                     {relativePath}
                 </div>
@@ -31,7 +39,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                 <div title={t('Line') + '/' + t('Column')}>
-                    {`${t('Ln')} ${cursorPos.line}, ${t('Col')} ${cursorPos.col}`}
+                    {`${t('Ln')} ${cursor.line}, ${t('Col')} ${cursor.col}`}
                 </div>
                 <div style={{ opacity: 0.8 }}>{t('Spaces')}: 4</div>
                 <div style={{ opacity: 0.8 }}>{t('UTF8')}</div>
@@ -46,8 +54,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
                         </div>
                     )
                 ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
-                    {hasUpdate && <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: '#52c41a', borderRadius: '50%', border: '1px solid var(--bg-statusbar)' }} title={t('UpdateAvailable')} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid var(--border-color)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
+                    {hasUpdate && <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: 'var(--status-success)', borderRadius: '50%', border: '1px solid var(--bg-status)' }} title={t('UpdateAvailable')} />}
                     <Info size={14} />
                     <span>{appVersion}</span>
                 </div>

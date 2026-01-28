@@ -81,14 +81,14 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
         <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
             <span style={{ marginRight: '5px', opacity: 0.8, display: 'flex', alignItems: 'center' }}>{item.is_dir && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}{!item.is_dir && <span style={{ width: '14px' }}></span>}</span>
             <span style={{ marginRight: '5px', opacity: 0.8 }}>
-                {item.is_dir ? <Folder size={14} fill={isOpen ? '#e8c97e' : 'none'} color={isOpen ? '#e8c97e' : '#cccccc'} /> : getFileIcon()}
+                {item.is_dir ? <Folder size={14} fill={isOpen ? 'var(--accent-color)' : 'none'} color={isOpen ? 'var(--accent-color)' : 'var(--text-secondary)'} /> : getFileIcon()}
             </span>
             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 'bold' : 'normal' }}>{item.name}</span>
         </div>
       </div>
       {item.is_dir && isOpen && (
         <div>
-          {isLoading && <div style={{ paddingLeft: `${20 + level * 10}px`, fontSize: 'calc(var(--ui-font-size) - 2px)', color: '#666' }}>{t('Loading')}...</div>}
+          {isLoading && <div style={{ paddingLeft: `${20 + level * 10}px`, fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--text-muted)' }}>{t('Loading')}...</div>}
           {children.map((child) => (
             <FileTreeItem 
                 key={child.path} 

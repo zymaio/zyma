@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, Loader2, FileCode, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, Loader2, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface SearchResult {
@@ -96,11 +96,11 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                 </div>
 
                 <div style={{ display: 'flex', gap: '4px' }}>
-                    <div title={t('SearchContentMode')} style={{ padding: '2px 6px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'content' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'content' ? '#fff' : 'inherit', opacity: searchMode === 'content' ? 1 : 0.6, display: 'flex', alignItems: 'center' }} onClick={() => setSearchMode('content')}><FileText size={14} /></div>
-                    <div title={t('SearchFilenameMode')} style={{ padding: '2px 6px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'filename' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'filename' ? '#fff' : 'inherit', opacity: searchMode === 'filename' ? 1 : 0.6, display: 'flex', alignItems: 'center' }} onClick={() => setSearchMode('filename')}><FileCode size={14} /></div>
+                    <div title={t('SearchContentMode')} style={{ padding: '2px 8px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'content' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'content' ? 'var(--accent-foreground)' : 'var(--text-secondary)', opacity: 1, display: 'flex', alignItems: 'center', fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }} onClick={() => setSearchMode('content')}>{t('ModeText')}</div>
+                    <div title={t('SearchFilenameMode')} style={{ padding: '2px 8px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'filename' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'filename' ? 'var(--accent-foreground)' : 'var(--text-secondary)', opacity: 1, display: 'flex', alignItems: 'center', fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }} onClick={() => setSearchMode('filename')}>{t('ModeFile')}</div>
                 </div>
 
-                <div style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', marginTop: '2px', opacity: 0.6 }}>
+                <div style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', marginTop: '2px', opacity: 1, color: 'var(--text-secondary)', fontWeight: 'bold' }}>
                     {results.length} {t('Results')}
                 </div>
             </div>
@@ -115,24 +115,24 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                         <div key={path} style={{ display: 'flex', flexDirection: 'column' }}>
                             <div 
                                 onClick={() => toggleFile(path)}
-                                style={{ padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', backgroundColor: 'rgba(128,128,128,0.05)' }}
+                                style={{ padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', backgroundColor: 'var(--active-bg)', borderBottom: '1px solid var(--border-color)' }}
                                 className="file-item-hover"
                             >
-                                {isExpanded ? <ChevronDown size={14} style={{ marginRight: '4px', opacity: 0.6 }} /> : <ChevronRight size={14} style={{ marginRight: '4px', opacity: 0.6 }} />}
+                                {isExpanded ? <ChevronDown size={14} style={{ marginRight: '4px', opacity: 1, color: 'var(--text-secondary)' }} /> : <ChevronRight size={14} style={{ marginRight: '4px', opacity: 1, color: 'var(--text-secondary)' }} />}
                                 <FileCode size={14} style={{ marginRight: '6px', color: 'var(--accent-color)' }} />
-                                <span style={{ fontWeight: 'bold', fontSize: 'calc(var(--ui-font-size) - 1px)' }}>{fileName}</span>
-                                <span style={{ marginLeft: 'auto', fontSize: '10px', opacity: 0.4 }}>{fileMatches.length}</span>
+                                <span style={{ fontWeight: 'bold', fontSize: 'calc(var(--ui-font-size) - 1px)', color: 'var(--text-primary)' }}>{fileName}</span>
+                                <span style={{ marginLeft: 'auto', fontSize: '10px', opacity: 1, color: 'var(--text-secondary)' }}>{fileMatches.length}</span>
                             </div>
                             
                             {isExpanded && fileMatches.map((res, idx) => (
                                 <div 
                                     key={idx} 
                                     onClick={() => onFileSelect(res.path, fileName)}
-                                    style={{ padding: '4px 10px 4px 34px', cursor: 'pointer', fontSize: 'calc(var(--ui-font-size) - 2px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.8 }}
+                                    style={{ padding: '4px 10px 4px 34px', cursor: 'pointer', fontSize: 'calc(var(--ui-font-size) - 2px)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 1 }}
                                     className="file-item-hover"
                                 >
-                                    <span style={{ color: 'var(--accent-color)', marginRight: '8px' }}>{res.line}:</span>
-                                    <span style={{ fontFamily: 'monospace' }}>{res.content}</span>
+                                    <span style={{ color: 'var(--accent-color)', marginRight: '8px', fontWeight: 'bold' }}>{res.line}:</span>
+                                    <span style={{ fontFamily: 'monospace', color: 'var(--text-primary)' }}>{res.content}</span>
                                 </div>
                             ))}
                         </div>

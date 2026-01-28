@@ -24,10 +24,10 @@ const AccountMenu: React.FC<AccountMenuProps> = ({ visible, onClose, position })
                 bottom: position.bottom,
                 left: position.left,
                 width: '240px',
-                backgroundColor: 'var(--bg-secondary)',
+                backgroundColor: 'var(--bg-dropdown)',
                 border: '1px solid var(--border-color)',
                 borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                boxShadow: 'var(--shadow-main)',
                 padding: '8px 0',
                 zIndex: 1000,
                 color: 'var(--text-primary)',
@@ -41,10 +41,10 @@ const AccountMenu: React.FC<AccountMenuProps> = ({ visible, onClose, position })
                     <div style={{ padding: '12px 15px', opacity: 0.5 }}>No auth providers registered.</div>
                 ) : (
                     providers.map(p => (
-                        <div key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div key={p.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                             <div style={{ padding: '8px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <User size={14} style={{ color: p.accountName ? '#10b981' : 'inherit' }} />
+                                    <User size={14} style={{ color: p.accountName ? 'var(--status-success)' : 'inherit' }} />
                                     <span>{p.label}</span>
                                 </div>
                                 {p.accountName && (

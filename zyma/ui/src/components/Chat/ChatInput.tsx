@@ -36,7 +36,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onClear, disabled, sugges
         setShowSuggestions(val.endsWith('/') && suggestions.length > 0);
     };
 
-    // Auto-resize
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -45,19 +44,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onClear, disabled, sugges
     }, [text]);
 
     return (
-        <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-sidebar)', position: 'relative' }}>
+        <div style={{ padding: '10px', borderTop: '1px solid var(--border-color)', position: 'relative' }}>
             {showSuggestions && (
                 <div style={{ 
                     position: 'absolute', bottom: '100%', left: '10px', right: '10px',
-                    backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)',
-                    borderRadius: '6px', marginBottom: '8px', overflow: 'hidden', zIndex: 100
+                    backgroundColor: 'var(--bg-dropdown)', border: '1px solid var(--border-color)',
+                    boxShadow: 'var(--shadow-main)', borderRadius: '6px', marginBottom: '8px', overflow: 'hidden', zIndex: 100
                 }}>
                     {suggestions.map((s, i) => (
                         <div 
                             key={i} 
                             onClick={() => { setText(text + s.cmd.substring(1) + ' '); setShowSuggestions(false); textareaRef.current?.focus(); }}
                             style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderBottom: i < suggestions.length-1 ? '1px solid var(--border-color)' : 'none' }}
-                            className="suggestion-item"
+                            className="file-item-hover"
                         >
                             <span style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{s.cmd}</span>
                             <span style={{ marginLeft: '10px', opacity: 0.7 }}>{s.desc}</span>
@@ -65,63 +64,36 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, onClear, disabled, sugges
                     ))}
                 </div>
             )}
-            <div style={{ 
-                border: '1px solid var(--border-color)', 
-                borderRadius: '6px', 
-                backgroundColor: 'var(--bg-secondary)',
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', backgroundColor: 'var(--input-bg)', display: 'flex', flexDirection: 'column' }}>
                 <textarea
                     ref={textareaRef}
                     value={text}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
-                    placeholder="Ask anything... (@agent /command)"
+                    placeholder="Ask anything..."
                     disabled={disabled}
                     style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--text-primary)',
-                        resize: 'none',
-                        outline: 'none',
-                        minHeight: '36px',
-                        fontFamily: 'inherit',
-                        fontSize: '13px',
-                        lineHeight: '1.4'
+                        width: '100%', padding: '10px', border: 'none', background: 'transparent',
+                        color: 'var(--text-primary)', resize: 'none', outline: 'none',
+                        fontSize: 'var(--ui-font-size)', lineHeight: '1.5'
                     }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px' }}>
-                     <button 
-                        onClick={onClear}
-                        title="Clear Chat"
-                        style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            cursor: 'pointer', 
-                            color: 'var(--text-secondary)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: '4px'
-                        }}
-                    >
+                     <button onClick={onClear} title="Clear" style={{ background: 'none', border: 'none', color: 'var(--text-muted)' }} className="icon-btn">
                         <Eraser size={16} />
                     </button>
                     <button 
                         onClick={handleSend}
                         disabled={!text.trim() || disabled}
                         style={{ 
-                            background: text.trim() ? 'var(--accent-color)' : 'transparent', 
-                            border: 'none', 
-                            borderRadius: '4px',
-                            cursor: text.trim() ? 'pointer' : 'default', 
-                            color: text.trim() ? 'white' : 'var(--text-disabled)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: '4px 8px'
+                            background: text.trim() ? 'var(--accent-color)' : 'var(--active-bg)', 
+                            color: text.trim() ? 'var(--accent-foreground)' : 'var(--text-muted)',
+                            border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '4px 12px',
+                            fontWeight: 'bold', fontSize: 'calc(var(--ui-font-size) - 1px)'
                         }}
                     >
-                        <Send size={16} />
+                        <Send size={14} style={{ marginRight: '6px' }} />
+                        {t('Send', 'Send')}
                     </button>
                 </div>
             </div>
