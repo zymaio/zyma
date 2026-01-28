@@ -47,7 +47,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
             onClick={onClose} 
             style={{ 
                 padding: '6px 20px', backgroundColor: 'var(--accent-color)', border: 'none', 
-                color: '#fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
+                color: 'var(--accent-foreground)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
             }}
         >
             {t('Close')}
@@ -58,7 +58,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
         <Modal title={t('Settings')} onClose={onClose} footer={footer} width="480px">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('Language')}</label>
+                    <label style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('Language')}</label>
                     <select 
                         value={currentSettings.language}
                         onChange={(e) => updateSetting('language', e.target.value)}
@@ -71,7 +71,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('Theme')}</label>
+                    <label style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('Theme')}</label>
                     <select 
                         value={currentSettings.theme}
                         onChange={(e) => updateSetting('theme', e.target.value as 'dark' | 'light' | 'abyss')}
@@ -85,7 +85,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('FontSize')} (Editor)</label>
+                        <label style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('FontSize')} (Editor)</label>
                         <input 
                             type="number" value={currentSettings.font_size}
                             onChange={(e) => updateSetting('font_size', parseInt(e.target.value) || 12)}
@@ -93,7 +93,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('UIFontSize')}</label>
+                        <label style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{t('UIFontSize')}</label>
                         <input 
                             type="number" value={currentSettings.ui_font_size || 13}
                             onChange={(e) => updateSetting('ui_font_size', parseInt(e.target.value) || 13)}
