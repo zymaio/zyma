@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { TFunction } from 'i18next';
 import Sidebar from '../components/Sidebar/Sidebar';

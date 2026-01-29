@@ -3,7 +3,7 @@ import { Minus, Square, X as CloseIcon, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 
-import { getMenuData, type MenuCategory, type MenuItem } from './menuConfig';
+import { getMenuData, type MenuItem } from './menuConfig';
 import './TitleBar.css';
 
 interface TitleBarProps {

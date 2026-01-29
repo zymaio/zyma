@@ -1,11 +1,9 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Sidebar from '../components/Sidebar/Sidebar';
 import TabBar from '../components/TabBar/TabBar';
 import Breadcrumbs from '../components/Breadcrumbs/Breadcrumbs';
 import Editor from '../components/Editor/Editor';
 import Preview from '../components/Preview/Preview';
-import SearchPanel from '../components/SearchPanel/SearchPanel';
 import TitleBar from '../components/TitleBar/TitleBar';
 import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import ActivityBar from '../components/ActivityBar';
@@ -14,12 +12,10 @@ import WorkbenchModals from './WorkbenchModals';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { commands } from '../components/CommandSystem/CommandRegistry';
 import { undo, redo } from '@codemirror/commands';
-import { setupWorkbench } from './workbenchInit';
 import { useWorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import { useWindowManagement } from '../hooks/useWindowManagement';
 import { useWorkbench } from './WorkbenchContext';
 import { useWorkbenchCommands } from '../hooks/useWorkbenchCommands';
-import { invoke } from '@tauri-apps/api/core';
 import { Toaster } from 'react-hot-toast';
 
 interface WorkbenchProps {
