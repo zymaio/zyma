@@ -4,6 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 
 import { getMenuData, type MenuCategory, type MenuItem } from './menuConfig';
+import './TitleBar.css';
 
 interface TitleBarProps {
     onAction: (action: string) => void;
@@ -58,31 +59,17 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
 
   return (
     <div 
-      style={{
-        height: '30px',
-        backgroundColor: 'var(--bg-activity-bar)',
-        display: 'flex',
-        alignItems: 'center',
-        userSelect: 'none',
-        color: 'var(--text-primary)',
-        fontSize: 'var(--ui-font-size)',
-        flexShrink: 0,
-        position: 'relative',
-        zIndex: 1000,
-        flexDirection: isMac ? 'row-reverse' : 'row'
-      }}
+      className="title-bar-container"
+      style={{ flexDirection: isMac ? 'row-reverse' : 'row' }}
       ref={menuRef}
     >
       {/* 1. Window Controls (MacOS: Left, Windows: Right) */}
       {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
       
-      <div style={{ display: 'flex', alignItems: 'center', height: '100%', flex: 1, flexDirection: isMac ? 'row-reverse' : 'row' }}>
+      <div className="title-bar-main" style={{ flexDirection: isMac ? 'row-reverse' : 'row' }}>
         {/* New Zyma Logo: Theme-aware Background + White Bolt */}
-        <div style={{ padding: '0 10px', display: 'flex', alignItems: 'center' }} data-tauri-drag-region>
-          <div style={{ 
-            width: '18px', height: '18px', backgroundColor: 'var(--status-error)', borderRadius: '4px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
+        <div className="logo-wrapper" data-tauri-drag-region>
+          <div className="logo-box">
             <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
             </svg>
@@ -90,38 +77,30 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
         </div>
 
         {/* Menus */}
-        <div style={{ display: 'flex', height: '100%' }}>
+        <div className="menu-container">
             {MENU_DATA.map(menu => (
-                <div key={menu.label} style={{ position: 'relative' }}>
+                <div key={menu.label} className="menu-item-wrapper">
                     <div 
-                        className="menu-item"
-                        style={{ 
-                            padding: '0 10px', height: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer',
-                            backgroundColor: activeMenu === menu.label ? 'var(--active-bg)' : 'transparent',
-                            color: activeMenu === menu.label ? 'var(--text-active)' : 'inherit'
-                        }}
+                        className={`menu-item ${activeMenu === menu.label ? 'active' : ''}`}
                         onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                         onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
                     >
                         {menu.label}
                     </div>
                     {activeMenu === menu.label && (
-                        <div style={{
-                            position: 'absolute', top: '30px', left: 0,
-                            backgroundColor: 'var(--bg-dropdown)', border: '1px solid var(--border-color)',
-                            boxShadow: 'var(--shadow-main)', minWidth: '180px', padding: '4px 0', zIndex: 1001
-                        }}>
+                        <div className="dropdown-menu">
                             {menu.items.map((item: MenuItem, idx) => (
                                 item.type === 'separator' ? (
-                                    <div key={idx} style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0' }}></div>
+                                    <div key={idx} className="dropdown-separator"></div>
                                 ) : (
                                     <div 
                                         key={idx} className="dropdown-item" 
-                                        style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: '20px' }}
                                         onClick={() => { if (item.action) onAction(item.action); setActiveMenu(null); }}
                                     >
-                                        <span>{item.label}</span>
-                                        {item.shortcut && <span style={{ opacity: 0.5, fontSize: 'var(--ui-font-size)' }}>{item.shortcut}</span>}
+                                        <div className="dropdown-item-content">
+                                            <span>{item.label}</span>
+                                            {item.shortcut && <span className="dropdown-shortcut">{item.shortcut}</span>}
+                                        </div>
                                     </div>
                                 )
                             ))}
@@ -132,13 +111,13 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
         </div>
 
         {/* Draggable Title Area */}
-        <div style={{ flex: 1, height: '100%', textAlign: 'center', opacity: 0.5, paddingTop: '6px' }} data-tauri-drag-region>
+        <div className="title-drag-region" data-tauri-drag-region>
             智码 - zyma {isAdmin && `[${t('Administrator')}]`}
         </div>
       </div>
 
       {/* Actual Buttons (Windows: Right, MacOS: Left) */}
-      <div style={{ display: 'flex', height: '100%' }}>
+      <div className="window-controls-wrapper">
         {isMac ? (
             <div style={{ width: '70px' }} data-tauri-drag-region></div> /* Space for MacOS traffic lights */
         ) : (

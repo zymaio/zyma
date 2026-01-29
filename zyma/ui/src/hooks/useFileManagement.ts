@@ -3,6 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import { useFileIO } from './useFileIO';
 import { save } from '@tauri-apps/plugin-dialog';
 import { pathUtils } from '../utils/pathUtils';
+import toast from 'react-hot-toast';
 
 export interface FileData {
     id: string;
@@ -38,7 +39,10 @@ export function useFileManagement() {
             const newFile: FileData = { id: path, name, path, content, originalContent: content, isDirty: false };
             setOpenFiles(prev => [...prev, newFile]);
             setActiveFilePath(path);
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            toast.error(`Failed to open file: ${name}`);
+        }
     }, [openFiles, readFile]);
 
     // 2. 保存文件：保存成功后同步 originalContent
@@ -75,7 +79,10 @@ export function useFileManagement() {
             
             if (activeFilePath === target.id) setActiveFilePath(targetPath);
             return true;
-        } catch (e) { return false; }
+        } catch (e) { 
+            toast.error(`Save failed: ${target.name}`);
+            return false; 
+        }
     }, [activeFilePath, openFiles, writeFile]);
 
     // 3. 核心修复：内容变更同步

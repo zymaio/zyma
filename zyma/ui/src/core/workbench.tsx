@@ -18,7 +18,9 @@ import { setupWorkbench } from './workbenchInit';
 import { useWorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import { useWindowManagement } from '../hooks/useWindowManagement';
 import { useWorkbench } from './WorkbenchContext';
+import { useWorkbenchCommands } from '../hooks/useWorkbenchCommands';
 import { invoke } from '@tauri-apps/api/core';
+import { Toaster } from 'react-hot-toast';
 
 interface WorkbenchProps {
     fm: any;
@@ -68,30 +70,10 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
 
     const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
 
-    useEffect(() => {
-        if (!ready) return;
-        setupWorkbench(t, {
-            handleNewFile: fm.handleNewFile,
-            handleSave: (force: boolean) => fm.doSave(null, force),
-            handleSaveSettings: async (ns: any) => { 
-                setSettings(ns); 
-                i18n.changeLanguage(ns.language);
-                try { await invoke('save_settings', { settings: ns }); } catch (e) {} 
-            },
-            getSettings: () => settings,
-            setShowCommandPalette: logic.setShowCommandPalette,
-            setShowSearch: logic.setShowSearch, 
-            setSidebarTab: (id: string) => logic.setSidebarTab(id as any), 
-            toggleSidebar: () => logic.setShowSidebar(prev => !prev),
-            components: {
-                Sidebar: <Sidebar rootPath={logic.rootPath} onFileSelect={fm.handleFileSelect} onFileDelete={fm.closeFile} activeFilePath={fm.activeFilePath} pluginMenuItems={pluginMenus} />,
-                SearchPanel: <SearchPanel rootPath={logic.rootPath} onFileSelect={fm.handleFileSelect} />,
-                PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => logic.forceUpdate(n => n + 1)} />,
-                ChatPanel: chatComponents.ChatPanel
-            },
-            openCustomView
-        });
-    }, [ready, logic.rootPath, pluginMenus, fm, chatComponents, logic.forceUpdate, t, settings, setSettings, i18n, logic.setShowCommandPalette, logic.setShowSearch, logic.setSidebarTab, logic.setShowSidebar, pluginManager, openCustomView]);
+    useWorkbenchCommands({
+        ready, t, i18n, fm, logic, settings, setSettings,
+        pluginMenus, pluginManager, chatComponents, openCustomView
+    });
 
     if (!ready) return null;
 
@@ -201,6 +183,18 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                 setIsClosingApp={setIsClosingApp} 
                 setIsExiting={setIsExiting} 
                 handleAppExit={handleAppExit} 
+            />
+            
+            <Toaster 
+                position="bottom-right"
+                toastOptions={{
+                    style: {
+                        background: 'var(--bg-dropdown)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)',
+                        fontSize: 'var(--ui-font-size)'
+                    }
+                }}
             />
         </div>
     );

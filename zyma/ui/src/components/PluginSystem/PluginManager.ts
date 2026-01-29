@@ -3,6 +3,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event';
 import type { PluginManifest } from './types';
 import { PluginAPIBuilder } from './PluginAPIBuilder';
 import { ContributionRegistry } from './ContributionRegistry';
+import toast from 'react-hot-toast';
 
 export class PluginManager {
     private plugins: Map<string, any> = new Map();
@@ -63,7 +64,11 @@ export class PluginManager {
                 }
             }
             this.notifyUI();
-        } catch (e) { console.error("[PluginManager] Load failed", e); this.notifyUI(); }
+        } catch (e) { 
+            console.error("[PluginManager] Load failed", e); 
+            toast.error('Failed to initialize plugin system');
+            this.notifyUI(); 
+        }
     }
 
     private async loadPlugin(dirPath: string, manifest: PluginManifest) {
@@ -95,7 +100,10 @@ export class PluginManager {
                 if (res instanceof Promise) await res;
             }
             this.plugins.set(manifest.name, pluginInstance);
-        } catch (e) { console.error(`Error activating plugin ${manifest.name}:`, e); }
+        } catch (e) { 
+            console.error(`Error activating plugin ${manifest.name}:`, e); 
+            toast.error(`Plugin failed to load: ${manifest.name}`);
+        }
     }
 
     async enablePlugin(name: string) {
