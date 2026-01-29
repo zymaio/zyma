@@ -45,21 +45,21 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
   const getFileIcon = () => {
       const ext = item.name.split('.').pop()?.toLowerCase() || '';
       switch(ext) {
-          case 'rs': return <FileCode size={14} color="#e06c75" />;
+          case 'rs': return <FileCode size={14} color="var(--syn-keyword)" />;
           case 'js':
-          case 'jsx': return <FileCode size={14} color="#e5c07b" />;
+          case 'jsx': return <FileCode size={14} color="var(--syn-function)" />;
           case 'ts':
-          case 'tsx': return <FileCode size={14} color="#61afef" />;
+          case 'tsx': return <FileCode size={14} color="var(--syn-type)" />;
           case 'json':
-          case 'toml': return <FileJson size={14} color="#d19a66" />;
-          case 'md': return <FileText size={14} color="#98c379" />;
+          case 'toml': return <FileJson size={14} color="var(--syn-string)" />;
+          case 'md': return <FileText size={14} color="var(--syn-md-heading)" />;
           case 'css':
-          case 'scss': return <FileType size={14} color="#c678dd" />;
-          case 'html': return <FileType size={14} color="#e06c75" />;
+          case 'scss': return <FileType size={14} color="var(--syn-builtin)" />;
+          case 'html': return <FileType size={14} color="var(--syn-tag)" />;
           case 'svg':
           case 'png':
-          case 'jpg': return <ImageIcon size={14} color="#56b6c2" />;
-          default: return <File size={14} color="#abb2bf" />;
+          case 'jpg': return <ImageIcon size={14} color="var(--syn-number)" />;
+          default: return <File size={14} color="var(--text-muted)" />;
       }
   };
 

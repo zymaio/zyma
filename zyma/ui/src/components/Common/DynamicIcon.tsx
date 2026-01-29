@@ -35,12 +35,13 @@ export const DynamicIcon: React.FC<DynamicIconProps> = ({ icon, size = 24, class
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                fontSize: '14px',
+                fontSize: `${Math.round(size * 0.5)}px`,
                 fontWeight: 800,
                 fontFamily: 'system-ui, sans-serif',
                 lineHeight: 1,
                 userSelect: 'none',
                 letterSpacing: '-0.5px',
+                color: 'var(--text-secondary)',
                 ...style
             }}>
                 {icon.substring(0, 2).toUpperCase()}

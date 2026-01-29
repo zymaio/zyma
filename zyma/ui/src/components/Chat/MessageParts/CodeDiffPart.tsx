@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, FileCode } from 'lucide-react';
+import { Check, FileCode } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface CodeDiffPartProps {
@@ -9,7 +9,7 @@ interface CodeDiffPartProps {
     path?: string;
 }
 
-const CodeDiffPart: React.FC<CodeDiffPartProps> = ({ original, modified, language, path }) => {
+const CodeDiffPart: React.FC<CodeDiffPartProps> = ({ original, modified, path }) => {
     const [applied, setApplied] = useState(false);
 
     const handleApply = async () => {

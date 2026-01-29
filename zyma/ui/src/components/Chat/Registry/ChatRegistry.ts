@@ -11,6 +11,7 @@ export interface ChatResponseStream {
     markdown: (content: string) => void;
     diff: (original: string, modified: string, language: string, path?: string) => void;
     toolCall: (name: string, args: any, status: 'calling' | 'success' | 'error', result?: string) => void;
+    status: (type: 'thinking' | 'streaming' | 'done' | 'error') => void;
     done: () => void;
     error: (msg: string) => void;
 }

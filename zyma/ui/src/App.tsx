@@ -4,7 +4,6 @@ import './i18n';
 import { useFileManagement } from './hooks/useFileManagement';
 import { useAppInitialization } from './hooks/useAppInitialization';
 import { useKeybindings } from './hooks/useKeybindings';
-import { useWindowManagement } from './hooks/useWindowManagement';
 import { useTabSystem } from './hooks/useTabSystem';
 import { useSidebarResize } from './hooks/useSidebarResize';
 import ChatPanel from './components/Chat/ChatPanel';
@@ -14,8 +13,8 @@ import './App.css';
 import './components/ResizeHandle.css';
 
 function App() {
-  const { t, i18n } = useTranslation();
-  const fm = useFileManagement(t);
+  const { i18n } = useTranslation();
+  const fm = useFileManagement();
   
   // 1. 使用拆分后的 Tab 系统 Hook
   const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = useTabSystem(fm);
@@ -30,7 +29,6 @@ function App() {
 
   const chatComponents = useMemo(() => ({ 
       ChatPanel: (props: any) => <ChatPanel {...props} settings={settings} getContext={async () => {
-          fm.syncCurrentContent(); // 关键点：抓取前同步内容
           const editor = fm.editorViewRef.current;
           let selection = null;
           let fileContent = null;
@@ -41,7 +39,7 @@ function App() {
           }
           return { filePath: fm.activeFilePath, selection, fileContent };
       }} />
-  }), [fm.activeFilePath, settings, fm.syncCurrentContent]);
+  }), [fm.activeFilePath, settings]);
 
   useEffect(() => {
       if (ready && pluginManager.current) {

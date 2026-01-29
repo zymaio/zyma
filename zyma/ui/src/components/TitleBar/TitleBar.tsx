@@ -3,12 +3,13 @@ import { Minus, Square, X as CloseIcon, Copy } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 
+import { getMenuData, type MenuCategory, type MenuItem } from './menuConfig';
+
 interface TitleBarProps {
     onAction: (action: string) => void;
-    themeMode: 'dark' | 'light';
-    isAdmin?: boolean;
-    platform?: string;
-    title?: string;
+    themeMode: 'dark' | 'light' | 'abyss';
+    isAdmin: boolean;
+    platform: string;
 }
 
 const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platform }) => {
@@ -19,40 +20,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
 
   const isMac = platform === 'macos' || platform === 'darwin';
 
-  const MENU_DATA = [
-    {
-        label: t('File'),
-        items: [
-            { label: t('NewFile'), action: 'new_file', shortcut: 'Ctrl+N' },
-            { label: t('OpenFolder'), action: 'open_folder' },
-            { label: t('Save'), action: 'save', shortcut: 'Ctrl+S' },
-            { label: t('SaveAs'), action: 'save_as' },
-            { type: 'separator' },
-            { label: t('Exit'), action: 'exit' }
-        ]
-    },
-    {
-        label: t('Edit'),
-        items: [
-            { label: t('Undo'), action: 'undo', shortcut: 'Ctrl+Z' },
-            { label: t('Redo'), action: 'redo', shortcut: 'Ctrl+Y' }
-        ]
-    },
-    {
-        label: t('View'),
-        items: [
-            { label: t('SwitchTheme', { mode: themeMode === 'dark' ? 'Light' : 'Dark' }), action: 'toggle_theme' }
-        ]
-    },
-    {
-        label: t('Help'),
-        items: [ 
-            { label: t('CheckUpdate', '检查更新...'), action: 'check_update' },
-            { type: 'separator' },
-            { label: t('About'), action: 'about' } 
-        ]
-    }
-  ];
+  const MENU_DATA = getMenuData(t, themeMode);
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -143,14 +111,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                             backgroundColor: 'var(--bg-dropdown)', border: '1px solid var(--border-color)',
                             boxShadow: 'var(--shadow-main)', minWidth: '180px', padding: '4px 0', zIndex: 1001
                         }}>
-                            {menu.items.map((item: any, idx) => (
+                            {menu.items.map((item: MenuItem, idx) => (
                                 item.type === 'separator' ? (
                                     <div key={idx} style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '4px 0' }}></div>
                                 ) : (
                                     <div 
                                         key={idx} className="dropdown-item" 
                                         style={{ padding: '6px 20px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', gap: '20px' }}
-                                        onClick={() => { onAction(item.action); setActiveMenu(null); }}
+                                        onClick={() => { if (item.action) onAction(item.action); setActiveMenu(null); }}
                                     >
                                         <span>{item.label}</span>
                                         {item.shortcut && <span style={{ opacity: 0.5, fontSize: 'var(--ui-font-size)' }}>{item.shortcut}</span>}

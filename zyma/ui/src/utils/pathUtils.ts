@@ -23,7 +23,8 @@ export const pathUtils = {
      */
     getFileName: (path: string): string => {
         if (!path) return "";
-        return path.replace(/\\/g, '/').split('/').pop() || path;
+        // 处理末尾斜杠的情况，并统一标准化
+        return path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path;
     }
 };
 

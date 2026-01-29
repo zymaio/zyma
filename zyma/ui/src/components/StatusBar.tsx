@@ -41,8 +41,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
                 <div title={t('Line') + '/' + t('Column')}>
                     {`${t('Ln')} ${cursor.line}, ${t('Col')} ${cursor.col}`}
                 </div>
-                <div style={{ opacity: 0.8 }}>{t('Spaces')}: 4</div>
-                <div style={{ opacity: 0.8 }}>{t('UTF8')}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{t('Spaces')}: 4</div>
+                <div style={{ color: 'var(--text-secondary)' }}>{t('UTF8')}</div>
                 <div style={{ fontWeight: '500' }}>{getLanguageMode()}</div>
                 <div style={{ minWidth: '60px', textAlign: 'right' }}>
                     {activeFile && activeFile.content !== activeFile.originalContent ? '● ' + t('Unsaved') : ''}
@@ -54,7 +54,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
                         </div>
                     )
                 ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: 0.8, borderLeft: '1px solid var(--border-color)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: 'var(--text-secondary)', borderLeft: '1px solid var(--border-color)', paddingLeft: '10px', position: 'relative' }} onClick={() => commands.executeCommand('about')}>
                     {hasUpdate && <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '8px', height: '8px', backgroundColor: 'var(--status-success)', borderRadius: '50%', border: '1px solid var(--bg-status)' }} title={t('UpdateAvailable')} />}
                     <Info size={14} />
                     <span>{appVersion}</span>

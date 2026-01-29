@@ -1,4 +1,4 @@
-﻿use tauri::{AppHandle, Manager, Emitter};
+use tauri::{AppHandle, Manager, Emitter};
 
 #[tauri::command]
 pub fn is_admin() -> bool {
@@ -21,49 +21,6 @@ pub fn is_admin() -> bool {
         is_elevated
     }
     #[cfg(not(windows))] { true }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-pub struct WindowState {
-    pub width: f64,
-    pub height: f64,
-    pub x: i32,
-    pub y: i32,
-    pub is_maximized: bool,
-}
-
-#[tauri::command]
-pub fn save_window_state(window: tauri::WebviewWindow) -> Result<(), String> {
-    let label = window.label().to_string();
-    let config_path = crate::commands::config::get_config_path();
-    let mut config_val = if config_path.exists() {
-        let content = std::fs::read_to_string(&config_path).unwrap_or_default();
-        serde_json::from_str::<serde_json::Value>(&content).unwrap_or(serde_json::json!({}))
-    } else {
-        serde_json::json!({})
-    };
-
-    let is_maximized = window.is_maximized().unwrap_or(false);
-    let factor = window.scale_factor().unwrap_or(1.0);
-    let size = window.outer_size().unwrap_or_default().to_logical::<f64>(factor);
-    let pos = window.outer_position().unwrap_or_default().to_logical::<i32>(factor);
-
-    let state = WindowState { width: size.width, height: size.height, x: pos.x, y: pos.y, is_maximized };
-
-    if label == "main" {
-        config_val["window_width"] = serde_json::json!(state.width);
-        config_val["window_height"] = serde_json::json!(state.height);
-        config_val["window_x"] = serde_json::json!(state.x);
-        config_val["window_y"] = serde_json::json!(state.y);
-        config_val["is_maximized"] = serde_json::json!(state.is_maximized);
-    } else {
-        if config_val.get("windows").is_none() { config_val["windows"] = serde_json::json!({}); }
-        config_val["windows"][&label] = serde_json::to_value(state).unwrap();
-    }
-
-    let new_content = serde_json::to_string_pretty(&config_val).map_err(|e| e.to_string())?;
-    std::fs::write(config_path, new_content).map_err(|e| e.to_string())?;
-    Ok(())
 }
 
 #[tauri::command]
@@ -140,51 +97,8 @@ pub fn emit_global_event(app_handle: tauri::AppHandle, event: String, payload: S
 }
 
 #[tauri::command]
-pub async fn open_detached_output(app_handle: tauri::AppHandle, channel: String) -> Result<(), String> {
-    use tauri::WebviewUrl;
-    use tauri::WebviewWindowBuilder;
-    let label = format!("output-window-{}", channel);
-    if let Some(win) = app_handle.get_webview_window(&label) { let _ = win.set_focus(); return Ok(()); }
-    let config_path = crate::commands::config::get_config_path();
-    let mut saved_state: Option<WindowState> = None;
-    if config_path.exists() {
-        if let Ok(content) = std::fs::read_to_string(&config_path) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                if let Some(windows) = val.get("windows").and_then(|v| v.as_object()) {
-                    if let Some(state_val) = windows.get(&label) { saved_state = serde_json::from_value(state_val.clone()).ok(); }
-                }
-            }
-        }
-    }
-    let url = WebviewUrl::App(format!("index.html?mode=output&channel={}", channel).into());
-    let mut builder = WebviewWindowBuilder::new(&app_handle, &label, url).title(format!("绣智助手日志 - {}", channel)).inner_size(800.0, 500.0).resizable(true).visible(false).decorations(true);
-    if let Some(state) = saved_state { if state.x > -10000 && state.x < 10000 && state.y > -10000 && state.y < 10000 { builder = builder.position(state.x as f64, state.y as f64).inner_size(state.width, state.height); } }
-    let window = builder.build().map_err(|e| e.to_string())?;
-    let window_clone = window.clone();
-    window.on_window_event(move |event| { match event { tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => { let _ = save_window_state(window_clone.clone()); }, _ => {} } });
-    let w = window.clone();
-    tauri::async_runtime::spawn(async move { tokio::time::sleep(std::time::Duration::from_millis(150)).await; let _ = w.show(); let _ = w.set_focus(); });
-    Ok(())
-}
-
-#[tauri::command] pub fn show_window(window: tauri::WebviewWindow) -> Result<(), String> { window.show().map_err(|e| e.to_string())?; window.set_focus().map_err(|e| e.to_string())?; Ok(()) }
-
-#[tauri::command]
 pub async fn system_exit_all_windows(app_handle: tauri::AppHandle) -> Result<(), String> {
     for (label, w) in app_handle.webview_windows() { if label != "main" { let _ = w.close(); } }
     app_handle.exit(0);
     Ok(())
-}
-
-#[tauri::command]
-pub fn show_main_window(app_handle: tauri::AppHandle, width: f64, height: f64, x: Option<i32>, y: Option<i32>, is_maximized: bool) {
-    if let Some(window) = app_handle.get_webview_window("main") {
-        let w = if width > 100.0 { width } else { 800.0 };
-        let h = if height > 100.0 { height } else { 600.0 };
-        let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
-        if let (Some(x), Some(y)) = (x, y) { let _ = window.set_position(tauri::PhysicalPosition::new(x, y)); }
-        if is_maximized { let _ = window.maximize(); }
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
 }

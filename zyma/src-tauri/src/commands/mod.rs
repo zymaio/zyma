@@ -1,6 +1,7 @@
 pub mod config;
 pub mod fs;
 pub mod system;
+pub mod window;
 pub mod plugins;
 pub mod output;
 pub mod search;
@@ -35,16 +36,17 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<Wry>) -> bool {
         system::system_get_env,
         system::system_exec,
         system::emit_global_event,
-        system::open_detached_output,
-        system::show_window,
         system::is_admin, 
         system::exit_app,
         system::kill_process,
-        system::save_window_state,
         system::get_platform, 
         system::get_app_version,
         system::open_url, 
-        system::show_main_window, 
+        system::system_exit_all_windows,
+        window::open_detached_output,
+        window::show_window,
+        window::save_window_state,
+        window::show_main_window, 
         plugins::list_plugins, 
         plugins::read_plugin_file
     ]

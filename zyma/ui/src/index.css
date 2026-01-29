@@ -26,11 +26,9 @@
   --active-text: #7aa2f7;
   --text-primary: var(--text-main);
   --text-secondary: var(--text-muted);
-  --bg-dropdown: var(--bg-sidebar);
-  --dropdown-hover: var(--active-bg);
-  --input-bg: var(--bg-editor);
   --input-border: var(--border-color);
   --cursor-color: var(--accent-color);
+  --bg-active-line: rgba(255, 255, 255, 0.05);
 
   /* Status Colors */
   --status-success: #10b981;
@@ -46,21 +44,21 @@
   --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.5);
 
   /* Editor Syntax Highlighting (Tokyo Night inspired) */
-  --syn-keyword: #bb9af7;
-  --syn-string: #9ece6a;
-  --syn-comment: #565f89;
-  --syn-function: #7aa2f7;
-  --syn-variable: #e0e6f8;
-  --syn-number: #ff9e64;
-  --syn-operator: #89ddff;
-  --syn-type: #2ac3de;
-  --syn-className: #f7768e;
-  --syn-builtin: #0db9d7;
-  --syn-tag: #f7768e;
-  --syn-attr: #bb9af7;
-  --syn-regex: #b4f9f8;
+  --syn-keyword: #bb9af7;   /* 紫 */
+  --syn-string: #9ece6a;    /* 绿 */
+  --syn-comment: #565f89;   /* 灰 */
+  --syn-function: #7aa2f7;  /* 蓝 */
+  --syn-variable: #9aa5ce;  /* 淡紫蓝 (非白) */
+  --syn-number: #ff9e64;    /* 橙 */
+  --syn-operator: #89ddff;  /* 青 */
+  --syn-type: #2ac3de;      /* 深青 */
+  --syn-className: #e0af68; /* 黄 */
+  --syn-builtin: #0db9d7;   /* 亮青 */
+  --syn-tag: #f7768e;       /* 红 */
+  --syn-attr: #73daca;      /* 碧绿 */
+  --syn-regex: #b4f9f8;     /* 浅青 */
   --syn-md-heading: #7aa2f7;
-  --syn-md-bold: #e0e6f8;
+  --syn-md-bold: #ff9e64;
   --syn-md-link: #7ad9ff;
 }
 
@@ -86,6 +84,7 @@
   --input-bg: var(--bg-editor);
   --input-border: var(--border-color);
   --cursor-color: var(--accent-color);
+  --bg-active-line: rgba(0, 0, 0, 0.03);
 
   /* Status Colors */
   --status-success: #1a7f37;
@@ -101,19 +100,19 @@
   --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.1);
 
   /* Editor Syntax Highlighting (GitHub Light inspired) */
-  --syn-keyword: #cf222e;
-  --syn-string: #0a3069;
-  --syn-comment: #6e7781;
-  --syn-function: #8250df;
-  --syn-variable: #24292f;
-  --syn-number: #0550ae;
-  --syn-operator: #0550ae;
-  --syn-type: #953800;
-  --syn-className: #953800;
-  --syn-builtin: #0550ae;
-  --syn-tag: #116329;
-  --syn-attr: #0550ae;
-  --syn-regex: #0550ae;
+  --syn-keyword: #cf222e;   /* 红 */
+  --syn-string: #0a3069;    /* 深蓝 */
+  --syn-comment: #6e7781;   /* 灰 */
+  --syn-function: #8250df;  /* 紫 */
+  --syn-variable: #6f42c1;  /* 深紫 (非黑) */
+  --syn-number: #0550ae;    /* 蓝 */
+  --syn-operator: #24292f;  /* 黑 */
+  --syn-type: #953800;      /* 棕 */
+  --syn-className: #116329; /* 绿 */
+  --syn-builtin: #e36209;   /* 橙 */
+  --syn-tag: #22863a;       /* 亮绿 */
+  --syn-attr: #6f42c1;      /* 紫 */
+  --syn-regex: #cf222e;
   --syn-md-heading: #0550ae;
   --syn-md-bold: #24292f;
   --syn-md-link: #0969da;
@@ -142,6 +141,7 @@
   --input-bg: #000000;
   --input-border: #1d4a87;
   --cursor-color: #fad000;
+  --bg-active-line: rgba(250, 208, 0, 0.08);
 
   /* Status Colors */
   --status-success: #22aa44;
@@ -156,23 +156,23 @@
   --overlay-bg: rgba(0, 12, 24, 0.85);
   --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.6);
 
-  /* Editor Syntax Highlighting - 精确 Lingma Abyss 配色 (已提亮) */
-  --syn-keyword: #66aaff;   /* 从深蓝提亮到亮天蓝，解决列表看不清的问题 */
-  --syn-string: #adff00;    /* 亮绿字符串 */
-  --syn-comment: #6b62ad;   /* 提亮注释色 */
-  --syn-function: #fad000;  /* 亮金黄函数 */
-  --syn-variable: #9effff;  /* 亮青色变量 */
-  --syn-number: #ff628c;    /* 粉紫色数字 */
-  --syn-operator: #9effff;
-  --syn-type: #00e8ff;
-  --syn-className: #fad000;
-  --syn-builtin: #fb9e00;
-  --syn-tag: #ff9d00;
-  --syn-attr: #fad000;
-  --syn-regex: #ff628c;
-  --syn-md-heading: #fad000;
-  --syn-md-bold: #ffffff;
-  --syn-md-link: #00e8ff;
+  /* Editor Syntax Highlighting - 电竞霓虹版 Abyss (全彩解耦) */
+  --syn-keyword: #ff79c6;   /* 粉色 - 逻辑关键字 */
+  --syn-string: #f1fa8c;    /* 黄色 - 字符串 */
+  --syn-comment: #6272a4;   /* 灰蓝 - 注释 */
+  --syn-function: #50fa7b;  /* 绿色 - 函数名 */
+  --syn-variable: #9cdcfe;  /* 天蓝 - 变量名 */
+  --syn-number: #bd93f9;    /* 浅紫 - 数字 */
+  --syn-operator: #ff9d00;  /* 琥珀 - 运算符 */
+  --syn-type: #8be9fd;      /* 青色 - 基础类型 */
+  --syn-className: #ff5555; /* 珊瑚红 - 类名 */
+  --syn-builtin: #00e8ff;   /* 电感青 - 内置对象 */
+  --syn-tag: #7aa2f7;       /* 浅蓝 - HTML 标签 */
+  --syn-attr: #adff00;      /* 柠檬绿 - HTML 属性 */
+  --syn-regex: #f280d0;     /* 玫瑰粉 - 正则表达式 */
+  --syn-md-heading: #ff79c6;
+  --syn-md-bold: #ffb86c;
+  --syn-md-link: #8be9fd;
 }
 
 body {

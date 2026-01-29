@@ -16,7 +16,7 @@
     max-height: 400px;
     background-color: var(--bg-sidebar);
     border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-main);
     border-radius: 6px;
     display: flex;
     flex-direction: column;
@@ -43,99 +43,42 @@
 }
 
 .command-palette-item {
-
     padding: 8px 15px;
-
     cursor: pointer;
-
     display: flex;
-
     align-items: center;
-
     font-size: var(--ui-font-size);
-
     gap: 10px;
-
     color: var(--text-primary);
-
 }
-
-
 
 .command-palette-item.selected {
-
     background-color: var(--accent-color);
-
-    color: #ffffff;
-
+    color: var(--accent-foreground);
 }
-
-
 
 .command-category {
-
-    opacity: 0.6;
-
+    color: var(--text-secondary);
     min-width: 60px;
-
     font-weight: bold;
-
 }
-
-
 
 .command-title {
-
     flex: 1;
-
 }
-
-
 
 .command-id {
-
-
-
     font-size: calc(var(--ui-font-size) - 1px);
-
-
-
-    opacity: 0.5;
-
-
-
+    color: var(--text-muted);
     font-family: monospace;
-
-
-
-    background-color: rgba(128, 128, 128, 0.1);
-
-
-
+    background-color: var(--active-bg);
     padding: 2px 6px;
-
-
-
     border-radius: 3px;
-
-
-
 }
 
-
-
-
-
-
-
 .command-palette-no-results {
-
     padding: 20px;
-
     text-align: center;
-
-    opacity: 0.5;
-
+    color: var(--text-muted);
     font-size: var(--ui-font-size);
-
 }

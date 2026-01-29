@@ -51,7 +51,7 @@ const Modal: React.FC<ModalProps> = ({ title, children, onClose, width = '450px'
                     </span>
                     <X 
                         size={18} 
-                        style={{ cursor: 'pointer', opacity: 0.6 }} 
+                        style={{ cursor: 'pointer', color: 'var(--text-muted)' }} 
                         className="icon-btn"
                         onClick={onClose} 
                     />

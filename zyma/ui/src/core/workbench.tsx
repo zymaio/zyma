@@ -7,13 +7,10 @@ import Editor from '../components/Editor/Editor';
 import Preview from '../components/Preview/Preview';
 import SearchPanel from '../components/SearchPanel/SearchPanel';
 import TitleBar from '../components/TitleBar/TitleBar';
-import SettingsModal from '../components/SettingsModal/SettingsModal';
-import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
-import AboutModal from '../components/AboutModal/AboutModal';
-import CommandPalette from '../components/CommandSystem/CommandPalette';
 import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import ActivityBar from '../components/ActivityBar';
 import StatusBar from '../components/StatusBar';
+import WorkbenchModals from './WorkbenchModals';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { commands } from '../components/CommandSystem/CommandRegistry';
 import { undo, redo } from '@codemirror/commands';
@@ -60,7 +57,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     };
 
     // 全局退出拦截 - 传入 isExiting 状态
-    useWindowManagement(logic.rootPath, isExiting, fm.openFiles, handleAppExit, setIsClosingApp);
+    const { requestExit } = useWindowManagement(logic.rootPath, isExiting, fm.openFiles, handleAppExit, setIsClosingApp);
 
     const activeFile = useMemo(() => {
         if (activeTab?.type === 'file') {
@@ -106,14 +103,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                         case 'new_file': commands.executeCommand('file.new'); break;
                         case 'open_folder': commands.executeCommand('workspace.openFolder'); break;
                         case 'save': commands.executeCommand('file.save'); break;
-                        case 'exit': 
-                            // 关键修复：UI 关闭按钮也要检查脏数据
-                            if (fm.openFiles.some((f: any) => f.isDirty)) {
-                                setIsClosingApp(true);
-                            } else {
-                                handleAppExit(false);
-                            }
-                            break;
+                        case 'exit': requestExit(); break;
                         case 'undo': if (fm.editorViewRef.current) undo(fm.editorViewRef.current); break;
                         case 'redo': if (fm.editorViewRef.current) redo(fm.editorViewRef.current); break;
                         case 'toggle_theme': commands.executeCommand('view.toggleTheme'); break;
@@ -121,6 +111,8 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                     }
                 }} 
                 themeMode={settings.theme} 
+                isAdmin={isAdmin}
+                platform={platform}
             />
             
             <div className="main-workbench">
@@ -187,46 +179,29 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                 </div>
             </div>
 
-            <StatusBar relativePath={logic.relativePath} activeFile={activeFile} getLanguageMode={logic.getLanguageMode} hasUpdate={false} t={t} />
+            <StatusBar 
+                isAdmin={isAdmin} 
+                relativePath={logic.relativePath} 
+                activeFile={activeFile} 
+                getLanguageMode={logic.getLanguageMode} 
+                hasUpdate={false} 
+                appVersion={appVersion} 
+                t={t} 
+            />
             
-            {logic.showSettings && <SettingsModal currentSettings={settings} onSave={async (ns) => { setSettings(ns); try { await invoke('save_settings', { settings: ns }); } catch(e){} }} onClose={() => logic.setShowSettings(false)} platform={platform} />}
-            {logic.aboutState.show && <AboutModal version={appVersion} autoCheck={logic.aboutState.autoCheck} onClose={() => logic.setAboutState({ ...logic.aboutState, show: false })} />}
-            <CommandPalette visible={logic.showCommandPalette} onClose={() => logic.setShowCommandPalette(false)} />
-            
-            {/* 1. 单文件关闭确认 */}
-            {logic.pendingCloseId && (
-                <ConfirmModal 
-                    title={t('File')} 
-                    message={t('SaveBeforeClose', { name: fm.openFiles.find((f: any) => f.id === logic.pendingCloseId)?.name })} 
-                    onSave={async () => { 
-                        const id = logic.pendingCloseId!;
-                        const f = fm.openFiles.find((x: any) => x.id === id); 
-                        if (await fm.doSave(f || null)) closeTab(id); 
-                        logic.setPendingCloseId(null); 
-                    }} 
-                    onDontSave={() => { closeTab(logic.pendingCloseId!); logic.setPendingCloseId(null); }} 
-                    onCancel={() => logic.setPendingCloseId(null)} 
-                />
-            )}
-
-            {/* 2. 整个应用退出确认 (新) */}
-            {isClosingApp && (
-                <ConfirmModal 
-                    title={t('ExitApp')} 
-                    message={t('UnsavedChangesExit')} 
-                    onSave={async () => { 
-                        const dirtyFiles = fm.openFiles.filter((f: any) => f.isDirty);
-                        for (const f of dirtyFiles) await fm.doSave(f);
-                        setIsExiting(true); // 标记退出，绕过拦截
-                        setTimeout(() => handleAppExit(false), 50); // 给 State 更新一点时间
-                    }} 
-                    onDontSave={() => {
-                        setIsExiting(true); 
-                        setTimeout(() => handleAppExit(false), 50);
-                    }} 
-                    onCancel={() => setIsClosingApp(false)} 
-                />
-            )}
+            <WorkbenchModals 
+                logic={logic} 
+                settings={settings} 
+                setSettings={setSettings} 
+                platform={platform} 
+                appVersion={appVersion} 
+                fm={fm} 
+                closeTab={closeTab} 
+                isClosingApp={isClosingApp} 
+                setIsClosingApp={setIsClosingApp} 
+                setIsExiting={setIsExiting} 
+                handleAppExit={handleAppExit} 
+            />
         </div>
     );
 };

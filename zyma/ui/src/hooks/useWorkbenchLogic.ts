@@ -1,11 +1,16 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { invoke } from '@tauri-apps/api/core';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBarRegistry';
 import { pathUtils } from '../utils/pathUtils';
 
 import { registerWorkspaceCommands } from '../commands/workspace';
+
+const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
+    'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
+    'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
+    'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
+};
 
 interface WorkbenchLogicProps {
     fm: any;
@@ -64,12 +69,7 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         if (!activeFile) return '';
         
         const ext = activeFile.name.split('.').pop()?.toLowerCase() || '';
-        const map: Record<string, string> = {
-            'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
-            'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
-            'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
-        };
-        return t(map[ext] || 'Plaintext');
+        return t(LANGUAGE_EXTENSION_MAP[ext] || 'Plaintext');
     }, [tabSystem.activeTab, fm.openFiles, t]);
 
     return {

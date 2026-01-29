@@ -56,7 +56,7 @@ pub fn search_in_dir(root: String, pattern: String, mode: Option<String>) -> Res
                 return ignore::WalkState::Continue;
             }
 
-            let path_str = entry.path().to_string_lossy().to_string();
+            let path_str = entry.path().to_string_lossy().replace("\\", "/");
             let filename = entry.file_name().to_string_lossy().to_lowercase();
 
             if search_mode == "filename" {

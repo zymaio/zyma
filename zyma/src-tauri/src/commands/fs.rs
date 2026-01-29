@@ -3,13 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 use tauri::{State, Emitter};
 use crate::AppState;
-
-#[derive(Serialize, Deserialize)]
-pub struct FileItem {
-    pub name: String,
-    pub path: String,
-    pub is_dir: bool,
-}
+use crate::models::FileItem;
 
 #[tauri::command]
 pub fn get_cwd(state: State<'_, AppState>) -> String {

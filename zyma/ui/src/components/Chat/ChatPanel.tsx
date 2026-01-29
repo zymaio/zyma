@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import type { ChatMessage as IChatMessage, ChatMessagePart } from './types';
+import type { ChatMessage as IChatMessage } from './types';
 import { chatRegistry } from './Registry/ChatRegistry';
 import type { ChatResponseStream } from './Registry/ChatRegistry';
 
@@ -10,7 +10,6 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 interface ChatPanelProps {
     participantId?: string; // 新增：指定连接哪个参与者
     title?: string;
-    settings?: any; // 新增：设置
     getContext?: () => Promise<{
         filePath: string | null;
         selection: string | null;
@@ -18,7 +17,7 @@ interface ChatPanelProps {
     }>;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, settings, getContext }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext }) => {
     const [messages, setMessages] = useState<IChatMessage[]>([
         {
             id: 'welcome',

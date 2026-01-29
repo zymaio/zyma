@@ -10,8 +10,11 @@ import type { PluginManifest } from './types';
 export class ContributionRegistry {
     private resources: Map<string, { views: string[], statusItems: string[], commands: string[] }> = new Map();
     private fileMenuItems: { label: string, commandId: string, order?: number, pluginName: string }[] = [];
+    private callbacks: { components: { ChatPanel: any }, addFileMenuItem: (item: any) => void };
 
-    constructor(private callbacks: { components: { ChatPanel: any }, addFileMenuItem: (item: any) => void }) {}
+    constructor(callbacks: { components: { ChatPanel: any }, addFileMenuItem: (item: any) => void }) {
+        this.callbacks = callbacks;
+    }
 
     updateComponents(components: any) {
         this.callbacks.components = components;

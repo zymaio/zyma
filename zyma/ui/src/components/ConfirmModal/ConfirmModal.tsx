@@ -17,45 +17,22 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
         <>
             <button 
                 onClick={onCancel}
-                style={{
-                    padding: '6px 15px', 
-                    backgroundColor: 'var(--active-bg)',
-                    border: '1px solid var(--border-color)', 
-                    color: 'var(--text-primary)',
-                    borderRadius: '4px', cursor: 'pointer', 
-                    fontSize: 'var(--ui-font-size)',
-                    transition: 'opacity 0.2s'
-                }}
-                className="icon-btn"
+                className="btn-secondary"
+                style={{ padding: '6px 15px' }}
             >
                 {t('Cancel')}
             </button>
             <button 
                 onClick={onDontSave}
-                style={{
-                    padding: '6px 15px', 
-                    backgroundColor: 'var(--active-bg)',
-                    border: '1px solid var(--border-color)', 
-                    color: 'var(--text-primary)',
-                    borderRadius: '4px', cursor: 'pointer', 
-                    fontSize: 'var(--ui-font-size)',
-                    transition: 'opacity 0.2s'
-                }}
-                className="icon-btn"
+                className="btn-secondary"
+                style={{ padding: '6px 15px' }}
             >
                 {t('DontSave')}
             </button>
             <button 
                 onClick={onSave}
-                style={{
-                    padding: '6px 15px', 
-                    backgroundColor: 'var(--accent-color)',
-                    border: 'none', 
-                    color: '#000', // 在金黄色背景下使用黑色文字更醒目 (灵码风格)
-                    borderRadius: '4px', cursor: 'pointer', 
-                    fontSize: 'var(--ui-font-size)',
-                    fontWeight: 'bold'
-                }}
+                className="btn-primary"
+                style={{ padding: '6px 15px' }}
             >
                 {t('Save')}
             </button>

@@ -27,7 +27,7 @@ const zymaHighlightStyle = HighlightStyle.define([
     { tag: t.atom, color: "var(--syn-builtin)" },
     { tag: t.tagName, color: "var(--syn-tag)" },
     { tag: t.attributeName, color: "var(--syn-attr)" },
-    { tag: t.regExp, color: "var(--syn-regex)" },
+    { tag: t.regexp, color: "var(--syn-regex)" },
     
     // Markdown 增强
     { tag: t.heading, color: "var(--syn-md-heading)", fontWeight: "bold" },
@@ -124,7 +124,7 @@ export function useCodeMirror(props: {
                         color: "var(--text-secondary)",
                         minWidth: "45px"
                     },
-                    ".cm-activeLine": { backgroundColor: "rgba(128, 128, 128, 0.07)" },
+                    ".cm-activeLine": { backgroundColor: "var(--bg-active-line)" },
                     ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--accent-color)" },
                     ".cm-selectionBackground, ::selection": { backgroundColor: "var(--accent-color) !important", opacity: "0.25" }
                 })

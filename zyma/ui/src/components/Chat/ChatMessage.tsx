@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { User, Bot, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { User, Bot, Loader2 } from 'lucide-react';
 import type { ChatMessage as IChatMessage } from './types';
 import MarkdownPart from './MessageParts/MarkdownPart';
 import CodeDiffPart from './MessageParts/CodeDiffPart';
@@ -10,7 +10,6 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     const isUser = message.role === 'user';
-    const [showThought, setShowThought] = useState(false);
     
     // 状态样式映射
     const getStatusColor = () => {

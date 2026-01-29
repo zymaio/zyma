@@ -1,7 +1,5 @@
-import React from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { ask } from '@tauri-apps/plugin-dialog';
 import type { PluginManifest } from './types';
 import { PluginAPIBuilder } from './PluginAPIBuilder';
 import { ContributionRegistry } from './ContributionRegistry';

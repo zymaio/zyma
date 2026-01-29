@@ -6,7 +6,7 @@ import { views } from '../ViewSystem/ViewRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import { chatRegistry } from '../Chat/Registry/ChatRegistry';
 import { authRegistry } from './AuthRegistry';
-import type { PluginManifest, ZymaAPI } from './types';
+import type { PluginManifest, ZymaAPI, FileSystemWatcher } from './types';
 import React from 'react';
 
 export class PluginAPIBuilder {
@@ -15,7 +15,7 @@ export class PluginAPIBuilder {
         resources: { views: string[], statusItems: string[], commands: string[] },
         callbacks: any,
         onNotify: () => void,
-        registerUnlistener: (unlisten: any) => void
+        _registerUnlistener: (unlisten: any) => void
     ): ZymaAPI {
         return {
             editor: {
@@ -30,7 +30,36 @@ export class PluginAPIBuilder {
                 },
                 execute: (id: string, ...args: any[]) => commands.executeCommand(id, ...args),
             },
-            // 关键修复：找回被误删的 auth 模块
+            workspace: {
+                readFile: (path: string) => invoke('read_file', { path }),
+                writeFile: (path: string, content: string) => invoke('write_file', { path, content }),
+                stat: (path: string) => invoke('fs_stat', { path }),
+                readDirectory: (path: string) => invoke('read_dir', { path }),
+                findFiles: (baseDir: string, include: string, exclude?: string) => invoke('find_files', { baseDir, include, exclude }),
+                createFileSystemWatcher: (path: string): FileSystemWatcher => ({
+                    onDidCreate: (handler: any) => listen('fs-create:' + path, (e) => handler(e.payload)),
+                    onDidChange: (handler: any) => listen('fs-change:' + path, (e) => handler(e.payload)),
+                    onDidDelete: (handler: any) => listen('fs-delete:' + path, (e) => handler(e.payload)),
+                    dispose: () => {}
+                }),
+                onDidSaveTextDocument: (listener: any) => listen('file-saved', (e) => listener(e.payload)),
+                onDidCreateFiles: (listener: any) => listen('files-created', (e) => listener(e.payload)),
+                onDidChangeFiles: (listener: any) => listen('files-changed', (e) => listener(e.payload)),
+                onDidDeleteFiles: (listener: any) => listen('files-deleted', (e) => listener(e.payload)),
+                onDidOpenTextDocument: (listener: any) => listen('file-opened', (e) => listener(e.payload)),
+            },
+            statusBar: {
+                registerItem: (item: any) => {
+                    resources.statusItems.push(item.id);
+                    // register status bar item... (placeholder)
+                }
+            },
+            menus: {
+                registerFileMenu: (item: any) => {
+                    callbacks.addFileMenuItem(item);
+                    onNotify();
+                }
+            },
             auth: {
                 registerAuthenticationProvider: (provider: any) => {
                     authRegistry.registerProvider(provider);
@@ -42,6 +71,8 @@ export class PluginAPIBuilder {
                 }
             },
             window: {
+                create: (label: string, options: any) => invoke('window_create', { label, options }),
+                close: (label: string) => invoke('window_close', { label }),
                 openTab: (id: string, title: string, component: any) => {
                     const element = typeof component === 'function' ? React.createElement(component) : component;
                     if (callbacks.openCustomView) {
@@ -52,10 +83,18 @@ export class PluginAPIBuilder {
                 },
                 createOutputChannel: (name: string) => {
                     return {
-                        appendLine: (val: string) => invoke('output_append', { channel: name, content: val + '\n' }),
-                        show: () => commands.executeCommand('workbench.action.output.show', name)
+                        append: (val: string) => { invoke('output_append', { channel: name, content: val }); },
+                        appendLine: (val: string) => { invoke('output_append', { channel: name, content: val + '\n' }); },
+                        clear: () => { invoke('output_clear', { channel: name }); },
+                        show: () => { commands.executeCommand('workbench.action.output.show', name); }
                     };
-                }
+                },
+                onDidChangeActiveTextEditor: (listener: any) => listen('active-editor-changed', (e) => listener(e.payload)),
+                onDidChangeWindowState: (listener: any) => listen('window-state-changed', (e) => listener(e.payload)),
+                onDidChangeTextEditorSelection: (listener: any) => listen('selection-changed', (e) => listener(e.payload)),
+            },
+            events: {
+                on: (event: string, handler: any) => listen(event, (e) => handler(e.payload))
             },
             chat: {
                 registerChatParticipant: (participant: any) => {
@@ -79,10 +118,11 @@ export class PluginAPIBuilder {
                 }
             },
             ui: { notify: (msg: string) => callbacks.notify(msg) },
-            components: {
-                ChatPanel: callbacks.components.ChatPanel
-            },
+            // components: {
+            //    ChatPanel: callbacks.components.ChatPanel
+            // },
             system: {
+                version: "0.9.5",
                 invoke: (cmd: string, args?: any) => invoke(cmd, args),
                 getEnv: (name: string) => invoke('system_get_env', { name }),
                 exec: (command: string, args: string[]) => invoke('system_exec', { program: command, args })

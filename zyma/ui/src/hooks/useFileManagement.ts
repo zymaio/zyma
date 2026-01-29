@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useFileIO } from './useFileIO';
 import { save } from '@tauri-apps/plugin-dialog';
+import { pathUtils } from '../utils/pathUtils';
 
 export interface FileData {
     id: string;
@@ -17,7 +18,7 @@ export interface FileData {
  */
 const normalize = (str: string) => (str || '').replace(/\r\n/g, '\n');
 
-export function useFileManagement(t: any) {
+export function useFileManagement() {
     const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const editorViewRef = useRef<EditorView | null>(null);
@@ -60,7 +61,7 @@ export function useFileManagement(t: any) {
 
         try {
             await writeFile(targetPath, currentText);
-            const fileName = targetPath.split(/[\\/]/).pop() || target.name;
+            const fileName = pathUtils.getFileName(targetPath);
             
             setOpenFiles(prev => prev.map(f => f.id === target!.id ? { 
                 ...f, 

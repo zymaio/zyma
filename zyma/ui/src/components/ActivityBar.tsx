@@ -68,7 +68,7 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                     </div>
                 ))}
                 
-                {topViews.length > 0 && <div style={{ width: '20px', height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '5px 0' }} />}
+                {topViews.length > 0 && <div style={{ width: '20px', height: '1px', backgroundColor: 'var(--border-color)', margin: '5px 0' }} />}
 
                 {/* 插件扩展图标 */}
                 {topViews.map(view => (
@@ -85,7 +85,7 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                     <div style={{ position: 'relative' }}>
                         <div className={`activity-icon ${showAccountMenu ? 'active' : ''}`} onClick={() => setShowAccountMenu(!showAccountMenu)} title={t('Accounts')}>
                             <User size={24} />
-                            {authProviders.some(p => p.accountName) && <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', border: '2px solid var(--bg-activity-bar)' }} />}
+                            {authProviders.some(p => p.accountName) && <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)', border: '2px solid var(--bg-activity)' }} />}
                         </div>
                         <AccountMenu visible={showAccountMenu} onClose={() => setShowAccountMenu(false)} position={{ bottom: 50, left: 50 }} />
                     </div>

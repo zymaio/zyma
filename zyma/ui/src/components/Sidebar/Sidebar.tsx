@@ -8,6 +8,8 @@ import type { MenuItem } from '../ContextMenu/ContextMenu';
 import FileTreeItem from './components/FileTreeItem';
 import type { FileItemData } from './components/FileTreeItem';
 
+import { pathUtils } from '../../utils/pathUtils';
+
 interface SidebarProps {
   rootPath: string;
   onFileSelect: (path: string, name: string) => void;
@@ -28,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
     let isMounted = true;
     const load = async () => {
         setIsLoading(true);
-        const name = rootPath.split(/[\\/]/).filter(Boolean).pop() || rootPath;
+        const name = pathUtils.getFileName(rootPath);
         setProjectName(name);
         try {
           const items = await invoke<FileItemData[]>('read_dir', { path: rootPath });

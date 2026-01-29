@@ -33,29 +33,30 @@ export function useWindowManagement(
         updateTitle();
     }, [rootPath]);
 
-    // 核心拦截器：保证生命周期内只注册一次，且必须是同步函数
     useEffect(() => {
         const unlistenPromise = getCurrentWindow().onCloseRequested((e) => {
             // 如果已经在退出流程中，不再拦截
             if (exitingRef.current) return;
 
-            // 检查脏数据 (通过 Ref 拿最新值)
-            const hasDirty = filesRef.current.some((f: any) => f.isDirty);
-            
             // 关键：必须在函数体内第一时间同步调用 preventDefault
             e.preventDefault();
-
-            if (hasDirty) {
-                // 通知 UI 弹出确认框
-                setClosingRef.current(true);
-            } else {
-                // 没有脏文件，执行清理并彻底退出
-                exitHandlerRef.current(false);
-            }
+            requestExit();
         });
 
         return () => {
             unlistenPromise.then(unlisten => unlisten());
         };
     }, []); // 严格空数组，防止重绑导致的监听真空期
+
+    // 暴露手动触发接口
+    const requestExit = () => {
+        const hasDirty = filesRef.current.some((f: any) => f.isDirty);
+        if (hasDirty) {
+            setClosingRef.current(true);
+        } else {
+            exitHandlerRef.current(false);
+        }
+    };
+
+    return { requestExit };
 }

@@ -77,7 +77,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ver
                 <div style={{ 
                     width: '80px', height: '80px', backgroundColor: 'var(--status-error)', borderRadius: '18px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                    boxShadow: 'var(--shadow-main)'
                 }}>
                     <svg width="50" height="50" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M190 100H430L250 260H390L150 420L220 260H130L190 100Z" fill="white"/>
@@ -86,7 +86,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ver
 
                 <h2 style={{ margin: '0 0 5px 0', fontSize: '24px', fontWeight: '900', color: 'var(--text-primary)' }}>智码 (Zyma)</h2>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '20px' }}>
-                    <div style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', opacity: 0.6, backgroundColor: 'var(--active-bg)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-primary)' }}>
+                    <div style={{ fontSize: 'calc(var(--ui-font-size) - 1px)', backgroundColor: 'var(--active-bg)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-secondary)' }}>
                         Version {currentVersion} Beta
                     </div>
                     {renderUpdateStatus()}
@@ -102,10 +102,10 @@ const AboutModal: React.FC<AboutModalProps> = ({ onClose, autoCheck = false, ver
                         </div>
                         <button 
                             onClick={installUpdate}
+                            className="btn-primary"
                             style={{ 
-                                padding: '6px 15px', backgroundColor: 'var(--status-success)', color: '#fff', 
-                                border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold',
-                                display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto'
+                                padding: '6px 15px', backgroundColor: 'var(--status-success)',
+                                margin: '0 auto'
                             }}
                         >
                             <Download size={14} /> {t('UpdateNow')}

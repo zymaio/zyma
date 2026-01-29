@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, Loader2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Search, Loader2, ChevronRight, ChevronDown, FileCode } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { pathUtils } from '../../utils/pathUtils';
 
 interface SearchResult {
     path: string;
@@ -107,7 +108,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
                 {Object.keys(groupedResults).map((path) => {
-                    const fileName = path.split(/[\\/]/).pop() || 'file';
+                    const fileName = pathUtils.getFileName(path);
                     const isExpanded = expandedFiles[path];
                     const fileMatches = groupedResults[path];
 
