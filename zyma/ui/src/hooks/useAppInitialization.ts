@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginManager';
+import { authRegistry } from '../components/PluginSystem/AuthRegistry';
+import { chatRegistry } from '../components/Chat/Registry/ChatRegistry';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
 export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: string, title: string, component: any) => void) {
@@ -14,6 +17,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
     const [isAdmin, setIsAdmin] = useState(false);
     const [platform, setPlatform] = useState('');
     const [appVersion, setAppVersion] = useState('');
+    const [productName, setProductName] = useState('zyma');
     const [pluginMenus, setPluginMenus] = useState<any[]>([]);
     
     const pluginManager = useRef<PluginManager | null>(null);
@@ -28,29 +32,89 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
         await getCurrentWindow().destroy();
     }, [fm.openFiles, fm.doSave]);
 
-    // 核心修复：将“系统元数据加载”与“插件加载”分离
     useEffect(() => {
         const initSystem = async () => {
             try {
-                const [saved, adminStatus, plat, version] = await Promise.all([
+                const [saved, adminStatus, plat, version, rawName] = await Promise.all([
                     invoke<AppSettings>('load_settings'), invoke<boolean>('is_admin'),
-                    invoke<string>('get_platform'), invoke<string>('get_app_version')
+                    invoke<string>('get_platform'), invoke<string>('get_app_version'),
+                    invoke<string>('get_product_name')
                 ]);
                 setSettings(saved);
                 setAppVersion(version);
+                setProductName(rawName.toLowerCase().replace(/[^a-z0-9]/g, '_'));
                 i18n.changeLanguage(saved.language);
                 setIsAdmin(adminStatus);
                 setPlatform(plat);
+
+                // --- 框架协议：自动发现原生扩展 ---
+                try {
+                    const native = await invoke<any>('get_native_extensions');
+                    
+                    // 1. 同步 AI 参与者
+                    if (native.chat_participants) {
+                        native.chat_participants.forEach((p: any) => {
+                            chatRegistry.registerParticipant({
+                                id: p.id, name: p.name, fullName: p.full_name, description: p.description,
+                                handler: async (req, stream) => {
+                                    stream.status('thinking');
+                                    const history = req.history.map((h: any) => ({
+                                        role: h.role === 'agent' ? 'assistant' : 'user', content: h.content
+                                    }));
+                                    history.push({ role: 'user', content: req.prompt });
+                                    const unlisten = await listen(p.thought_event || 'ai-thought', (e) => stream.markdown(e.payload as string));
+                                    try { await invoke(p.command, { prompt: req.prompt, history }); } 
+                                    catch(e) { stream.error(String(e)); }
+                                    finally { unlisten(); stream.done(); }
+                                }
+                            });
+                        });
+                    }
+
+                    // 2. 同步账号提供商
+                    if (native.auth_providers) {
+                        native.auth_providers.forEach((p: any) => {
+                            authRegistry.registerProvider({
+                                id: p.id, label: p.label,
+                                onLogin: async () => {
+                                    try {
+                                        const res = await invoke<any>(p.login_command);
+                                        if (res && res.status === 'success') {
+                                            localStorage.setItem(`auth_${p.id}_user`, JSON.stringify(res.user));
+                                            authRegistry.updateAccount(p.id, res.user?.username || 'User');
+                                        }
+                                    } catch(e) { console.warn("Login failed:", e); }
+                                },
+                                onLogout: async () => {
+                                    try {
+                                        await invoke(p.logout_command);
+                                        localStorage.removeItem(`auth_${p.id}_user`);
+                                        authRegistry.updateAccount(p.id, undefined);
+                                    } catch(e) {}
+                                }
+                            });
+                            if (p.auth_event) {
+                                listen(p.auth_event, (e: any) => authRegistry.updateAccount(p.id, e.payload.username));
+                            }
+                            const saved = localStorage.getItem(`auth_${p.id}_user`);
+                            if (saved) {
+                                try {
+                                    const u = JSON.parse(saved);
+                                    authRegistry.updateAccount(p.id, typeof u === 'object' ? u.username : u);
+                                } catch(e) {}
+                            }
+                        });
+                    }
+                } catch(e) { console.log("Standard Zyma mode: No native extensions found."); }
+
                 setReady(true);
             } catch (e) { console.error('Init System Error:', e); setReady(true); }
         };
         initSystem();
-    }, []); // 仅挂载时运行一次
+    }, []);
 
-    // 插件管理器初始化：不再依赖 components 参数
     useEffect(() => {
         if (!pluginManager.current) {
-            console.log("[useAppInitialization] Initializing PluginManager...");
             pluginManager.current = new PluginManager({
                 insertText: (text: string) => {
                     const active = fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath);
@@ -64,7 +128,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                     forceUpdate(n => n + 1);
                 },
                 showDiff: async (path: string, content: string, title?: string) => {
-                    const confirmed = await ask('是否应用 [' + (title || 'AI') + '] 对文件 ' + path + ' 的建议修改？', { title: 'Zyma Diff', kind: 'info' });
+                    const confirmed = await ask('是否应用建议修改？', { title: 'Zyma Diff', kind: 'info' });
                     if (confirmed) {
                         try {
                             await invoke('write_file', { path, content });
@@ -72,17 +136,17 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                         } catch (e) { alert('Error: ' + e); }
                     }
                 },
-                addFileMenuItem: () => {}, // No-op, handled by onMenuUpdate
-                components: { ChatPanel: null }, // 初始为空
+                addFileMenuItem: () => {},
+                components: { ChatPanel: null },
                 openCustomView,
                 closeTab: (id: string) => fm.closeTab ? fm.closeTab(id) : null
             });
             pluginManager.current.loadAll();
         }
-    }, [openCustomView]); // 仅依赖 openCustomView
+    }, [openCustomView]);
 
     return useMemo(() => ({
-        ready, settings, setSettings, isAdmin, platform, appVersion, 
+        ready, settings, setSettings, isAdmin, platform, appVersion, productName,
         pluginMenus, pluginManager, handleAppExit
-    }), [ready, settings, isAdmin, platform, appVersion, pluginMenus, handleAppExit]);
+    }), [ready, settings, isAdmin, platform, appVersion, productName, pluginMenus, handleAppExit]);
 }

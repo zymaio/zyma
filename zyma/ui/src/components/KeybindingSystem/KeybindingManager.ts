@@ -38,11 +38,16 @@ export class KeybindingManager {
     handleKeyEvent(e: KeyboardEvent): boolean {
         if (!e) return false;
         const parts = [];
+        
+        // 顺序必须固定：ctrl -> shift -> alt
         if (e.ctrlKey || e.metaKey) parts.push('ctrl');
         if (e.shiftKey) parts.push('shift');
         if (e.altKey) parts.push('alt');
         
+        // 获取实际按键名，统一转小写
         const key = e.key.toLowerCase();
+        
+        // 过滤掉单独的修饰键本身
         if (!['control', 'shift', 'alt', 'meta'].includes(key)) {
             parts.push(key);
         }

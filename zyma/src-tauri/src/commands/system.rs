@@ -1,4 +1,5 @@
 use tauri::{AppHandle, Manager, Emitter};
+use serde_json::Value;
 
 #[tauri::command]
 pub fn is_admin() -> bool {
@@ -27,7 +28,7 @@ pub fn is_admin() -> bool {
 pub fn kill_process() { std::process::exit(0); }
 
 #[tauri::command]
-pub fn exit_app(app_handle: tauri::AppHandle) { app_handle.exit(0); }
+pub fn exit_app<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) { app_handle.exit(0); }
 
 #[tauri::command]
 pub fn get_cli_args() -> Vec<String> { std::env::args().collect() }
@@ -44,7 +45,7 @@ pub fn open_url(url: String) -> Result<(), String> {
 
 #[cfg(windows)]
 #[tauri::command]
-pub async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -> Result<(), String> {
+pub async fn manage_context_menu<R: tauri::Runtime>(_app: AppHandle<R>, enable: bool, label: String) -> Result<(), String> {
     use winreg::enums::*;
     use winreg::RegKey;
     let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -70,9 +71,22 @@ pub async fn manage_context_menu(_app: AppHandle, enable: bool, label: String) -
 
 #[cfg(not(windows))]
 #[tauri::command]
-pub async fn manage_context_menu(_app: AppHandle, _enable: bool, _label: String) -> Result<(), String> { Ok(()) }
+pub async fn manage_context_menu<R: tauri::Runtime>(_app: AppHandle<R>, _enable: bool, _label: String) -> Result<(), String> { Ok(()) }
 
 #[tauri::command] pub fn get_app_version() -> String { env!("CARGO_PKG_VERSION").to_string() }
+#[tauri::command] pub fn get_product_name<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> String { 
+    let name = app_handle.package_info().name.clone();
+    name.to_lowercase()
+}
+
+#[tauri::command] 
+pub fn get_native_extensions(state: tauri::State<'_, crate::AppState>) -> serde_json::Value { 
+    serde_json::json!({
+        "chat_participants": state.native_chat_participants,
+        "auth_providers": state.native_auth_providers
+    })
+}
+
 #[tauri::command] pub fn get_platform() -> String { std::env::consts::OS.to_string() }
 #[tauri::command] pub fn system_get_env(name: String) -> Option<String> { std::env::var(name).ok() }
 
@@ -91,13 +105,13 @@ pub async fn system_exec(program: String, args: Vec<String>) -> Result<ExecResul
 }
 
 #[tauri::command]
-pub fn emit_global_event(app_handle: tauri::AppHandle, event: String, payload: String) -> Result<(), String> {
+pub fn emit_global_event<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>, event: String, payload: String) -> Result<(), String> {
     let _ = app_handle.emit(&event, payload);
     Ok(())
 }
 
 #[tauri::command]
-pub async fn system_exit_all_windows(app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn system_exit_all_windows<R: tauri::Runtime>(app_handle: tauri::AppHandle<R>) -> Result<(), String> {
     for (label, w) in app_handle.webview_windows() { if label != "main" { let _ = w.close(); } }
     app_handle.exit(0);
     Ok(())

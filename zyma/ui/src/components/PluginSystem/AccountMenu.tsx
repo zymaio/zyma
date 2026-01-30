@@ -48,7 +48,9 @@ const AccountMenu: React.FC<AccountMenuProps> = ({ visible, onClose, position })
                                     <span>{p.label}</span>
                                 </div>
                                 {p.accountName && (
-                                    <span style={{ fontSize: '11px', opacity: 0.6 }}>{p.accountName}</span>
+                                    <span style={{ fontSize: '11px', opacity: 0.6 }}>
+                                        {typeof p.accountName === 'object' ? (p.accountName as any).username : p.accountName}
+                                    </span>
                                 )}
                             </div>
                             

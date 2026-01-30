@@ -6302,6 +6302,7 @@ dependencies = [
 name = "zyma"
 version = "0.9.5"
 dependencies = [
+ "async-trait",
  "bytes",
  "futures",
  "globset",

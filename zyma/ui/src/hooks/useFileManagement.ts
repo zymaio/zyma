@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
-import { useFileIO } from './useFileIO';
+import { invoke } from '@tauri-apps/api/core';
 import { save } from '@tauri-apps/plugin-dialog';
 import { pathUtils } from '../utils/pathUtils';
 import toast from 'react-hot-toast';
@@ -14,19 +14,17 @@ export interface FileData {
     isDirty: boolean;
 }
 
-/**
- * 辅助：规范化内容（统一换行符），确保对比的准确性
- */
 const normalize = (str: string) => (str || '').replace(/\r\n/g, '\n');
+
+// 提取为普通的异步函数，避免 Hook 复杂度
+const fsReadFile = (path: string) => invoke<string>('read_file', { path });
+const fsWriteFile = (path: string, content: string) => invoke<void>('write_file', { path, content });
 
 export function useFileManagement() {
     const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const editorViewRef = useRef<EditorView | null>(null);
-    
-    const { readFile, writeFile } = useFileIO();
 
-    // 1. 打开文件：读取时直接规范化 originalContent
     const handleFileSelect = useCallback(async (path: string, name: string) => {
         const existing = openFiles.find(f => f.path === path);
         if (existing) {
@@ -34,7 +32,7 @@ export function useFileManagement() {
             return;
         }
         try {
-            const raw = await readFile(path);
+            const raw = await fsReadFile(path);
             const content = normalize(raw);
             const newFile: FileData = { id: path, name, path, content, originalContent: content, isDirty: false };
             setOpenFiles(prev => [...prev, newFile]);
@@ -43,14 +41,12 @@ export function useFileManagement() {
             console.error(e); 
             toast.error(`Failed to open file: ${name}`);
         }
-    }, [openFiles, readFile]);
+    }, [openFiles]);
 
-    // 2. 保存文件：保存成功后同步 originalContent
     const doSave = useCallback(async (file: FileData | null, force: boolean = false) => {
         const target = file || openFiles.find(f => f.id === activeFilePath);
         if (!target) return false;
 
-        // 获取当前编辑器里的最新内容
         const currentText = editorViewRef.current?.state.doc.toString() || target.content;
         const normalizedCurrent = normalize(currentText);
 
@@ -64,7 +60,7 @@ export function useFileManagement() {
         }
 
         try {
-            await writeFile(targetPath, currentText);
+            await fsWriteFile(targetPath, currentText);
             const fileName = pathUtils.getFileName(targetPath);
             
             setOpenFiles(prev => prev.map(f => f.id === target!.id ? { 
@@ -83,9 +79,8 @@ export function useFileManagement() {
             toast.error(`Save failed: ${target.name}`);
             return false; 
         }
-    }, [activeFilePath, openFiles, writeFile]);
+    }, [activeFilePath, openFiles]);
 
-    // 3. 核心修复：内容变更同步
     const handleEditorChange = useCallback((content: string) => {
         setOpenFiles(prev => {
             const idx = prev.findIndex(f => f.id === activeFilePath);
@@ -95,7 +90,6 @@ export function useFileManagement() {
             const normalizedNew = normalize(content);
             const isDirty = normalizedNew !== file.originalContent;
             
-            // 只有当 内容变了 OR 脏状态变了，才触发 React 更新
             if (file.content === content && file.isDirty === isDirty) return prev;
             
             const next = [...prev];

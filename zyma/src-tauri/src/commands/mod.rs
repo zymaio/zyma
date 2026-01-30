@@ -8,9 +8,7 @@ pub mod search;
 pub mod watcher;
 pub mod llm;
 
-use tauri::Wry;
-
-pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<Wry>) -> bool {
+pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         config::load_settings, 
         config::save_settings,
@@ -42,6 +40,8 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<Wry>) -> bool {
         system::kill_process,
         system::get_platform, 
         system::get_app_version,
+        system::get_product_name,
+        system::get_native_extensions,
         system::open_url, 
         system::system_exit_all_windows,
         window::open_detached_output,

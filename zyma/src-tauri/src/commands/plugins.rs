@@ -15,7 +15,7 @@ fn simplify_path(p: PathBuf) -> String {
 
 #[tauri::command]
 pub fn list_plugins(
-    state: tauri::State<'_, crate::AppState>
+    state: tauri::State<'_, crate::AppState>,
 ) -> Result<Vec<(String, PluginManifest, bool)>, String> {
     let mut plugins = Vec::new();
     let mut seen_names = std::collections::HashSet::new();

@@ -23,7 +23,7 @@ function App() {
   const { sidebarWidth, startResizing } = useSidebarResize(250);
 
   const {
-      ready, settings, setSettings, isAdmin, platform, appVersion,
+      ready, settings, setSettings, isAdmin, platform, appVersion, productName,
       pluginMenus, pluginManager, handleAppExit
   } = useAppInitialization(fm, i18n, openCustomView);
 
@@ -59,12 +59,12 @@ function App() {
   if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1b26' }}></div>;
 
   return (
-    <WorkbenchProvider value={{ settings, setSettings, platform, appVersion, isAdmin }}>
+    <WorkbenchProvider value={{ settings, setSettings, platform, appVersion, isAdmin, productName }}>
         <Workbench 
             fm={fm}
             tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
             sidebarResize={{ sidebarWidth, startResizing }}
-            appInit={{ ready, settings, setSettings, isAdmin, platform, appVersion, pluginMenus, pluginManager, handleAppExit }}
+            appInit={{ ready, settings, setSettings, isAdmin, platform, appVersion, productName, pluginMenus, pluginManager, handleAppExit }}
             chatComponents={chatComponents}
         />
     </WorkbenchProvider>

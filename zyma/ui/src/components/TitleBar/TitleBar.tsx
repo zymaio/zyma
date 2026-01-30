@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getMenuData, type MenuItem } from './menuConfig';
 import './TitleBar.css';
+import { useWorkbench } from '../../core/WorkbenchContext';
 
 interface TitleBarProps {
     onAction: (action: string) => void;
@@ -15,6 +16,7 @@ interface TitleBarProps {
 
 const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platform }) => {
   const { t } = useTranslation();
+  const { productName } = useWorkbench();
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -81,7 +83,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
             {MENU_DATA.map(menu => (
                 <div key={menu.label} className="menu-item-wrapper">
                     <div 
-                        className={`menu-item ${activeMenu === menu.label ? 'active' : ''}`}
+                        className={`menu-item-label ${activeMenu === menu.label ? 'active' : ''}`}
                         onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
                         onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
                     >
@@ -112,7 +114,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
 
         {/* Draggable Title Area */}
         <div className="title-drag-region" data-tauri-drag-region>
-            智码 - zyma {isAdmin && `[${t('Administrator')}]`}
+            {t(`app_name_${productName}`)} {isAdmin && `[${t('Administrator')}]`}
         </div>
       </div>
 

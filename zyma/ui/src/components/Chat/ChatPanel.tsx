@@ -1,14 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import type { ChatMessage as IChatMessage } from './types';
 import { chatRegistry } from './Registry/ChatRegistry';
-import type { ChatResponseStream } from './Registry/ChatRegistry';
-
-const generateId = () => Math.random().toString(36).substr(2, 9);
+import { useChatLogic } from '../../hooks/useChatLogic';
 
 interface ChatPanelProps {
-    participantId?: string; // 新增：指定连接哪个参与者
+    participantId?: string; 
     title?: string;
     getContext?: () => Promise<{
         filePath: string | null;
@@ -18,15 +15,7 @@ interface ChatPanelProps {
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext }) => {
-    const [messages, setMessages] = useState<IChatMessage[]>([
-        {
-            id: 'welcome',
-            role: 'agent',
-            timestamp: Date.now(),
-            parts: [{ type: 'markdown', content: `Hello! I am ${title || 'Zyma Assistant'}. How can I help you today?` }]
-        }
-    ]);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const { messages, isProcessing, handleSend, handleClear } = useChatLogic(participantId, getContext);
     const [, forceUpdate] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -52,126 +41,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext 
         const all = chatRegistry.getParticipants();
         return participantId ? all.find(p => p.id === participantId) : all[0];
     }, [participantId, forceUpdate]);
-
-    const handleSend = async (text: string) => {
-        const participant = currentParticipant;
-
-        if (!participant) {
-            setMessages(prev => [...prev, {
-                id: generateId(),
-                role: 'agent',
-                timestamp: Date.now(),
-                parts: [{ type: 'markdown', content: `No handler found for **${participantId || 'default'}**. Please ensure the extension is enabled.` }]
-            }]);
-            return;
-        }
-
-        const userMsg: IChatMessage = {
-            id: generateId(),
-            role: 'user',
-            timestamp: Date.now(),
-            parts: [{ type: 'markdown', content: text }]
-        };
-
-        setMessages(prev => [...prev, userMsg]);
-        setIsProcessing(true);
-
-        const agentMsgId = generateId();
-        const initialAgentMsg: IChatMessage = {
-            id: agentMsgId,
-            role: 'agent',
-            timestamp: Date.now(),
-            parts: [],
-            status: 'thinking'
-        };
-        setMessages(prev => [...prev, initialAgentMsg]);
-
-        const ctx = getContext ? await getContext() : { filePath: null, selection: null, fileContent: null };
-        const history = messages.map(m => ({
-            role: m.role,
-            content: m.parts.filter(p => p.type === 'markdown').map(p => (p as any).content).join('\n')
-        })).filter(h => h.content.trim() !== '');
-
-        let command: string | undefined;
-        let prompt = text;
-        if (text.startsWith('/')) {
-            const parts = text.split(' ');
-            command = parts[0].substring(1);
-            prompt = parts.slice(1).join(' ');
-        }
-
-        const stream: ChatResponseStream = {
-            markdown: (content) => {
-                setMessages(prev => prev.map(m => {
-                    if (m.id !== agentMsgId) return m;
-                    
-                    const newParts = [...m.parts];
-                    const lastPart = newParts[newParts.length - 1];
-                    
-                    if (lastPart && lastPart.type === 'markdown') {
-                        // 追加到最后一个 markdown 片段
-                        newParts[newParts.length - 1] = {
-                            ...lastPart,
-                            content: lastPart.content + content
-                        };
-                    } else {
-                        // 第一个片段或前一个片段不是 markdown
-                        newParts.push({ type: 'markdown', content });
-                    }
-                    
-                    return {
-                        ...m,
-                        status: 'streaming',
-                        parts: newParts
-                    };
-                }));
-            },
-            diff: (original, modified, language, path) => {
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? {
-                    ...m,
-                    parts: [...m.parts, { type: 'diff', original, modified, language, path }]
-                } : m));
-            },
-            toolCall: (name, args, status, result) => {
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? {
-                    ...m,
-                    parts: [...m.parts, { type: 'tool_call', name, args, status, result }]
-                } : m));
-            },
-            status: (type) => {
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? { ...m, status: type } : m));
-            },
-            done: () => {
-                setIsProcessing(false);
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? { ...m, status: 'done' } : m));
-            },
-            error: (msg) => {
-                setIsProcessing(false);
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? {
-                    ...m,
-                    status: 'error',
-                    parts: [...m.parts, { type: 'markdown', content: `**Error**: ${msg}` }]
-                } : m));
-            }
-        };
-
-        try {
-            await participant.handler({
-                prompt,
-                command,
-                selection: ctx.selection || undefined,
-                filePath: ctx.filePath || undefined,
-                fileContent: ctx.fileContent || undefined,
-                history
-            }, stream);
-        } catch (e) {
-            stream.error(String(e));
-        }
-    };
-
-    const handleClear = () => {
-        setMessages([]);
-    };
 
     return (
         <div style={{ 

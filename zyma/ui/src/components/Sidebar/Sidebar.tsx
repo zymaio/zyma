@@ -9,6 +9,7 @@ import FileTreeItem from './components/FileTreeItem';
 import type { FileItemData } from './components/FileTreeItem';
 
 import { pathUtils } from '../../utils/pathUtils';
+import { useFileIO } from '../../hooks/useFileIO';
 
 interface SidebarProps {
   rootPath: string;
@@ -26,12 +27,34 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
   const [isLoading, setIsLoading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: MenuItem[] } | null>(null);
 
+  const loadRoot = useCallback(async (path: string) => {
+    setIsLoading(true);
+    try {
+      const items = await invoke<FileItemData[]>('read_dir', { path });
+      setRootFiles(items);
+    } catch (error) {} finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  const { handleCreate, handleRename, handleDelete } = useFileIO(loadRoot, onFileDelete);
+
   useEffect(() => {
     let isMounted = true;
     const load = async () => {
         setIsLoading(true);
-        const name = pathUtils.getFileName(rootPath);
-        setProjectName(name);
+        
+        let displayPath = rootPath;
+        if (rootPath === '.' || rootPath === './') {
+            try {
+                const cwd = await invoke<string>('get_cwd');
+                displayPath = cwd;
+            } catch (e) {}
+        }
+        
+        const name = pathUtils.getFileName(displayPath);
+        if (isMounted) setProjectName(name);
+
         try {
           const items = await invoke<FileItemData[]>('read_dir', { path: rootPath });
           if (isMounted) setRootFiles(items);
@@ -51,63 +74,18 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
       return () => window.removeEventListener('click', handleClick);
   }, []);
 
-  const loadRoot = async (path: string) => {
-    setIsLoading(true);
-    try {
-      const items = await invoke<FileItemData[]>('read_dir', { path });
-      setRootFiles(items);
-    } catch (error) {} finally {
-        setIsLoading(false);
-    }
-  };
-
-  const handleCreate = async (targetPath: string, type: 'file' | 'dir') => {
-      const name = prompt(t('EnterName', { type }));
-      if (!name) return;
-      const path = `${targetPath}/${name}`;
-      try {
-          if (type === 'file') await invoke('create_file', { path });
-          else await invoke('create_dir', { path });
-          loadRoot(rootPath);
-      } catch (e) { alert(e); }
-  };
-
-  const handleRename = async (oldPath: string, oldName: string) => {
-      const newName = prompt(t('EnterName', { type: 'New' }), oldName);
-      if (!newName || newName === oldName) return;
-      const lastSlashIndex = Math.max(oldPath.lastIndexOf('/'), oldPath.lastIndexOf('\\'));
-      const parentPath = lastSlashIndex > -1 ? oldPath.substring(0, lastSlashIndex) : '.';
-      const separator = lastSlashIndex > -1 ? oldPath[lastSlashIndex] : '/';
-      const newPath = parentPath === '.' ? newName : `${parentPath}${separator}${newName}`;
-      try {
-          await invoke('rename_item', { at: oldPath, to: newPath });
-          loadRoot(rootPath);
-      } catch (e) { alert(e); }
-  };
-
-  const handleDelete = async (path: string, name: string) => {
-      const confirmed = await ask(t('ConfirmDelete', { name }), { title: t('File'), kind: 'warning' });
-      if (confirmed) {
-          try {
-              await invoke('remove_item', { path });
-              if (onFileDelete) onFileDelete(path);
-              loadRoot(rootPath);
-          } catch (e) { alert(e); }
-      }
-  };
-
   const getMenuItems = (path: string, isDir: boolean, name: string): MenuItem[] => {
       const items: MenuItem[] = [];
       const parentPath = isDir ? path : path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
       items.push(
-          { label: t('NewFile'), action: () => handleCreate(parentPath, 'file') },
-          { label: t('NewFolder'), action: () => handleCreate(parentPath, 'dir') },
+          { label: t('NewFile'), action: () => handleCreate(parentPath, 'file', rootPath) },
+          { label: t('NewFolder'), action: () => handleCreate(parentPath, 'dir', rootPath) },
           { label: '', action: () => {}, separator: true }
       );
       if (path !== rootPath) {
           items.push(
-              { label: t('Rename'), action: () => handleRename(path, name) },
-              { label: t('Delete'), action: () => handleDelete(path, name), danger: true }
+              { label: t('Rename'), action: () => handleRename(path, name, rootPath) },
+              { label: t('Delete'), action: () => handleDelete(path, name, rootPath), danger: true }
           );
       }
 
@@ -115,10 +93,9 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
       if (pluginMenuItems.length > 0) {
           items.push({ label: '', action: () => {}, separator: true });
           pluginMenuItems.forEach(mi => {
-              items.push({ 
+              items.push({
                   label: mi.label, 
                   action: () => {
-                      // 这里假设 commands 是全局可用的，或者通过某种方式分发
                       import('../CommandSystem/CommandRegistry').then(m => {
                           m.commands.executeCommand(mi.commandId, path);
                       });
@@ -136,15 +113,15 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
       const isDir = item ? item.is_dir : true;
       const name = item ? item.name : projectName;
       setContextMenu({ x: e.clientX, y: e.clientY, items: getMenuItems(targetPath, isDir, name) });
-  }, [rootPath, projectName, t]);
+  }, [rootPath, projectName, t, handleCreate, handleRename, handleDelete]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', userSelect: 'none' }} onContextMenu={(e) => handleContextMenu(e)}>
-      <div style={{ padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{t('Explorer')}</span></div>
+      <div style={{ padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{t('Workspace')}</span></div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', padding: '3px 5px', cursor: 'pointer', fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-primary)' }} className="file-item-hover" onClick={() => setIsRootOpen(!isRootOpen)} onContextMenu={(e) => handleContextMenu(e)}>
              <span style={{ marginRight: '5px', opacity: 0.8, display: 'flex', alignItems: 'center' }}>{isRootOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
-            <span style={{ marginRight: '5px', opacity: 0.8, textTransform: 'uppercase' }}>{projectName}</span>
+            <span style={{ marginRight: '5px', opacity: 0.8 }}>{projectName}</span>
         </div>
         {isRootOpen && (<div>{isLoading && <div style={{ paddingLeft: '20px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: '#666' }}>{t('Loading')}...</div>}{rootFiles.map((file) => (<FileTreeItem key={file.path} item={file} onFileSelect={onFileSelect} onContextMenu={handleContextMenu} activeFilePath={activeFilePath} level={1} />))}</div>)}
       </div>

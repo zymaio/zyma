@@ -9,6 +9,7 @@ import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import ActivityBar from '../components/ActivityBar';
 import StatusBar from '../components/StatusBar';
 import WorkbenchModals from './WorkbenchModals';
+import WorkbenchMain from './WorkbenchMain';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { commands } from '../components/CommandSystem/CommandRegistry';
 import { undo, redo } from '@codemirror/commands';
@@ -30,7 +31,9 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     const { fm, tabSystem, sidebarResize, appInit, chatComponents } = props;
     const { t, i18n } = useTranslation();
     
-    const { settings, setSettings, isAdmin, platform, appVersion } = useWorkbench();
+    const context = useWorkbench();
+    const { settings, setSettings, isAdmin, platform, appVersion } = context;
+    const productName = context.productName || '';
     const { handleAppExit, pluginMenus, pluginManager, ready } = appInit;
 
     const logic = useWorkbenchLogic({ fm, tabSystem, appInit });
@@ -150,26 +153,14 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                     
                     <Breadcrumbs path={activeTab?.type === 'file' ? activeTabId : null} />
                     
-                    <div className="main-content-area" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-                        {activeTab?.type === 'file' && activeFile ? (
-                            <div className="editor-instance-wrapper" style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={activeFile.id}>
-                                <Editor content={activeFile.content} fileName={activeFile.name} themeMode={settings.theme} fontSize={settings.font_size} onChange={fm.handleEditorChange} editorRef={fm.editorViewRef} />
-                                {isMarkdown && <div className="markdown-preview-pane" style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%', borderLeft: '1px solid var(--border-color)', backgroundColor: 'var(--bg-editor)' }}><Preview content={activeFile.content} themeMode={settings.theme} /></div>}
-                            </div>
-                        ) : activeTab?.type === 'view' ? (
-                            <div className="custom-view-wrapper" style={{ 
-                                flex: 1, 
-                                height: '100%', 
-                                backgroundColor: 'var(--bg-editor)',
-                                color: 'var(--text-primary)'
-                            }}>{activeTab.component}</div>
-                        ) : (
-                            <div className="empty-state">
-                                <div className="logo-text">智码 (zyma)</div>
-                                <div>{t('NoFile')}</div>
-                            </div>
-                        )}
-                    </div>
+                    <WorkbenchMain 
+                        activeTab={activeTab}
+                        activeFile={activeFile}
+                        isMarkdown={isMarkdown}
+                        settings={settings}
+                        fm={fm}
+                        productName={productName}
+                    />
                 </div>
             </div>
 

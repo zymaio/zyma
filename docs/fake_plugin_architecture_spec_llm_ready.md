@@ -1,222 +1,141 @@
-# Fake Plugin（假插件）系统需求说明（LLM 友好版）
+# Zyma 声明式扩展架构规范 (Native Feature Extension)
 
-> 本文档用于指导 **立即开始开发** 一个基于 **Tauri + Rust** 的“假插件（编译期插件）”系统。
+> 本文档定义了 Zyma 底座（Open Source）与 行业扩展（如 ShovX Pro，Closed Source）之间的原生对接协议。
 > 
-> 目标读者：
-> - LLM（用于代码生成）
-> - 具备 Rust / Tauri 基础的工程师
+> 目标：实现 **“底座做基建，扩展做智力”** 的零耦合、高性能集成。
 
 ---
 
-## 1. 项目背景与目标
+## 1. 核心设计思想：声明式全案 (Declarative Feature)
 
-### 1.1 背景
+> **扩展不再是零散的命令，而是一个自我完备的“功能全案”。**
 
-- 编辑器本体为 **开源项目**
-- 核心能力（如 Agent、AI、Quant Engine）需要 **闭源**
-- 插件目的不是第三方生态，而是：
-  - 管理复杂功能
-  - 隔离模块
-  - 支持商业能力扩展
-
-### 1.2 设计目标（必须满足）
-
-- 不使用动态库（`.dll/.so`）
-- 不使用 WASM
-- 插件作者仅为官方（自己）
-- Rust 插件具备 **原生性能**
-- JS 插件只负责 UI / 编排，不执行重逻辑
-
-### 1.3 核心结论
-
-> 所谓“插件”，本质是 **通过稳定接口注册的能力模块（Capability）**，
-> 并在 **构建期** 选择是否包含进最终产物。
+- **基座 (Host)**: Zyma 提供 UI 渲染容器、文件系统、LLM 管道和插件生命周期管理。
+- **扩展 (Extension)**: 行业套件（如 ShovX）通过实现 `ZymaExtension` Trait，一键注入自己的命令、原生插件及 UI 参与者。
 
 ---
 
 ## 2. 总体架构
 
 ```text
-┌──────────────────────────────┐
-│        Open Source           │
-│        Editor Core           │
-│  - UI / JS Plugin Manager    │
-│  - Capability Registry       │
-│  - Command / Invoke Layer    │
-└──────────────▲───────────────┘
-               │ invoke by id
-┌──────────────┴───────────────┐
-│        Closed Source         │
-│      Capability Crates       │
-│  - Agent Runtime             │
-│  - AI / Quant Engines        │
-└──────────────────────────────┘
+┌──────────────────────────────────┐
+│         Zyma 底座 (Host)          │
+│  - 窗口管理 / Tab 系统            │
+│  - 文件 IO / Watcher             │
+│  - LLM 高性能通道                │
+│  - ZymaBuilder (扩展编排器)       │
+└────────────────┬─────────────────┘
+                 │ 实现 ZymaExtension
+┌────────────────┴─────────────────┐
+│       行业扩展 (Extension)        │
+│  - 业务逻辑 (如 Quant Engine)     │
+│  - 专有命令 (Tauri Commands)      │
+│  - UI 贡献 (Native Chat API)      │
+└──────────────────────────────────┘
 ```
 
 ---
 
-## 3. Workspace 与模块划分（强制）
+## 3. 核心协议定义 (Rust)
 
-### 3.1 Cargo Workspace 结构
-
-```text
-workspace/
- ├─ crates/
- │   ├─ plugin-api/        # 开源（稳定接口）
- │   ├─ editor-core/       # 开源（宿主）
- │   ├─ editor-tauri/      # 开源（App）
- │   └─ agent-pro/         # 闭源（假插件）
-```
-
-### 3.2 模块职责
-
-| 模块 | 是否开源 | 职责 |
-|----|----|----|
-| plugin-api | 是 | 插件接口定义（trait / DTO） |
-| editor-core | 是 | 插件注册表、命令路由 |
-| editor-tauri | 是 | JS ↔ Rust 通信 |
-| agent-pro | 否 | 高性能 Agent 实现 |
-
----
-
-## 4. Plugin API（LLM 生成代码的核心依据）
-
-### 4.1 Capability Trait（必须实现）
+### 3.1 扩展接口 `ZymaExtension`
 
 ```rust
-pub trait Capability: Send + Sync {
+pub trait ZymaExtension: Send + Sync {
+    /// 扩展唯一标识
     fn id(&self) -> &'static str;
-    fn invoke(&self, input: serde_json::Value) -> anyhow::Result<serde_json::Value>;
+    
+    /// 配置生命周期：允许扩展修改 Tauri Builder
+    /// 用于注册命令 (invoke_handler)、注入插件 (plugin) 等
+    fn setup(&self, builder: tauri::Builder<Wry>) -> tauri::Builder<Wry>;
+    
+    /// UI 贡献：声明该扩展在前端 UI 中展示的 AI 助手
+    fn chat_participants(&self) -> Vec<NativeChatParticipant> { vec![] }
 }
 ```
 
-约束：
-- 不允许暴露内部状态引用
-- 所有输入输出必须可序列化
-
----
-
-## 5. Capability Registry（宿主实现）
-
-### 5.1 Registry 定义
+### 3.2 UI 贡献结构 `NativeChatParticipant`
 
 ```rust
-pub struct CapabilityRegistry {
-    map: HashMap<String, Box<dyn Capability>>,
+pub struct NativeChatParticipant {
+    pub id: String,          // UI 唯一标识
+    pub name: String,        // 简称
+    pub full_name: String,   // 全称
+    pub description: String, // 描述
+    pub command: String,     // 关联的 Rust 命令名
 }
 ```
 
-### 5.2 行为规范
+---
 
-- Capability **只能由宿主注册**
-- 插件不能主动修改 Registry
-- 重复 id 注册视为错误
+## 4. 宿主集成方式 (ZymaBuilder)
+
+底座通过 `ZymaBuilder` 自动遍历并合并所有扩展的贡献，实现“零胶水”启动。
+
+```rust
+// main.rs 入口示例
+fn main() {
+    ZymaBuilder::new()
+        .add_extension(ShovXFeature::new()) // 注入专业版特性
+        .add_extension(DataVisualization::new())
+        .run(tauri::generate_context!());
+}
+```
 
 ---
 
-## 6. 闭源插件（假插件）的实现规范
+## 5. 扩展实现规范 (以 ShovX 为例)
 
-### 6.1 插件 crate 规则
-
-- 只依赖 `plugin-api`
-- 不依赖 `editor-core`
-- 不包含任何 Tauri / JS 代码
-
-### 6.2 示例
+### 5.1 逻辑封装
+扩展实现应保持纯净，不直接修改底座源代码。
 
 ```rust
-pub struct AgentPro;
+struct ShovXFeature;
 
-impl Capability for AgentPro {
-    fn id(&self) -> &'static str {
-        "agent.pro"
+impl ZymaExtension for ShovXFeature {
+    fn id(&self) -> &'static str { "shovx.pro" }
+
+    fn setup(&self, builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
+        builder.invoke_handler(tauri::generate_handler![shovx_chat, shovx_login])
+               .plugin(tauri_plugin_http::init())
     }
 
-    fn invoke(&self, input: Value) -> Result<Value> {
-        // Agent logic
+    fn chat_participants(&self) -> Vec<NativeChatParticipant> {
+        vec![NativeChatParticipant {
+            id: "shovx-pro-assistant".into(),
+            command: "shovx_chat".into(),
+            // ...其他元数据
+        }]
     }
 }
 ```
 
 ---
 
-## 7. 构建期注入机制（关键）
+## 6. 前端发现机制
 
-### 7.1 Cargo Feature 控制
+底座前端在初始化时会自动同步后端注册的 `NativeChatParticipant`，并利用通用桥接逻辑与后端命令通信。
 
-```toml
-[features]
-pro = ["agent-pro"]
-```
-
-### 7.2 注册逻辑
-
-```rust
-pub fn register_all(reg: &mut CapabilityRegistry) {
-    #[cfg(feature = "pro")]
-    reg.register(Box::new(agent_pro::AgentPro));
-}
-```
-
-> 若未开启 feature，则插件在二进制中完全不存在。
+1. **同步**: `invoke('get_native_extensions')`
+2. **桥接**: 自动将 UI 事件转发至 `NativeChatParticipant.command` 指向的 Rust 函数。
 
 ---
 
-## 8. JS 插件系统的角色（非执行）
+## 7. 架构优势
 
-### 8.1 JS 插件职责
-
-- UI 面板
-- 菜单 / 快捷键
-- Workflow 描述
-
-### 8.2 调用方式
-
-```ts
-invoke("capability.invoke", {
-  id: "agent.pro",
-  payload
-})
-```
+- **极致隔离**: `shovx` 与 `zyma` 在物理目录、代码逻辑、Git 仓库层面均可实现完全解耦。
+- **原生性能**: 所有扩展逻辑均以原生 Rust 速度运行，无协议转换损耗。
+- **动态 UI**: 仅通过 Rust 代码即可控制前端 UI 的显示与功能注册，无需编写 JS 胶水层。
 
 ---
 
-## 9. License / 商业控制（可选）
+## 8. LLM 指令说明
 
-### 9.1 启用前校验
+> 当为 Zyma 生成扩展功能时，请遵循以下准则：
 
-```rust
-if !license::has("agent.pro") {
-    return Err(anyhow!("license required"));
-}
-```
-
----
-
-## 10. 非目标（明确禁止）
-
-- ❌ 运行期加载 `.dll/.so`
-- ❌ 插件访问 editor-core 内部结构
-- ❌ 插件直接操作 UI
-- ❌ 插件之间互相调用
-
----
-
-## 11. LLM 执行指令（Prompt Hint）
-
-> 请严格遵守以下规则生成代码：
-
-- 仅通过 `plugin-api` 与插件交互
-- 不引入动态加载
-- 所有 Capability 通过 Registry 调度
-- 插件实现必须是纯 Rust 逻辑
-
----
-
-## 12. 最终设计原则（一句话）
-
-> **插件不是扩展编辑器，
-> 而是向编辑器提供能力。**
+1. **实现 Trait**: 始终通过实现 `ZymaExtension` 来封装功能。
+2. **命令隔离**: 所有的商业逻辑命令应定义在扩展 Crate 中，并通过 `setup` 注入。
+3. **数据驱动 UI**: 利用 `chat_participants` 方法向底座申请 UI 位置。
 
 ---
 

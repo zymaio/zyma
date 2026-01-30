@@ -54,7 +54,14 @@
 
 .command-palette-item.selected {
     background-color: var(--accent-color);
-    color: var(--accent-foreground);
+}
+
+/* 关键修复：在高亮（如黄色）背景下强制深色文字 */
+.command-palette-item.selected,
+.command-palette-item.selected .command-title,
+.command-palette-item.selected .command-category,
+.command-palette-item.selected .command-id {
+    color: #000 !important;
 }
 
 .command-category {

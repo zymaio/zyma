@@ -6,6 +6,7 @@ interface WorkbenchContextType {
     setSettings: (s: AppSettings) => void;
     platform: string;
     appVersion: string;
+    productName: string;
     isAdmin: boolean;
 }
 

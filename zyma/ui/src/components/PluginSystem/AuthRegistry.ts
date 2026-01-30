@@ -41,6 +41,14 @@ export class AuthRegistry {
         this.notify();
     }
 
+    updateAccount(id: string, name?: string) {
+        const p = this.providers.get(id);
+        if (p) {
+            p.accountName = name;
+            this.notify();
+        }
+    }
+
     getProviders() {
         return Array.from(this.providers.values());
     }

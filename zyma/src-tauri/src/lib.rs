@@ -1,9 +1,9 @@
-use tauri::{Emitter, Manager};
-use tauri_plugin_cli::CliExt;
+use tauri::{Emitter, Manager, AppHandle, Wry, Runtime};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 
 pub mod models;
 pub mod commands;
@@ -11,107 +11,123 @@ pub mod llm;
 
 use crate::commands::config::get_config_path;
 
-/// 全局应用状态
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NativeChatParticipant {
+    pub id: String,
+    pub name: String,
+    pub full_name: String,
+    pub description: String,
+    pub command: String,
+    pub thought_event: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NativeAuthProvider {
+    pub id: String,
+    pub label: String,
+    pub login_command: String,
+    pub logout_command: String,
+    pub auth_event: Option<String>,
+}
+
 pub struct AppState {
     pub external_plugins: Vec<PathBuf>,
     pub watcher: commands::watcher::WatcherState,
     pub output: commands::output::OutputState,
-    pub workspace_path: Mutex<PathBuf>, // 新增：保存当前权威工作区路径
+    pub workspace_path: Mutex<PathBuf>,
     pub llm_manager: llm::LLMManager,
+    pub native_chat_participants: Vec<NativeChatParticipant>,
+    pub native_auth_providers: Vec<NativeAuthProvider>,
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_cli::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            let _ = app.emit("single-instance", args);
-            if let Some(w) = app.get_webview_window("main") {
-                let _ = w.show();
-                let _ = w.unminimize();
-                let _ = w.set_focus();
-            }
-        }))
-        .setup(|app| {
-            // 1. 解析 CLI 参数
-            let mut external_paths = Vec::new();
-            if let Ok(matches) = app.cli().matches() {
-                if let Some(arg) = matches.args.get("plugin-dir") {
-                    if let Some(values) = arg.value.as_array() {
-                        for val in values {
-                            if let Some(path_str) = val.as_str() {
-                                external_paths.push(PathBuf::from(path_str));
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. 初始化全局状态
-            let current_cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-            app.manage(AppState {
-                external_plugins: external_paths,
-                watcher: commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) },
-                output: commands::output::OutputState { channels: Mutex::new(HashMap::new()) },
-                workspace_path: Mutex::new(current_cwd),
-                llm_manager: llm::LLMManager::new(),
-            });
-
-            // 3. 恢复窗口状态
-            restore_window_state(app.handle())?;
-
-            // 核心：监听窗口焦点变化并广播
-            let handle = app.handle().clone();
-            app.get_webview_window("main").unwrap().on_window_event(move |event| {
-                if let tauri::WindowEvent::Focused(focused) = event {
-                    let _ = handle.emit("window-state-changed", *focused);
-                }
-            });
-
-            Ok(())
-        })
-        .invoke_handler(commands::get_handlers())
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                if window.label() == "main" {
-                    let app = window.app_handle();
-                    for (_, w) in app.webview_windows() {
-                        let _ = w.destroy();
-                    }
-                    std::process::exit(0);
-                }
-            }
-        })
-        .run(tauri::generate_context!())
-        .expect("error while running app");
+pub struct ZymaBuilder {
+    pub builder: tauri::Builder<Wry>,
+    participants: Vec<NativeChatParticipant>,
+    auth_providers: Vec<NativeAuthProvider>,
 }
 
-fn restore_window_state(app: &tauri::AppHandle) -> tauri::Result<()> {
-    let main_window = app.get_webview_window("main").unwrap();
-    let config_path = get_config_path();
-
-    if config_path.exists() {
-        if let Ok(content) = fs::read_to_string(config_path) {
-            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
-                let w = val.get("window_width").and_then(|v| v.as_f64()).unwrap_or(1000.0) as u32;
-                let h = val.get("window_height").and_then(|v| v.as_f64()).unwrap_or(700.0) as u32;
-                let _ = main_window.set_size(tauri::PhysicalSize::new(w, h));
-
-                let x = val.get("window_x").and_then(|v| v.as_i64());
-                let y = val.get("window_y").and_then(|v| v.as_i64());
-                if let (Some(x), Some(y)) = (x, y) {
-                    let _ = main_window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
-                }
-                if val.get("is_maximized").and_then(|v| v.as_bool()).unwrap_or(false) {
-                    let _ = main_window.maximize();
-                }
-            }
+impl ZymaBuilder {
+    pub fn new() -> Self {
+        Self {
+            builder: tauri::Builder::new(),
+            participants: Vec::new(),
+            auth_providers: Vec::new(),
         }
     }
 
-    let _ = main_window.show();
-    let _ = main_window.set_focus();
+    pub fn from_builder(builder: tauri::Builder<Wry>) -> Self {
+        Self { builder, participants: Vec::new(), auth_providers: Vec::new() }
+    }
+
+    pub fn register_chat_participant(mut self, p: NativeChatParticipant) -> Self {
+        self.participants.push(p);
+        self
+    }
+
+    pub fn register_auth_provider(mut self, p: NativeAuthProvider) -> Self {
+        self.auth_providers.push(p);
+        self
+    }
+
+    pub fn run(self, context: tauri::Context) {
+        let participants = self.participants;
+        let auth = self.auth_providers;
+        self.builder
+            .setup(move |app| {
+                app.manage(AppState {
+                    external_plugins: Vec::new(),
+                    watcher: commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) },
+                    output: commands::output::OutputState { channels: Mutex::new(HashMap::new()) },
+                    workspace_path: Mutex::new(std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))),
+                    llm_manager: llm::LLMManager::new(),
+                    native_chat_participants: participants,
+                    native_auth_providers: auth,
+                });
+                setup_zyma(app)?;
+                Ok(())
+            })
+            .run(context)
+            .expect("error while running zyma app");
+    }
+}
+
+pub fn setup_zyma(app: &mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> {
+    let handle = app.handle();
+    restore_window_state(handle)?;
+    let h = handle.clone();
+    if let Some(main_window) = app.get_webview_window("main") {
+        main_window.on_window_event(move |event| {
+            match event {
+                tauri::WindowEvent::Focused(focused) => { let _ = h.emit("window-state-changed", *focused); }
+                tauri::WindowEvent::CloseRequested { api, .. } => { api.prevent_close(); h.exit(0); }
+                _ => {}
+            }
+        });
+    }
+    Ok(())
+}
+
+pub fn run() {
+    let mut slf = ZymaBuilder::new();
+    slf.builder = slf.builder.invoke_handler(crate::commands::get_handlers());
+    slf.run(tauri::generate_context!());
+}
+
+pub fn restore_window_state(app: &AppHandle<Wry>) -> tauri::Result<()> {
+    if let Some(main_window) = app.get_webview_window("main") {
+        let config_path = get_config_path();
+        if config_path.exists() {
+            if let Ok(content) = fs::read_to_string(config_path) {
+                if let Ok(val) = serde_json::from_str::<serde_json::Value>(&content) {
+                    let w = val.get("window_width").and_then(|v| v.as_f64()).unwrap_or(1000.0) as u32;
+                    let h = val.get("window_height").and_then(|v| v.as_f64()).unwrap_or(700.0) as u32;
+                    let _ = main_window.set_size(tauri::PhysicalSize::new(w, h));
+                    if val.get("is_maximized").and_then(|v| v.as_bool()).unwrap_or(false) { let _ = main_window.maximize(); }
+                }
+            }
+        }
+        let _ = main_window.show();
+        let _ = main_window.set_focus();
+    }
     Ok(())
 }

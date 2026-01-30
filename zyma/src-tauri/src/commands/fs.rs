@@ -73,8 +73,8 @@ pub fn remove_item(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn rename_item(old_path: String, new_path: String) -> Result<(), String> {
-    fs::rename(old_path, new_path).map_err(|e| e.to_string())
+pub fn rename_item(at: String, to: String) -> Result<(), String> {
+    fs::rename(at, to).map_err(|e| e.to_string())
 }
 
 #[derive(Serialize)]

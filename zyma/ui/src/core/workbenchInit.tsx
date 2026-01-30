@@ -27,7 +27,7 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
     registerViewCommands(t, handlers);
 
     // 2. 注册视图
-    views.registerView({ id: 'explorer', title: t('Explorer'), icon: <Files size={24} />, component: handlers.components.Sidebar, order: 1 });
+    views.registerView({ id: 'explorer', title: t('Workspace'), icon: <Files size={24} />, component: handlers.components.Sidebar, order: 1 });
     views.registerView({ id: 'search', title: t('Search'), icon: <Search size={24} />, component: handlers.components.SearchPanel, order: 2 });
     views.registerView({ id: 'plugins', title: t('Extensions'), icon: <Puzzle size={24} />, component: handlers.components.PluginList, order: 4 });
 
