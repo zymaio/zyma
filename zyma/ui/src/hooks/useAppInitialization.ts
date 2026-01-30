@@ -57,6 +57,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                     if (active) fm.handleEditorChange(active.content + text);
                 }, 
                 getContent: () => fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath)?.content || '', 
+                getSelection: () => fm.getSelection ? fm.getSelection() : '',
                 notify: (m: string) => alert('[Plugin] ' + m),
                 onMenuUpdate: () => {
                     setPluginMenus(pluginManager.current?.getFileMenuItems() || []);
@@ -71,8 +72,10 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                         } catch (e) { alert('Error: ' + e); }
                     }
                 },
+                addFileMenuItem: () => {}, // No-op, handled by onMenuUpdate
                 components: { ChatPanel: null }, // 初始为空
-                openCustomView
+                openCustomView,
+                closeTab: (id: string) => fm.closeTab ? fm.closeTab(id) : null
             });
             pluginManager.current.loadAll();
         }

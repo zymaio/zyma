@@ -6,13 +6,15 @@ import { views } from '../ViewSystem/ViewRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import { chatRegistry } from '../Chat/Registry/ChatRegistry';
 import { authRegistry } from './AuthRegistry';
-import type { PluginManifest, ZymaAPI, FileSystemWatcher } from './types';
+import type { PluginManifest, ZymaAPI, FileSystemWatcher, AIChatRequest, AIChatChunk } from './types';
 import React from 'react';
+import { createChannelGenerator } from '../../utils/streamUtils';
 
 export class PluginAPIBuilder {
     static create(
         manifest: PluginManifest, 
-        resources: { views: string[], statusItems: string[], commands: string[] },
+        resources: { views: string[], statusItems: string[], commands: string[], tabs: string[] },
+        contributionRegistry: ContributionRegistry,
         callbacks: any,
         onNotify: () => void,
         _registerUnlistener: (unlisten: any) => void
@@ -21,12 +23,18 @@ export class PluginAPIBuilder {
             editor: {
                 insertText: callbacks.insertText,
                 getContent: callbacks.getContent,
+                getSelection: callbacks.getSelection,
                 showDiff: callbacks.showDiff,
             },
             commands: {
-                register: (cmd: Command) => {
-                    resources.commands.push(cmd.id);
-                    commands.registerCommand(cmd);
+                register: (cmd: any) => {
+                    // 兼容性处理：支持 handler 属性映射到 callback
+                    const normalizedCmd = {
+                        ...cmd,
+                        callback: cmd.callback || cmd.handler
+                    };
+                    resources.commands.push(normalizedCmd.id);
+                    commands.registerCommand(normalizedCmd);
                 },
                 execute: (id: string, ...args: any[]) => commands.executeCommand(id, ...args),
             },
@@ -76,6 +84,8 @@ export class PluginAPIBuilder {
                 openTab: (id: string, title: string, component: any) => {
                     const element = typeof component === 'function' ? React.createElement(component) : component;
                     if (callbacks.openCustomView) {
+                        // 记录此标签页属于该插件
+                        (contributionRegistry as any).addOpenedTab(manifest.name, id);
                         callbacks.openCustomView(id, title, element);
                     } else {
                         console.error("openCustomView callback is not defined");
@@ -102,6 +112,13 @@ export class PluginAPIBuilder {
                     onNotify();
                 }
             },
+            ai: {
+                stream: (request: AIChatRequest) => {
+                    return createChannelGenerator<AIChatChunk>((channel) => 
+                        invoke('llm_chat', { request, onEvent: channel })
+                    );
+                }
+            },
             views: {
                 register: (view: View) => {
                     resources.views.push(view.id);
@@ -118,9 +135,9 @@ export class PluginAPIBuilder {
                 }
             },
             ui: { notify: (msg: string) => callbacks.notify(msg) },
-            // components: {
-            //    ChatPanel: callbacks.components.ChatPanel
-            // },
+            components: {
+               ChatPanel: callbacks.components.ChatPanel
+            },
             system: {
                 version: "0.9.5",
                 invoke: (cmd: string, args?: any) => invoke(cmd, args),

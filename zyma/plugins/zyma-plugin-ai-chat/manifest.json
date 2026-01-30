@@ -1,0 +1,8 @@
+{
+  "name": "zyma-plugin-ai-chat",
+  "version": "0.1.0",
+  "author": "Zyma Team",
+  "entry": "index.js",
+  "description": "Built-in AI Chat Assistant using Zyma Core LLM",
+  "contributes": {}
+}

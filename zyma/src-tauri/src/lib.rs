@@ -1,4 +1,4 @@
-use tauri::{Emitter, Manager, Wry};
+use tauri::{Emitter, Manager};
 use tauri_plugin_cli::CliExt;
 use std::fs;
 use std::path::PathBuf;
@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 pub mod models;
 pub mod commands;
+pub mod llm;
 
 use crate::commands::config::get_config_path;
 
@@ -16,6 +17,7 @@ pub struct AppState {
     pub watcher: commands::watcher::WatcherState,
     pub output: commands::output::OutputState,
     pub workspace_path: Mutex<PathBuf>, // 新增：保存当前权威工作区路径
+    pub llm_manager: llm::LLMManager,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -54,6 +56,7 @@ pub fn run() {
                 watcher: commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) },
                 output: commands::output::OutputState { channels: Mutex::new(HashMap::new()) },
                 workspace_path: Mutex::new(current_cwd),
+                llm_manager: llm::LLMManager::new(),
             });
 
             // 3. 恢复窗口状态

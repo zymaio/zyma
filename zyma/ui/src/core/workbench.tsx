@@ -37,6 +37,22 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     const { activeTabs, activeTabId, activeTab, setActiveTabId, closeTab, openCustomView } = tabSystem;
     const { sidebarWidth, startResizing } = sidebarResize;
 
+    // 关键：实时同步回调给插件管理器，解决禁用插件时不关闭窗口的 Bug
+    React.useEffect(() => {
+        if (pluginManager.current) {
+            pluginManager.current.setCallbacks({
+                closeTab,
+                openCustomView,
+                insertText: (text: string) => {
+                    const active = fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath);
+                    if (active) fm.handleEditorChange(active.content + text);
+                },
+                getContent: () => fm.openFiles.find((f: any) => (f.path || f.name) === fm.activeFilePath)?.content || '',
+                getSelection: () => fm.getSelection ? fm.getSelection() : ''
+            });
+        }
+    }, [closeTab, openCustomView, fm.activeFilePath]);
+
     // 状态：用于处理整个应用的退出确认
     const [isClosingApp, setIsClosingApp] = useState(false);
     const [isExiting, setIsExiting] = useState(false); // 新增退出中状态

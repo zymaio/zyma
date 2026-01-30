@@ -6,6 +6,7 @@ pub mod plugins;
 pub mod output;
 pub mod search;
 pub mod watcher;
+pub mod llm;
 
 use tauri::Wry;
 
@@ -48,6 +49,7 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<Wry>) -> bool {
         window::save_window_state,
         window::show_main_window, 
         plugins::list_plugins, 
-        plugins::read_plugin_file
+        plugins::read_plugin_file,
+        llm::llm_chat
     ]
 }

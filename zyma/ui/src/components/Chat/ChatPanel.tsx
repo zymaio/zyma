@@ -29,15 +29,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext 
     const [isProcessing, setIsProcessing] = useState(false);
     const [, forceUpdate] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // 订阅逻辑变更
     useEffect(() => {
         return chatRegistry.subscribe(() => forceUpdate(n => n + 1));
     }, []);
 
+    // 智能滚动逻辑
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+        if (!scrollContainerRef.current) return;
+        
+        const container = scrollContainerRef.current;
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+        
+        if (isNearBottom || isProcessing) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, isProcessing]);
 
     const currentParticipant = useMemo(() => {
         const all = chatRegistry.getParticipants();
@@ -93,11 +102,29 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext 
 
         const stream: ChatResponseStream = {
             markdown: (content) => {
-                setMessages(prev => prev.map(m => m.id === agentMsgId ? {
-                    ...m,
-                    status: 'streaming',
-                    parts: [...m.parts, { type: 'markdown', content }]
-                } : m));
+                setMessages(prev => prev.map(m => {
+                    if (m.id !== agentMsgId) return m;
+                    
+                    const newParts = [...m.parts];
+                    const lastPart = newParts[newParts.length - 1];
+                    
+                    if (lastPart && lastPart.type === 'markdown') {
+                        // 追加到最后一个 markdown 片段
+                        newParts[newParts.length - 1] = {
+                            ...lastPart,
+                            content: lastPart.content + content
+                        };
+                    } else {
+                        // 第一个片段或前一个片段不是 markdown
+                        newParts.push({ type: 'markdown', content });
+                    }
+                    
+                    return {
+                        ...m,
+                        status: 'streaming',
+                        parts: newParts
+                    };
+                }));
             },
             diff: (original, modified, language, path) => {
                 setMessages(prev => prev.map(m => m.id === agentMsgId ? {
@@ -155,7 +182,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext 
             color: 'var(--text-primary)',
             fontSize: 'var(--ui-font-size)' 
         }}>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '15px 15px 10px 15px' }} className="no-scrollbar">
+            <div 
+                ref={scrollContainerRef}
+                style={{ flex: 1, overflowY: 'auto', padding: '15px 15px 10px 15px' }} 
+                className="no-scrollbar"
+            >
                 {messages.map(msg => (
                     <ChatMessage key={msg.id} message={msg} />
                 ))}

@@ -78,7 +78,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                     border: '1px solid var(--border-color)',
                     width: 'fit-content',
                     maxWidth: '95%',
-                    lineHeight: '1.6'
+                    lineHeight: '1.6',
+                    userSelect: 'text' // 显式允许文本选择
                 }}>
                     {/* 状态指示器 */}
                     {message.status && message.status !== 'done' && (

@@ -33,6 +33,12 @@ export class PluginManager {
 
     getFileMenuItems() { return this.contributionRegistry.getFileMenuItems(); }
 
+    setCallbacks(callbacks: any) {
+        Object.assign(this.callbacks, callbacks);
+        // 同时更新 contributionRegistry 的回调 (假设也是同一个对象引用)
+        Object.assign((this.contributionRegistry as any).callbacks, callbacks);
+    }
+
     setComponents(components: any) {
         this.callbacks.components = components;
         this.contributionRegistry.updateComponents(components);
@@ -85,6 +91,7 @@ export class PluginManager {
             const api = PluginAPIBuilder.create(
                 manifest, 
                 resources, 
+                this.contributionRegistry,
                 { ...this.callbacks, addFileMenuItem: (item: any) => this.contributionRegistry.addFileMenuItem(item) },
                 () => this.notifyUI(),
                 (un: any) => {

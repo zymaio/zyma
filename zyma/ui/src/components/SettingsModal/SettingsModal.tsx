@@ -17,6 +17,11 @@ export interface AppSettings {
     window_x: number | null;
     window_y: number | null;
     is_maximized: boolean;
+    // AI Settings
+    ai_provider?: string;
+    ai_api_key?: string;
+    ai_base_url?: string;
+    ai_model?: string;
 }
 
 interface SettingsModalProps {
@@ -130,6 +135,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
                     </div>
+                </div>
+
+                <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '10px 0' }} />
+                <label style={{ fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--accent-color)' }}>{t('AISettings')}</label>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('APIBaseURL')}</label>
+                    <input 
+                        type="text" value={currentSettings.ai_base_url || 'https://api.openai.com/v1'}
+                        placeholder="https://api.openai.com/v1"
+                        onChange={(e) => updateSetting('ai_base_url', e.target.value)}
+                        style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('APIKey')}</label>
+                    <input 
+                        type="password" value={currentSettings.ai_api_key || ''}
+                        placeholder="sk-..."
+                        onChange={(e) => updateSetting('ai_api_key', e.target.value)}
+                        style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{t('AIModel')}</label>
+                    <input 
+                        type="text" value={currentSettings.ai_model || 'gpt-4o'}
+                        placeholder="gpt-4o"
+                        onChange={(e) => updateSetting('ai_model', e.target.value)}
+                        style={{ padding: '8px', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', borderRadius: '4px', outline: 'none', fontSize: 'var(--ui-font-size)' }}
+                    />
                 </div>
             </div>
         </Modal>

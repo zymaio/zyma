@@ -128,10 +128,45 @@ export interface ZymaAPI {
             handler: (request: any, stream: any) => Promise<void>
         }) => void;
     };
+    ai: {
+        stream: (request: AIChatRequest) => AsyncIterableIterator<AIChatChunk>;
+    };
     system: {
         version: string;
         getEnv: (name: string) => Promise<string | null>;
         exec: (command: string, args: string[]) => Promise<ExecResult>;
         invoke: (cmd: string, args?: any) => Promise<any>;
     };
+}
+
+export interface AIChatMessage {
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content?: string;
+    name?: string;
+    tool_calls?: any[];
+    tool_call_id?: string;
+}
+
+export interface AIChatRequest {
+    messages: AIChatMessage[];
+    model?: string;
+    temperature?: number;
+    max_tokens?: number;
+    stream?: boolean;
+    tools?: any[];
+    tool_choice?: any;
+}
+
+export interface AIChatChunk {
+    id: string;
+    model: string;
+    choices: {
+        index: number;
+        delta: {
+            role?: string;
+            content?: string;
+            tool_calls?: any[];
+        };
+        finish_reason?: string;
+    }[];
 }

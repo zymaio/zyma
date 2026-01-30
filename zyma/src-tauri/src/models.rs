@@ -30,6 +30,15 @@ pub struct AppSettings {
     pub window_y: Option<i32>,
     pub is_maximized: bool,
     pub windows: Option<serde_json::Value>,
+    // AI Settings
+    #[serde(default)]
+    pub ai_provider: Option<String>,
+    #[serde(default)]
+    pub ai_api_key: Option<String>,
+    #[serde(default)]
+    pub ai_base_url: Option<String>,
+    #[serde(default)]
+    pub ai_model: Option<String>,
 }
 
 impl Default for AppSettings {
@@ -49,6 +58,10 @@ impl Default for AppSettings {
             window_y: None,
             is_maximized: false,
             windows: None,
+            ai_provider: None,
+            ai_api_key: None,
+            ai_base_url: None,
+            ai_model: None,
         }
     }
 }
