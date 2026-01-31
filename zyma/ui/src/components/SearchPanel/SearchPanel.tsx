@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Search, Loader2, ChevronRight, ChevronDown, FileCode, Folder, List, Network } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -77,7 +77,7 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
         return groups;
     }, [results]);
 
-    const handleSearch = async () => {
+    const handleSearch = useCallback(async () => {
         if (!query.trim()) return;
         setIsSearching(true);
         setResults([]); 
@@ -89,11 +89,9 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
             });
             setResults(data);
             
-            // 默认展开逻辑优化：展开搜到的所有文件及其所有父级路径
             const initialExpanded: Record<string, boolean> = {};
             data.forEach(r => {
                 initialExpanded[r.path] = true;
-                // 同时计算并展开所有父目录路径
                 let currentPath = r.path;
                 while (currentPath.length > rootPath.length) {
                     initialExpanded[currentPath] = true;
@@ -108,11 +106,18 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
         } finally {
             setIsSearching(false);
         }
-    };
+    }, [query, rootPath, searchMode]);
 
     const toggleExpand = (path: string) => {
         setExpandedFiles(prev => ({ ...prev, [path]: !prev[path] }));
     };
+
+    // 模式切换时立即重新搜索
+    React.useEffect(() => {
+        if (query.trim() && !isSearching) {
+            handleSearch();
+        }
+    }, [searchMode]);
 
     const renderTreeNodes = (nodes: Record<string, SearchTreeNode>, level: number) => {
         return Object.values(nodes)

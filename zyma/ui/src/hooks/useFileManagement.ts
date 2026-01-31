@@ -26,15 +26,29 @@ export function useFileManagement() {
     const editorViewRef = useRef<EditorView | null>(null);
 
     const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
-        // 无论文件是否打开，只要有行号，就设置待跳转状态
+        // 1. 始终记录全局跳转意图，作为备份
         if (line) {
             (window as any).__pendingLineJump = { path, line, ts: Date.now() };
         }
 
         const existing = openFiles.find(f => f.path === path);
         if (existing) {
+            // 2. 如果文件已激活，直接在现有视图跳转
+            if (activeFilePath === existing.id && editorViewRef.current && line) {
+                try {
+                    const view = editorViewRef.current;
+                    const lineInfo = view.state.doc.line(Math.min(line, view.state.doc.lines));
+                    view.dispatch({
+                        selection: { anchor: lineInfo.from, head: lineInfo.from },
+                        scrollIntoView: true
+                    });
+                    delete (window as any).__pendingLineJump; // 跳转成功，清除标记
+                } catch (e) {
+                    console.warn("Manual jump failed", e);
+                }
+            }
+            
             setActiveFilePath(existing.id);
-            // 注意：跳转逻辑现在统一由 Editor 组件的 useEffect 在检测到 activeFilePath 变化后处理
             return;
         }
         try {
