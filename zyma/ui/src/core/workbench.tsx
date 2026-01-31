@@ -2,8 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TabBar from '../components/TabBar/TabBar';
 import Breadcrumbs from '../components/Breadcrumbs/Breadcrumbs';
-import Editor from '../components/Editor/Editor';
-import Preview from '../components/Preview/Preview';
 import TitleBar from '../components/TitleBar/TitleBar';
 import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import ActivityBar from '../components/ActivityBar';

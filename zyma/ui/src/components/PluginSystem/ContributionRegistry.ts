@@ -1,4 +1,3 @@
-import React from 'react';
 import { views } from '../ViewSystem/ViewRegistry';
 import { statusBar } from '../StatusBar/StatusBarRegistry';
 import { commands } from '../CommandSystem/CommandRegistry';
@@ -32,7 +31,6 @@ export class ContributionRegistry {
         if (!this.resources.has(pluginName)) {
             this.resources.set(pluginName, { views: [], statusItems: [], commands: [], tabs: [] });
         }
-        const res = this.resources.get(pluginName)!;
 
         // ... (views logic remains same)
     }

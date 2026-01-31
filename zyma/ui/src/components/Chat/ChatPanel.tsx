@@ -6,7 +6,6 @@ import { useChatLogic } from '../../hooks/useChatLogic';
 
 interface ChatPanelProps {
     participantId?: string; 
-    title?: string;
     getContext?: () => Promise<{
         filePath: string | null;
         selection: string | null;
@@ -14,7 +13,7 @@ interface ChatPanelProps {
     }>;
 }
 
-const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, title, getContext }) => {
+const ChatPanel: React.FC<ChatPanelProps> = ({ participantId, getContext }) => {
     const { messages, isProcessing, handleSend, handleClear } = useChatLogic(participantId, getContext);
     const [, forceUpdate] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);

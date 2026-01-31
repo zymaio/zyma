@@ -34,7 +34,6 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         rootPath,
         setRootPath,
         fm,
-        tabSystem,
         appInit
     });
 

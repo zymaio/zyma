@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { ask } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import type { MenuItem } from '../ContextMenu/ContextMenu';

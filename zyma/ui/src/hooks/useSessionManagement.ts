@@ -7,7 +7,6 @@ interface SessionManagementProps {
     rootPath: string;
     setRootPath: (path: string) => void;
     fm: any;
-    tabSystem: any;
     appInit: any;
 }
 
@@ -16,11 +15,8 @@ export function useSessionManagement({
     rootPath,
     setRootPath,
     fm,
-    tabSystem,
     appInit
 }: SessionManagementProps) {
-    const { setActiveTabId } = tabSystem;
-
     // --- 逻辑：恢复上次会话 ---
     const restoreSession = useCallback(async () => {
         const settings = appInit.settings;

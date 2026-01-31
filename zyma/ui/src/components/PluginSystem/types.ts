@@ -60,7 +60,8 @@ export interface ZymaAPI {
     editor: {
         insertText: (text: string) => void;
         getContent: () => string;
-        showDiff: (originalPath: string, modifiedContent: string, title?: string) => Promise<void>;
+        getSelection: () => string;
+        showDiff: (originalPath: string, modifiedContent: string) => Promise<void>;
     };
     commands: {
         register: (command: Command) => void;
@@ -106,6 +107,9 @@ export interface ZymaAPI {
     };
     ui: {
         notify: (message: string) => void;
+    };
+    components: {
+        ChatPanel: any;
     };
     auth: {
         registerAuthenticationProvider: (provider: {

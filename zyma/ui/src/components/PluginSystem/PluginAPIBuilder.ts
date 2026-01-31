@@ -1,12 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { commands } from '../CommandSystem/CommandRegistry';
-import type { Command } from '../CommandSystem/CommandRegistry';
 import { views } from '../ViewSystem/ViewRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import { chatRegistry } from '../Chat/Registry/ChatRegistry';
 import { authRegistry } from './AuthRegistry';
 import type { PluginManifest, ZymaAPI, FileSystemWatcher, AIChatRequest, AIChatChunk } from './types';
+import { ContributionRegistry } from './ContributionRegistry';
 import React from 'react';
 import { createChannelGenerator } from '../../utils/streamUtils';
 

@@ -127,7 +127,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                     setPluginMenus(pluginManager.current?.getFileMenuItems() || []);
                     forceUpdate(n => n + 1);
                 },
-                showDiff: async (path: string, content: string, title?: string) => {
+                showDiff: async (path: string, content: string) => {
                     const confirmed = await ask('是否应用建议修改？', { title: 'Zyma Diff', kind: 'info' });
                     if (confirmed) {
                         try {

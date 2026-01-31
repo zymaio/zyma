@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Search, Loader2, ChevronRight, ChevronDown, FileCode, Folder, List, Network } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
