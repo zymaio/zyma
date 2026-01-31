@@ -70,6 +70,15 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
         }
     };
 
+    const handleAccountClick = () => {
+        // 智能路径：如果只有一个提供商且未登录，直接触发登录流程
+        if (authProviders.length === 1 && !authProviders[0].accountName) {
+            authProviders[0].onLogin();
+            return;
+        }
+        setShowAccountMenu(!showAccountMenu);
+    };
+
     const renderSlot = (location: any) => {
         return slotRegistry.getContributedComponents(location).map(c => {
             const Content = c.component;
@@ -136,7 +145,7 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                     <div style={{ position: 'relative' }}>
                         <div 
                             className={`activity-icon ${showAccountMenu ? 'active' : ''}`} 
-                            onClick={() => setShowAccountMenu(!showAccountMenu)} 
+                            onClick={handleAccountClick} 
                             title={t('Accounts')}
                             style={{ color: authProviders.some(p => p.accountName) ? 'var(--status-success)' : 'inherit' }}
                         >
