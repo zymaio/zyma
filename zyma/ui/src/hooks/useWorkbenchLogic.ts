@@ -51,6 +51,30 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         });
     }, [ready, t, fm, setActiveTabId]);
 
+    // 开启后端文件监听
+    useEffect(() => {
+        if (!ready || !rootPath || rootPath === '.') return;
+
+        let isMounted = true;
+        const startWatching = async () => {
+            try {
+                // 先尝试 unwatch 之前的（如果 backend 做了清理则没关系）
+                await invoke('fs_watch', { path: rootPath });
+                console.log("[Watcher] Started watching:", rootPath);
+            } catch (e) {
+                console.warn("[Watcher] Failed to start:", e);
+            }
+        };
+
+        startWatching();
+        return () => {
+            isMounted = false;
+            // 注意：由于 Tauri invoke 是异步的，
+            // 且我们目前没有保存旧的 rootPath，
+            // backend 的 fs_unwatch 可以在下次 watch 时由逻辑决定或在此处理。
+        };
+    }, [ready, rootPath]);
+
     const relativePath = useMemo(() => {
         const activeTab = tabSystem.activeTab;
         if (activeTab?.type !== 'file') return t('NoFile');

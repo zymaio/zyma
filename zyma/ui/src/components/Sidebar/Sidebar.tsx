@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { useTranslation } from 'react-i18next';
 import ContextMenu from '../ContextMenu/ContextMenu';
@@ -38,6 +39,25 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
   }, []);
 
   const { handleCreate, handleRename, handleDelete } = useFileIO(loadRoot, onFileDelete);
+
+  // 监听后端文件变动事件，实现自动刷新
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    
+    const setupListener = async () => {
+      unlisten = await listen('fs_event', (event: any) => {
+        const payload = event.payload;
+        // payload.kind: Create, Modify, Remove
+        // 如果是创建或删除，必须刷新
+        if (payload.kind === 'Create' || payload.kind === 'Remove') {
+          loadRoot(rootPath);
+        }
+      });
+    };
+
+    setupListener();
+    return () => { if (unlisten) unlisten(); };
+  }, [rootPath, loadRoot]);
 
   useEffect(() => {
     let isMounted = true;
