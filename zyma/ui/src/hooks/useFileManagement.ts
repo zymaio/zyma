@@ -24,6 +24,7 @@ export function useFileManagement() {
     const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const editorViewRef = useRef<EditorView | null>(null);
+    const pendingFiles = useRef<Set<string>>(new Set());
 
     const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
         // 1. 始终记录全局跳转意图，作为备份
@@ -51,15 +52,27 @@ export function useFileManagement() {
             setActiveFilePath(existing.id);
             return;
         }
+
+        // 避免重复读取正在处理中的文件（竞态保护）
+        if (pendingFiles.current.has(path)) return;
+        pendingFiles.current.add(path);
+
         try {
             const raw = await fsReadFile(path);
             const content = normalize(raw);
             const newFile: FileData = { id: path, name, path, content, originalContent: content, isDirty: false };
-            setOpenFiles(prev => [...prev, newFile]);
+            
+            setOpenFiles(prev => {
+                // 在更新函数内再次检查，确保万无一失
+                if (prev.some(f => f.path === path)) return prev;
+                return [...prev, newFile];
+            });
             setActiveFilePath(path);
         } catch (e) { 
             console.error(e); 
             toast.error(`Failed to open file: ${name}`);
+        } finally {
+            pendingFiles.current.delete(path);
         }
     }, [openFiles]);
 

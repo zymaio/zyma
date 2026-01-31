@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use tokio::sync::broadcast;
-use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")] // 方便 JSON 序列化

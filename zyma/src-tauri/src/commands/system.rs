@@ -1,5 +1,4 @@
 use tauri::{AppHandle, Manager, Emitter};
-use serde_json::Value;
 
 #[tauri::command]
 pub fn is_admin() -> bool {

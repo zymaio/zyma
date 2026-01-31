@@ -1,8 +1,5 @@
 use reqwest::Client;
 use futures::Stream;
-use futures::StreamExt;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 use std::time::Duration;
 use crate::llm::types::{ChatCompletionRequest, ChatCompletionChunk};
 use crate::llm::sse::SSEStreamAdapter;

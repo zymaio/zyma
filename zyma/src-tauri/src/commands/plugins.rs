@@ -1,7 +1,6 @@
 use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
-use tauri::State;
 use crate::{NativeChatParticipant, NativeAuthProvider};
 
 pub struct PluginService {
