@@ -1,17 +1,16 @@
 use tauri::{AppHandle, State, Runtime};
 use tauri::ipc::Channel;
 use futures::StreamExt;
-use crate::AppState;
-use crate::llm::ChatCompletionRequest;
+use crate::llm::manager::LLMManager;
+use crate::llm::types::ChatCompletionRequest;
 
 #[tauri::command]
 pub async fn llm_chat<R: Runtime>(
-    app: AppHandle<R>,
-    state: State<'_, AppState>,
+    _app: AppHandle<R>,
+    llm: State<'_, LLMManager>,
     request: ChatCompletionRequest,
     on_event: Channel<String>,
 ) -> Result<(), String> {
-    // ... (Original logic of llm_chat)
     let settings = crate::commands::config::load_settings().unwrap_or_default();
     
     // 补齐模型字段
@@ -23,7 +22,7 @@ pub async fn llm_chat<R: Runtime>(
     let base_url = settings.ai_base_url.unwrap_or_else(|| "https://api.openai.com/v1".to_string());
     let api_key = settings.ai_api_key.unwrap_or_default();
 
-    let mut stream = state.llm_manager.stream_chat(&base_url, &api_key, &request).await.map_err(|e| {
+    let mut stream = llm.stream_chat(&base_url, &api_key, &request).await.map_err(|e| {
         eprintln!("[LLM Error] Request failed: {}", e);
         e
     })?;

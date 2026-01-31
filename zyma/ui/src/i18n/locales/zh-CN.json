@@ -76,6 +76,8 @@
   "SearchFilenameMode": "搜索文件名",
   "ModeText": "文本",
   "ModeFile": "文件名",
+  "SwitchToList": "切换至列表视图",
+  "SwitchToTree": "切换至树形视图",
   "EnterName": "请输入{{type}}名称",
   "NewFolder": "新建文件夹",
   "Rename": "重命名",

@@ -1,94 +1,90 @@
-﻿use std::fs;
-use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
+﻿use std::path::PathBuf;
 use tauri::{State, Emitter};
-use crate::AppState;
 use crate::models::FileItem;
+use crate::bus::{EventBus, ZymaEvent};
+use crate::services::vfs::{FileSystem, LocalFileSystem, FileStat};
+
+pub struct WorkspaceService {
+    pub fs: Box<dyn FileSystem + Send + Sync>,
+}
+
+impl WorkspaceService {
+    pub fn new(initial_path: PathBuf) -> Self {
+        Self {
+            fs: Box::new(LocalFileSystem::new(initial_path)),
+        }
+    }
+    
+    // 允许替换底层 FS（供 Pro 版使用）
+    pub fn with_fs(fs: Box<dyn FileSystem + Send + Sync>) -> Self {
+        Self { fs }
+    }
+}
 
 #[tauri::command]
-pub fn get_cwd(state: State<'_, AppState>) -> String {
-    let path = state.workspace_path.lock().unwrap();
-    path.to_string_lossy().to_string()
+pub fn get_cwd(ws: State<'_, WorkspaceService>) -> String {
+    ws.fs.get_cwd()
 }
 
 #[tauri::command]
 pub fn fs_set_cwd(
     app_handle: tauri::AppHandle,
-    state: State<'_, AppState>, 
+    ws: State<'_, WorkspaceService>, 
+    bus: State<'_, EventBus>,
     path: String
-) {
-    let mut current_path = state.workspace_path.lock().unwrap();
-    *current_path = PathBuf::from(&path);
-    let _ = app_handle.emit("workspace_changed", path);
-}
-
-#[tauri::command]
-pub fn read_dir(path: String) -> Result<Vec<FileItem>, String> {
-    let entries = fs::read_dir(path).map_err(|e| e.to_string())?;
-    let mut items = Vec::new();
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path = entry.path();
-            items.push(FileItem {
-                name: entry.file_name().to_string_lossy().to_string(),
-                path: path.to_string_lossy().to_string().replace("\\", "/"),
-                is_dir: path.is_dir(),
-            });
-        }
-    }
-    items.sort_by(|a, b| {
-        if a.is_dir != b.is_dir { b.is_dir.cmp(&a.is_dir) } 
-        else { a.name.cmp(&b.name) }
-    });
-    Ok(items)
-}
-
-#[tauri::command]
-pub fn read_file(path: String) -> Result<String, String> {
-    fs::read_to_string(path).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn write_file(app_handle: tauri::AppHandle, path: String, content: String) -> Result<(), String> {
-    fs::write(&path, content).map_err(|e| e.to_string())?;
-    let _ = app_handle.emit("file_saved", path);
+) -> Result<(), String> {
+    ws.fs.set_cwd(&path)?;
+    let _ = app_handle.emit("workspace_changed", &path);
+    bus.publish(ZymaEvent::WorkspaceChanged(path));
     Ok(())
 }
 
 #[tauri::command]
-pub fn create_file(path: String) -> Result<(), String> {
-    fs::write(path, "").map_err(|e| e.to_string())
+pub fn read_dir(ws: State<'_, WorkspaceService>, path: String) -> Result<Vec<FileItem>, String> {
+    ws.fs.read_dir(&path)
 }
 
 #[tauri::command]
-pub fn create_dir(path: String) -> Result<(), String> {
-    fs::create_dir_all(path).map_err(|e| e.to_string())
+pub fn read_file(ws: State<'_, WorkspaceService>, path: String) -> Result<String, String> {
+    ws.fs.read_file(&path)
 }
 
 #[tauri::command]
-pub fn remove_item(path: String) -> Result<(), String> {
-    let p = Path::new(&path);
-    if p.is_dir() { fs::remove_dir_all(p).map_err(|e| e.to_string()) } 
-    else { fs::remove_file(p).map_err(|e| e.to_string()) }
+pub fn write_file(app_handle: tauri::AppHandle, ws: State<'_, WorkspaceService>, bus: State<'_, EventBus>, path: String, content: String) -> Result<(), String> {
+    ws.fs.write_file(&path, &content)?;
+    // 注意：这里的 path 可能是相对路径，事件广播最好是绝对路径，
+    // 但由于 VFS 抽象层可能没有绝对路径的概念（如云端），我们暂时广播传入的 path。
+    // 在 LocalFS 实现中，我们实际上操作的是安全路径。
+    let _ = app_handle.emit("file_saved", &path);
+    bus.publish(ZymaEvent::FileSaved(path));
+    Ok(())
 }
 
 #[tauri::command]
-pub fn rename_item(at: String, to: String) -> Result<(), String> {
-    fs::rename(at, to).map_err(|e| e.to_string())
-}
-
-#[derive(Serialize)]
-pub struct FileStat {
-    pub file_type: String,
-    pub size: u64,
-    pub mtime: u64,
+pub fn create_file(ws: State<'_, WorkspaceService>, bus: State<'_, EventBus>, path: String) -> Result<(), String> {
+    ws.fs.create_file(&path)?;
+    bus.publish(ZymaEvent::FileCreated(path));
+    Ok(())
 }
 
 #[tauri::command]
-pub fn fs_stat(path: String) -> Result<FileStat, String> {
-    let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
-    let ftype = if metadata.is_dir() { "dir" } else { "file" };
-    use std::time::UNIX_EPOCH;
-    let mtime = metadata.modified().unwrap_or(UNIX_EPOCH).duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    Ok(FileStat { file_type: ftype.to_string(), size: metadata.len(), mtime })
+pub fn create_dir(ws: State<'_, WorkspaceService>, path: String) -> Result<(), String> {
+    ws.fs.create_dir(&path)
+}
+
+#[tauri::command]
+pub fn remove_item(ws: State<'_, WorkspaceService>, bus: State<'_, EventBus>, path: String) -> Result<(), String> {
+    ws.fs.remove_item(&path)?;
+    bus.publish(ZymaEvent::FileDeleted(path));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn rename_item(ws: State<'_, WorkspaceService>, at: String, to: String) -> Result<(), String> {
+    ws.fs.rename_item(&at, &to)
+}
+
+#[tauri::command]
+pub fn fs_stat(ws: State<'_, WorkspaceService>, path: String) -> Result<FileStat, String> {
+    ws.fs.stat(&path)
 }

@@ -2,6 +2,13 @@ use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
 use tauri::State;
+use crate::{NativeChatParticipant, NativeAuthProvider};
+
+pub struct PluginService {
+    pub external_plugins: Vec<PathBuf>,
+    pub native_chat_participants: Vec<NativeChatParticipant>,
+    pub native_auth_providers: Vec<NativeAuthProvider>,
+}
 
 /// 剥离 Windows 下 canonicalize 产生的 \\?\ 前缀
 fn simplify_path(p: PathBuf) -> String {
@@ -15,7 +22,7 @@ fn simplify_path(p: PathBuf) -> String {
 
 #[tauri::command]
 pub fn list_plugins(
-    state: tauri::State<'_, crate::AppState>,
+    plugin_service: tauri::State<'_, PluginService>,
 ) -> Result<Vec<(String, PluginManifest, bool)>, String> {
     let mut plugins = Vec::new();
     let mut seen_names = std::collections::HashSet::new();
@@ -32,7 +39,7 @@ pub fn list_plugins(
     scan_dir(&user_path, false, &mut plugins, &mut seen_names);
 
     // 扫描通过命令行参数传入的动态路径
-    for p_dir in &state.external_plugins {
+    for p_dir in &plugin_service.external_plugins {
         scan_dir(p_dir, false, &mut plugins, &mut seen_names);
     }
 

@@ -39,6 +39,10 @@ pub struct AppSettings {
     pub ai_base_url: Option<String>,
     #[serde(default)]
     pub ai_model: Option<String>,
+    
+    // 扩展字段：允许 Pro 版或插件存储额外配置
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 impl Default for AppSettings {
@@ -62,6 +66,7 @@ impl Default for AppSettings {
             ai_api_key: None,
             ai_base_url: None,
             ai_model: None,
+            extra: std::collections::HashMap::new(),
         }
     }
 }

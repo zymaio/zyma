@@ -16,11 +16,11 @@ pub struct OutputState {
 #[tauri::command]
 pub fn output_append(
     app_handle: tauri::AppHandle,
-    state: tauri::State<'_, crate::AppState>,
+    state: tauri::State<'_, OutputState>,
     channel: String,
     content: String
 ) {
-    let mut channels = state.output.channels.lock().unwrap();
+    let mut channels = state.channels.lock().unwrap();
     let is_new = !channels.contains_key(&channel);
     let entry = channels.entry(channel.clone()).or_insert_with(Vec::new);
     
@@ -47,19 +47,19 @@ pub fn output_append(
 
 #[tauri::command]
 pub fn output_get_content(
-    state: tauri::State<'_, crate::AppState>,
+    state: tauri::State<'_, OutputState>,
     channel: String
 ) -> Vec<OutputLine> {
-    let channels = state.output.channels.lock().unwrap();
+    let channels = state.channels.lock().unwrap();
     channels.get(&channel).cloned().unwrap_or_default()
 }
 
 #[tauri::command]
 pub fn output_clear(
-    state: tauri::State<'_, crate::AppState>,
+    state: tauri::State<'_, OutputState>,
     channel: String
 ) {
-    let mut channels = state.output.channels.lock().unwrap();
+    let mut channels = state.channels.lock().unwrap();
     if let Some(entry) = channels.get_mut(&channel) {
         entry.clear();
     }
@@ -67,8 +67,8 @@ pub fn output_clear(
 
 #[tauri::command]
 pub fn output_list_channels(
-    state: tauri::State<'_, crate::AppState>
+    state: tauri::State<'_, OutputState>
 ) -> Vec<String> {
-    let channels = state.output.channels.lock().unwrap();
+    let channels = state.channels.lock().unwrap();
     channels.keys().cloned().collect()
 }

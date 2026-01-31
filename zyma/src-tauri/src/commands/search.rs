@@ -3,6 +3,22 @@ use ignore::WalkBuilder;
 use std::sync::mpsc;
 use globset::{Glob, GlobSetBuilder};
 use walkdir::WalkDir;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Read};
+
+// 简单的二进制文件检测：检查前 1024 字节是否包含 NULL 字符
+fn is_binary(path: &std::path::Path) -> bool {
+    let mut file = match File::open(path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+    let mut buffer = [0; 1024];
+    let n = match file.read(&mut buffer) {
+        Ok(n) => n,
+        Err(_) => return false,
+    };
+    buffer[..n].contains(&0)
+}
 
 #[tauri::command]
 pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>) -> Result<Vec<String>, String> {
@@ -38,7 +54,18 @@ pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>)
 pub fn search_in_dir(root: String, pattern: String, mode: Option<String>) -> Result<Vec<SearchResult>, String> {
     if pattern.is_empty() { return Ok(Vec::new()); }
     let search_mode = mode.unwrap_or_else(|| "content".to_string());
-    let pattern_lower = pattern.to_lowercase();
+    
+    // 现代匹配逻辑：Smart Case + 多关键词 (AND)
+    // 1. 检查是否包含大写字母
+    let is_case_sensitive = pattern.chars().any(|c| c.is_uppercase());
+    
+    // 2. 准备关键词片段
+    let terms: Vec<String> = pattern
+        .split_whitespace()
+        .map(|s| if is_case_sensitive { s.to_string() } else { s.to_lowercase() })
+        .collect();
+
+    if terms.is_empty() { return Ok(Vec::new()); }
 
     let (tx, rx) = mpsc::channel();
     let walker = WalkBuilder::new(&root)
@@ -47,8 +74,9 @@ pub fn search_in_dir(root: String, pattern: String, mode: Option<String>) -> Res
 
     walker.run(|| {
         let tx = tx.clone();
-        let pattern_lower = pattern_lower.clone();
+        let terms = terms.clone();
         let search_mode = search_mode.clone();
+        let root_path = std::path::Path::new(&root).to_path_buf();
         
         Box::new(move |result| {
             let entry = if let Ok(e) = result { e } else { return ignore::WalkState::Continue };
@@ -56,29 +84,45 @@ pub fn search_in_dir(root: String, pattern: String, mode: Option<String>) -> Res
                 return ignore::WalkState::Continue;
             }
 
-            let path_str = entry.path().to_string_lossy().replace("\\", "/");
-            let filename = entry.file_name().to_string_lossy().to_lowercase();
+            let path = entry.path();
+            let rel_path_raw = path.strip_prefix(&root_path).unwrap_or(path);
+            let rel_path_str = rel_path_raw.to_string_lossy().replace("\\", "/");
+            let target_for_path_match = if is_case_sensitive { rel_path_str.clone() } else { rel_path_str.to_lowercase() };
 
             if search_mode == "filename" {
-                if filename.contains(&pattern_lower) {
+                // 文件名搜索：匹配相对路径（支持用户输入文件夹名定位）
+                let is_match = terms.iter().all(|t| target_for_path_match.contains(t));
+
+                if is_match {
                     let _ = tx.send(SearchResult { 
-                        path: path_str, 
+                        path: path.to_string_lossy().replace("\\", "/"), 
                         line: 0, 
                         content: String::new() 
                     });
                 }
             } else {
-                if let Ok(metadata) = entry.metadata() {
-                    if metadata.len() > 500 * 1024 { return ignore::WalkState::Continue; }
+                // 内容搜索
+                if is_binary(path) {
+                     return ignore::WalkState::Continue;
                 }
-                if let Ok(content) = std::fs::read_to_string(entry.path()) {
-                    for (idx, line) in content.lines().enumerate() {
-                        if line.to_lowercase().contains(&pattern_lower) {
-                            let _ = tx.send(SearchResult {
-                                path: path_str.clone(),
-                                line: idx + 1,
-                                content: line.trim().chars().take(100).collect(),
-                            });
+                
+                if let Ok(file) = File::open(path) {
+                    let reader = BufReader::new(file);
+                    for (idx, line_res) in reader.lines().enumerate() {
+                        if let Ok(line) = line_res {
+                            if line.len() > 10000 { continue; }
+                            
+                            let target_line = if is_case_sensitive { line.clone() } else { line.to_lowercase() };
+                            let is_match = terms.iter().all(|t| target_line.contains(t));
+
+                            if is_match {
+                                let _ = tx.send(SearchResult {
+                                    path: path.to_string_lossy().replace("\\", "/"),
+                                    line: idx + 1,
+                                    content: line.trim().chars().take(100).collect(),
+                                });
+                                if idx > 2000 { break; } 
+                            }
                         }
                     }
                 }

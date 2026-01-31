@@ -25,10 +25,16 @@ export function useFileManagement() {
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const editorViewRef = useRef<EditorView | null>(null);
 
-    const handleFileSelect = useCallback(async (path: string, name: string) => {
+    const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
+        // 无论文件是否打开，只要有行号，就设置待跳转状态
+        if (line) {
+            (window as any).__pendingLineJump = { path, line, ts: Date.now() };
+        }
+
         const existing = openFiles.find(f => f.path === path);
         if (existing) {
             setActiveFilePath(existing.id);
+            // 注意：跳转逻辑现在统一由 Editor 组件的 useEffect 在检测到 activeFilePath 变化后处理
             return;
         }
         try {

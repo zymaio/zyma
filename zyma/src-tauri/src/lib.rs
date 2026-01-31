@@ -8,6 +8,8 @@ use serde::{Serialize, Deserialize};
 pub mod models;
 pub mod commands;
 pub mod llm;
+pub mod bus;
+pub mod services;
 
 use crate::commands::config::get_config_path;
 
@@ -28,16 +30,6 @@ pub struct NativeAuthProvider {
     pub login_command: String,
     pub logout_command: String,
     pub auth_event: Option<String>,
-}
-
-pub struct AppState {
-    pub external_plugins: Vec<PathBuf>,
-    pub watcher: commands::watcher::WatcherState,
-    pub output: commands::output::OutputState,
-    pub workspace_path: Mutex<PathBuf>,
-    pub llm_manager: llm::LLMManager,
-    pub native_chat_participants: Vec<NativeChatParticipant>,
-    pub native_auth_providers: Vec<NativeAuthProvider>,
 }
 
 pub struct ZymaBuilder {
@@ -74,16 +66,36 @@ impl ZymaBuilder {
         let auth = self.auth_providers;
         self.builder
             .setup(move |app| {
-                app.manage(AppState {
+                // 1. 初始化并注册 WorkspaceService
+                app.manage(commands::fs::WorkspaceService::new(
+                    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+                ));
+
+                // 2. 初始化并注册 WatcherState
+                app.manage(commands::watcher::WatcherState { 
+                    watchers: Mutex::new(HashMap::new()) 
+                });
+
+                // 3. 初始化并注册 OutputState
+                app.manage(commands::output::OutputState { 
+                    channels: Mutex::new(HashMap::new()) 
+                });
+
+                // 4. 初始化并注册 LLMManager
+                app.manage(llm::LLMManager::new());
+
+                // 5. 初始化并注册 PluginService
+                app.manage(commands::plugins::PluginService {
                     external_plugins: Vec::new(),
-                    watcher: commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) },
-                    output: commands::output::OutputState { channels: Mutex::new(HashMap::new()) },
-                    workspace_path: Mutex::new(std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))),
-                    llm_manager: llm::LLMManager::new(),
                     native_chat_participants: participants,
                     native_auth_providers: auth,
                 });
-                setup_zyma(app)?;
+
+                // 6. 初始化并注册 EventBus (New)
+                let bus = bus::EventBus::new();
+                app.manage(bus.clone());
+
+                setup_zyma(app, bus)?;
                 Ok(())
             })
             .run(context)
@@ -91,14 +103,21 @@ impl ZymaBuilder {
     }
 }
 
-pub fn setup_zyma(app: &mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup_zyma(app: &mut tauri::App<Wry>, bus: bus::EventBus) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
     restore_window_state(handle)?;
     let h = handle.clone();
+    
+    // 捕获 bus 的副本用于闭包
+    let bus_clone = bus;
+
     if let Some(main_window) = app.get_webview_window("main") {
         main_window.on_window_event(move |event| {
             match event {
-                tauri::WindowEvent::Focused(focused) => { let _ = h.emit("window-state-changed", *focused); }
+                tauri::WindowEvent::Focused(focused) => { 
+                    let _ = h.emit("window-state-changed", *focused); 
+                    bus_clone.publish(bus::ZymaEvent::WindowFocused(*focused));
+                }
                 tauri::WindowEvent::CloseRequested { api, .. } => { api.prevent_close(); h.exit(0); }
                 _ => {}
             }

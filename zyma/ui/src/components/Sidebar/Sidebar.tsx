@@ -13,7 +13,7 @@ import { useFileIO } from '../../hooks/useFileIO';
 
 interface SidebarProps {
   rootPath: string;
-  onFileSelect: (path: string, name: string) => void;
+  onFileSelect: (path: string, name: string, line?: number) => void;
   onFileDelete?: (path: string) => void;
   activeFilePath: string | null;
   pluginMenuItems?: { label: string, commandId: string }[];
