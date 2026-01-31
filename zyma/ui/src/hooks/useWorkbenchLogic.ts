@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBarRegistry';
 import { pathUtils } from '../utils/pathUtils';
+import { invoke } from '@tauri-apps/api/core';
 
 import { registerWorkspaceCommands } from '../commands/workspace';
+import { useSessionManagement } from './useSessionManagement';
 
 const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
     'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
@@ -25,6 +27,17 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
 
     const [rootPath, setRootPath] = useState<string>(".");
     const [sidebarTab, setSidebarTab] = useState<string>('explorer');
+
+    // 使用拆分后的会话管理 Hook
+    useSessionManagement({
+        ready,
+        rootPath,
+        setRootPath,
+        fm,
+        tabSystem,
+        appInit
+    });
+
     const [showSettings, setShowSettings] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
@@ -55,10 +68,8 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
     useEffect(() => {
         if (!ready || !rootPath || rootPath === '.') return;
 
-        let isMounted = true;
         const startWatching = async () => {
             try {
-                // 先尝试 unwatch 之前的（如果 backend 做了清理则没关系）
                 await invoke('fs_watch', { path: rootPath });
                 console.log("[Watcher] Started watching:", rootPath);
             } catch (e) {
@@ -67,12 +78,6 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         };
 
         startWatching();
-        return () => {
-            isMounted = false;
-            // 注意：由于 Tauri invoke 是异步的，
-            // 且我们目前没有保存旧的 rootPath，
-            // backend 的 fs_unwatch 可以在下次 watch 时由逻辑决定或在此处理。
-        };
     }, [ready, rootPath]);
 
     const relativePath = useMemo(() => {

@@ -15,6 +15,13 @@ pub struct SearchResult {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SessionInfo {
+    pub root_path: Option<String>,
+    pub open_files: Vec<String>,
+    pub active_file: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AppSettings {
     pub theme: String,
     pub font_size: u32,
@@ -30,6 +37,10 @@ pub struct AppSettings {
     pub window_y: Option<i32>,
     pub is_maximized: bool,
     pub windows: Option<serde_json::Value>,
+    
+    // 会话信息
+    pub session: Option<SessionInfo>,
+
     // AI Settings
     #[serde(default)]
     pub ai_provider: Option<String>,
@@ -40,7 +51,7 @@ pub struct AppSettings {
     #[serde(default)]
     pub ai_model: Option<String>,
     
-    // 扩展字段：允许 Pro 版或插件存储额外配置
+    // 扩展字段
     #[serde(flatten)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -62,6 +73,7 @@ impl Default for AppSettings {
             window_y: None,
             is_maximized: false,
             windows: None,
+            session: None,
             ai_provider: None,
             ai_api_key: None,
             ai_base_url: None,
@@ -90,6 +102,6 @@ pub struct PluginManifest {
     pub author: String,
     pub entry: String,
     pub description: Option<String>,
-    pub icon: Option<String>, // 顺便加上顶层 icon 字段
+    pub icon: Option<String>,
     pub contributes: Option<PluginContributions>,
 }

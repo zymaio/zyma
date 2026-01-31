@@ -2,6 +2,7 @@ import React from 'react';
 import { Info } from 'lucide-react';
 import { statusBar } from './StatusBar/StatusBarRegistry';
 import { commands } from './CommandSystem/CommandRegistry';
+import { slotRegistry } from '../core/SlotRegistry';
 
 interface StatusBarProps {
     isAdmin: boolean;
@@ -17,13 +18,22 @@ const StatusBar: React.FC<StatusBarProps> = ({
     isAdmin, relativePath, activeFile, getLanguageMode, hasUpdate, appVersion, t 
 }) => {
     const [cursor, setCursor] = React.useState({ line: 1, col: 1 });
+    const [, forceUpdate] = React.useState(0);
 
     React.useEffect(() => {
-        // 关键点：只在这里订阅高频更新
-        return statusBar.subscribeCursor((pos) => {
-            setCursor(pos);
-        });
+        const unsubCursor = statusBar.subscribeCursor((pos) => setCursor(pos));
+        const unsubSlots = slotRegistry.subscribe(() => forceUpdate(n => n + 1));
+        return () => { unsubCursor(); unsubSlots(); };
     }, []);
+
+    const renderSlot = (location: any) => {
+        return slotRegistry.getContributedComponents(location).map(c => {
+            const Content = c.component;
+            return <div key={c.id} style={{ display: 'flex', alignItems: 'center' }}>
+                {typeof Content === 'function' ? <Content /> : Content}
+            </div>;
+        });
+    };
 
     return (
         <div className="status-bar" style={{ backgroundColor: 'var(--bg-status)', color: 'var(--text-main)' }}>
@@ -33,11 +43,13 @@ const StatusBar: React.FC<StatusBarProps> = ({
                     {relativePath}
                 </div>
                 {statusBar.getItems('left').map(item => <div key={item.id} title={item.tooltip} onClick={item.onClick} style={{ cursor: item.onClick ? 'pointer' : 'default', padding: '0 5px' }}>{item.text}</div>)}
+                {renderSlot('STATUS_BAR_LEFT')}
             </div>
 
             <div style={{ flex: 1 }}></div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                {renderSlot('STATUS_BAR_RIGHT')}
                 <div title={t('Line') + '/' + t('Column')}>
                     {`${t('Ln')} ${cursor.line}, ${t('Col')} ${cursor.col}`}
                 </div>
