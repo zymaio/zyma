@@ -134,7 +134,12 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
 
                 {authProviders.length > 0 && (
                     <div style={{ position: 'relative' }}>
-                        <div className={`activity-icon ${showAccountMenu ? 'active' : ''}`} onClick={() => setShowAccountMenu(!showAccountMenu)} title={t('Accounts')}>
+                        <div 
+                            className={`activity-icon ${showAccountMenu ? 'active' : ''}`} 
+                            onClick={() => setShowAccountMenu(!showAccountMenu)} 
+                            title={t('Accounts')}
+                            style={{ color: authProviders.some(p => p.accountName) ? 'var(--status-success)' : 'inherit' }}
+                        >
                             <User size={24} />
                             {authProviders.some(p => p.accountName) && <div style={{ position: 'absolute', bottom: '4px', right: '4px', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)', border: '2px solid var(--bg-activity)' }} />}
                         </div>
