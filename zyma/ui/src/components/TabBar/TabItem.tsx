@@ -53,7 +53,7 @@ const TabItem: React.FC<TabItemProps> = ({ name, type, active, isDirty, style, o
             ...style
         }}
     >
-      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '10px' }}>
+      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '10px', fontWeight: active ? 600 : 400 }}>
         {name} {isDirty && <span style={{ color: 'var(--accent-color)', fontSize: '16px' }}>•</span>}
       </span>
       <span 

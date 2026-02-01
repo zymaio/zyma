@@ -16,6 +16,7 @@ export const getMenuData = (t: (key: string, options?: any) => string, themeMode
         items: [
             { label: t('NewFile'), action: 'new_file', shortcut: 'Ctrl+N' },
             { label: t('OpenFolder'), action: 'open_folder' },
+            { label: t('OpenRecent'), action: 'open_recent' },
             { label: t('Save'), action: 'save', shortcut: 'Ctrl+S' },
             { label: t('SaveAs'), action: 'save_as' },
             { type: 'separator', label: '' },

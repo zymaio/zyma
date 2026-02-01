@@ -38,7 +38,7 @@ impl LocalFileSystem {
         }
     }
 
-    /// 内部安全检查
+    /// 内部安全检查 (Relaxed for Editor usage)
     fn validate_path(&self, target: &str) -> Result<PathBuf, String> {
         let root = self.root.lock().unwrap();
         let target_path = if Path::new(target).is_absolute() {
@@ -48,13 +48,10 @@ impl LocalFileSystem {
         };
 
         let clean_path = normalize_path(&target_path);
-        let clean_root = normalize_path(&root);
-
-        if clean_path.starts_with(&clean_root) {
-            Ok(clean_path)
-        } else {
-            Err(format!("Access denied: Path outside workspace"))
-        }
+        
+        // Editor Mode: Allow accessing files outside workspace
+        // We trust the user's intent when opening specific files.
+        Ok(clean_path)
     }
 }
 
@@ -141,7 +138,13 @@ fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
-        PathBuf::from(c.as_os_str())
+        // 关键修复：在 Windows 上强制盘符大写，确保对比一致性
+        let prefix_os = c.as_os_str().to_string_lossy();
+        if prefix_os.contains(':') {
+            PathBuf::from(prefix_os.to_uppercase())
+        } else {
+            PathBuf::from(c.as_os_str())
+        }
     } else {
         PathBuf::new()
     };

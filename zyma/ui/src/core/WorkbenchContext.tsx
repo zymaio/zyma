@@ -6,10 +6,13 @@ export interface WorkbenchContextType {
     setSettings: (s: AppSettings) => void;
     platform: string;
     appVersion: string;
-    productName: string;
     isAdmin: boolean;
+    productName: string;
+    rootPath: string;
+    setRootPath: (path: string) => void;
     activeTabId: string | null;
     setActiveTabId: (id: string | null) => void;
+    fm: any;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined);

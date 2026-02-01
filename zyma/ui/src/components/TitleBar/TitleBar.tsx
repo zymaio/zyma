@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Minus, Square, X as CloseIcon, Copy } from 'lucide-react';
+import { Minus, Square, X as CloseIcon, Copy, ChevronRight } from 'lucide-react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,7 @@ import './TitleBar.css';
 import { useWorkbench } from '../../core/WorkbenchContext';
 
 interface TitleBarProps {
-    onAction: (action: string) => void;
+    onAction: (action: string, params?: any) => void;
     themeMode: 'dark' | 'light' | 'abyss';
     isAdmin: boolean;
     platform: string;
@@ -16,14 +16,15 @@ interface TitleBarProps {
 
 const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platform }) => {
   const { t } = useTranslation();
-  const { productName } = useWorkbench();
+  const { productName, settings } = useWorkbench();
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [hoverSubMenu, setHoverSubMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isMac = platform === 'macos' || platform === 'darwin';
-
   const MENU_DATA = getMenuData(t, themeMode);
+  const recentWorkspaces = settings?.recent_workspaces || [];
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -38,6 +39,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
     const handleClickOutside = (event: MouseEvent) => {
         if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
             setActiveMenu(null);
+            setHoverSubMenu(null);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -56,35 +58,30 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
     }
   };
   
-  // 关键：这里不再直接 close()，而是触发 onAction('exit') 让上层处理
   const handleRequestClose = () => onAction('exit');
 
   return (
-    <div 
-      className="title-bar-container"
-      style={{ flexDirection: isMac ? 'row-reverse' : 'row' }}
-      ref={menuRef}
-    >
-      {/* 1. Window Controls (MacOS: Left, Windows: Right) */}
-      {!isMac && <div style={{ width: '48px' }} data-tauri-drag-region></div> /* Placeholder for balance */}
-      
-      <div className="title-bar-main" style={{ flexDirection: isMac ? 'row-reverse' : 'row' }}>
-        {/* New Zyma Logo: Theme-aware Background + White Bolt */}
+    <div className="title-bar-container" ref={menuRef}>
+      <div className="title-bar-main">
+        {/* Logo area */}
         <div className="logo-wrapper" data-tauri-drag-region>
-          <div className="logo-box">
+          <div className="logo-box" data-tauri-drag-region>
             <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
             </svg>
           </div>
         </div>
 
-        {/* Menus */}
+        {/* Menus - 使用标准 onClick */}
         <div className="menu-container">
             {MENU_DATA.map(menu => (
                 <div key={menu.label} className="menu-item-wrapper">
                     <div 
                         className={`menu-item-label ${activeMenu === menu.label ? 'active' : ''}`}
-                        onClick={() => setActiveMenu(activeMenu === menu.label ? null : menu.label)}
+                        onClick={() => {
+                            setActiveMenu(activeMenu === menu.label ? null : menu.label);
+                            setHoverSubMenu(null);
+                        }}
                         onMouseEnter={() => activeMenu && setActiveMenu(menu.label)}
                     >
                         {menu.label}
@@ -96,13 +93,48 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                                     <div key={idx} className="dropdown-separator"></div>
                                 ) : (
                                     <div 
-                                        key={idx} className="dropdown-item" 
-                                        onClick={() => { if (item.action) onAction(item.action); setActiveMenu(null); }}
+                                        key={idx} className={`dropdown-item ${hoverSubMenu === item.action ? 'active' : ''}`} 
+                                        onMouseEnter={() => item.action === 'open_recent' ? setHoverSubMenu(item.action) : setHoverSubMenu(null)}
+                                        onClick={() => { 
+                                            if (item.action && item.action !== 'open_recent') {
+                                                onAction(item.action); 
+                                                setActiveMenu(null);
+                                            }
+                                        }}
                                     >
                                         <div className="dropdown-item-content">
                                             <span>{item.label}</span>
+                                            {item.action === 'open_recent' && <ChevronRight size={14} style={{ marginLeft: '10px', opacity: 0.5 }} />}
                                             {item.shortcut && <span className="dropdown-shortcut">{item.shortcut}</span>}
                                         </div>
+
+                                        {/* Recent Workspaces Sub Menu */}
+                                        {hoverSubMenu === 'open_recent' && item.action === 'open_recent' && (
+                                            <div className="dropdown-menu sub-menu">
+                                                {recentWorkspaces.length > 0 ? (
+                                                    recentWorkspaces.map((path, i) => (
+                                                        <div 
+                                                            key={i} className="dropdown-item"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                onAction('workspace.open_recent', path);
+                                                                setActiveMenu(null);
+                                                            }}
+                                                        >
+                                                            <div className="dropdown-item-content">
+                                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{path}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="dropdown-item disabled">
+                                                        <div className="dropdown-item-content">
+                                                            <span style={{ opacity: 0.5 }}>{t('NoRecentWorkspaces')}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )
                             ))}
@@ -112,17 +144,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
             ))}
         </div>
 
-        {/* Draggable Title Area */}
-        <div className="title-drag-region" data-tauri-drag-region>
-            {t(`app_name_${productName}`)} {isAdmin && `[${t('Administrator')}]`}
+        {/* Title / Drag Area */}
+        <div className="title-drag-region" data-tauri-drag-region style={{ flex: 1, minWidth: 0 }}>
+            <span data-tauri-drag-region style={{ opacity: 0.6, fontWeight: 500, letterSpacing: '0.3px' }}>{t(`app_name_${productName}`)} {isAdmin && `[${t('Administrator')}]`}</span>
         </div>
       </div>
 
-      {/* Actual Buttons (Windows: Right, MacOS: Left) */}
       <div className="window-controls-wrapper">
-        {isMac ? (
-            <div style={{ width: '70px' }} data-tauri-drag-region></div> /* Space for MacOS traffic lights */
-        ) : (
+        {!isMac && (
             <>
                 <div className="window-control" onClick={handleMinimize}><Minus size={16} /></div>
                 <div className="window-control" onClick={handleMaximize}>

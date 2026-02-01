@@ -10,17 +10,16 @@ import type { FileItemData } from './components/FileTreeItem';
 
 import { pathUtils } from '../../utils/pathUtils';
 import { useFileIO } from '../../hooks/useFileIO';
+import { useWorkbench } from '../../core/WorkbenchContext';
 
 interface SidebarProps {
-  rootPath: string;
-  onFileSelect: (path: string, name: string, line?: number) => void;
-  onFileDelete?: (path: string) => void;
-  activeFilePath: string | null;
   pluginMenuItems?: { label: string, commandId: string }[];
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete, activeFilePath, pluginMenuItems = [] }) => {
+const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
   const { t } = useTranslation();
+  const { rootPath, fm } = useWorkbench();
+  const { handleFileSelect, closeFile: onFileDelete, activeFilePath } = fm;
   const [rootFiles, setRootFiles] = useState<FileItemData[]>([]);
   const [projectName, setProjectName] = useState<string>("Project");
   const [isRootOpen, setIsRootOpen] = useState(true);
@@ -136,13 +135,13 @@ const Sidebar: React.FC<SidebarProps> = ({ rootPath, onFileSelect, onFileDelete,
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', userSelect: 'none' }} onContextMenu={(e) => handleContextMenu(e)}>
-      <div style={{ padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><span>{t('Workspace')}</span></div>
+      <div style={{ padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', textTransform: 'uppercase', letterSpacing: '0.5px' }}><span>{t('Workspace')}</span></div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 5px', cursor: 'pointer', fontSize: 'var(--ui-font-size)', fontWeight: 'bold', color: 'var(--text-primary)' }} className="file-item-hover" onClick={() => setIsRootOpen(!isRootOpen)} onContextMenu={(e) => handleContextMenu(e)}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '3px 5px', cursor: 'pointer', fontSize: 'var(--ui-font-size)', fontWeight: 600, color: 'var(--text-primary)' }} className="file-item-hover" onClick={() => setIsRootOpen(!isRootOpen)} onContextMenu={(e) => handleContextMenu(e)}>
              <span style={{ marginRight: '5px', opacity: 0.8, display: 'flex', alignItems: 'center' }}>{isRootOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
             <span style={{ marginRight: '5px', opacity: 0.8 }}>{projectName}</span>
         </div>
-        {isRootOpen && (<div>{isLoading && <div style={{ paddingLeft: '20px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: '#666' }}>{t('Loading')}...</div>}{rootFiles.map((file) => (<FileTreeItem key={file.path} item={file} onFileSelect={onFileSelect} onContextMenu={handleContextMenu} activeFilePath={activeFilePath} level={1} />))}</div>)}
+        {isRootOpen && (<div>{isLoading && <div style={{ paddingLeft: '20px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--loading-text)' }}>{t('Loading')}...</div>}{rootFiles.map((file) => (<FileTreeItem key={file.path} item={file} onFileSelect={handleFileSelect} onContextMenu={handleContextMenu} activeFilePath={activeFilePath} level={1} />))}</div>)}
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onClose={() => setContextMenu(null)} />}
     </div>

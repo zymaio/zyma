@@ -33,8 +33,27 @@ pub async fn fs_set_cwd(
     path: String
 ) -> Result<(), String> {
     ws.fs.set_cwd(&path)?;
-    let _ = app_handle.emit("workspace_changed", &path);
-    bus.publish(ZymaEvent::WorkspaceChanged(path));
+    
+    // 归一化路径以便去重和一致性显示
+    let normalized_path = path.replace("\\", "/");
+    let lower_path = normalized_path.to_lowercase();
+
+    // 自动记录到最近工作区
+    if let Ok(mut settings) = crate::commands::config::load_settings() {
+        // 去重并插入首位 (大小写不敏感，防止 Windows 下盘符大小写导致的重复)
+        settings.recent_workspaces.retain(|p| {
+            p.replace("\\", "/").to_lowercase() != lower_path
+        });
+        settings.recent_workspaces.insert(0, normalized_path.clone());
+        // 只保留最近 10 个
+        if settings.recent_workspaces.len() > 10 {
+            settings.recent_workspaces.truncate(10);
+        }
+        let _ = crate::commands::config::save_settings(settings);
+    }
+
+    let _ = app_handle.emit("workspace_changed", &normalized_path);
+    bus.publish(ZymaEvent::WorkspaceChanged(normalized_path));
     Ok(())
 }
 

@@ -83,7 +83,7 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
             <span style={{ marginRight: '5px', opacity: 0.8 }}>
                 {item.is_dir ? <Folder size={14} fill={isOpen ? 'var(--accent-color)' : 'none'} color={isOpen ? 'var(--accent-color)' : 'var(--text-secondary)'} /> : getFileIcon()}
             </span>
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 'bold' : 'normal' }}>{item.name}</span>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: isActive ? 600 : 400 }}>{item.name}</span>
         </div>
       </div>
       {item.is_dir && isOpen && (

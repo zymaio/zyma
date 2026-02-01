@@ -149,7 +149,7 @@ pub fn setup_zyma(app: &mut tauri::App<Wry>, bus: bus::EventBus) -> Result<(), B
     let h = handle.clone();
     
     // 捕获 bus 的副本用于闭包
-    let bus_clone = bus;
+    let bus_clone = bus.clone();
 
     if let Some(main_window) = app.get_webview_window("main") {
         main_window.on_window_event(move |event| {
@@ -163,6 +163,25 @@ pub fn setup_zyma(app: &mut tauri::App<Wry>, bus: bus::EventBus) -> Result<(), B
             }
         });
     }
+
+    // 联动：当工作区切换时，自动更新 Watcher
+    let h_bus = handle.clone();
+    let mut bus_rx = bus.subscribe();
+    tauri::async_runtime::spawn(async move {
+        while let Ok(event) = bus_rx.recv().await {
+            if let bus::ZymaEvent::WorkspaceChanged(new_path) = event {
+                // 1. 清理所有旧监听
+                let watcher_state = h_bus.state::<commands::watcher::WatcherState>();
+                {
+                    let mut watchers = watcher_state.watchers.lock().unwrap();
+                    watchers.clear(); 
+                }
+                // 2. 开启新监听
+                let _ = commands::watcher::fs_watch(h_bus.clone(), watcher_state, new_path);
+            }
+        }
+    });
+
     Ok(())
 }
 

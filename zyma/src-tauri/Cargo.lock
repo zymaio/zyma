@@ -6310,6 +6310,7 @@ dependencies = [
  "log",
  "notify",
  "num_cpus",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

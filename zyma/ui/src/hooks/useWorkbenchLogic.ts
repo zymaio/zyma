@@ -4,6 +4,7 @@ import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBarRegistry';
 import { pathUtils } from '../utils/pathUtils';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 import { registerWorkspaceCommands } from '../commands/workspace';
 import { useSessionManagement } from './useSessionManagement';
@@ -14,16 +15,22 @@ const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
     'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
 };
 
+import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+
 interface WorkbenchLogicProps {
     fm: any;
     tabSystem: any;
-    appInit: any;
+    appInit: {
+        ready: boolean;
+        setSettings?: (s: AppSettings) => void;
+        [key: string]: any;
+    };
 }
 
 export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProps) {
     const { t } = useTranslation();
     const { setActiveTabId } = tabSystem;
-    const { ready } = appInit;
+    const ready = appInit?.ready;
 
     const [rootPath, setRootPath] = useState<string>(".");
     const [sidebarTab, setSidebarTab] = useState<string>('explorer');
@@ -36,6 +43,39 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         fm,
         appInit
     });
+
+    // 监听工作区切换事件 (Event-Driven Architecture)
+    useEffect(() => {
+        let unlisten: (() => void) | null = null;
+        
+        const setupListener = async () => {
+            unlisten = await listen<string>('workspace_changed', async (event) => {
+                const newPath = event.payload;
+                console.log("[Workbench] Workspace changed event received:", newPath);
+                
+                // 1. 更新根路径
+                setRootPath(newPath);
+                
+                // 2. 重置编辑器状态 (类似 VS Code 的 Reload Window 效果)
+                fm.setOpenFiles([]);
+                fm.setActiveFilePath(null);
+                tabSystem.setActiveTabId(null);
+
+                // 3. 重新加载设置以刷新最近打开记录
+                if (appInit.setSettings) {
+                    try {
+                        const newSettings = await invoke<AppSettings>('load_settings');
+                        appInit.setSettings(newSettings);
+                    } catch (e) {
+                        console.warn("[Workbench] Failed to refresh settings:", e);
+                    }
+                }
+            });
+        };
+
+        setupListener();
+        return () => { if (unlisten) unlisten(); };
+    }, [fm, tabSystem, appInit]);
 
     const [showSettings, setShowSettings] = useState(false);
     const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -51,17 +91,6 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         const unsubStatus = statusBarRegistry.subscribe(() => forceUpdate(n => n + 1));
         return () => { unsubViews(); unsubStatus(); };
     }, []);
-
-    // 注册核心命令 (Workspace 相关)
-    useEffect(() => {
-        if (!ready) return;
-        
-        registerWorkspaceCommands(t, {
-            setRootPath,
-            fm,
-            setActiveTabId
-        });
-    }, [ready, t, fm, setActiveTabId]);
 
     // 开启后端文件监听
     useEffect(() => {

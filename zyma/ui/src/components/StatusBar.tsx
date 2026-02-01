@@ -38,7 +38,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
     return (
         <div className="status-bar" style={{ backgroundColor: 'var(--bg-status)', color: 'var(--text-main)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {isAdmin && <span style={{ backgroundColor: 'var(--status-error)', color: '#fff', padding: '0 4px', borderRadius: '2px', fontSize: 'calc(var(--ui-font-size) - 3px)', fontWeight: 'bold' }}>{t('Administrator')}</span>}
+                {isAdmin && <span style={{ backgroundColor: 'var(--status-error)', color: 'var(--text-on-error)', padding: '0 4px', borderRadius: '2px', fontSize: 'calc(var(--ui-font-size) - 3px)', fontWeight: 600 }}>{t('Administrator')}</span>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px', opacity: 0.9 }} title={activeFile?.path || ''}>
                     {relativePath}
                 </div>

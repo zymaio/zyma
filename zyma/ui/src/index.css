@@ -1,9 +1,10 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
   line-height: 1.5;
   --ui-font-size: 13px;
   font-size: var(--ui-font-size);
   font-synthesis: none;
+  font-weight: 400;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -20,12 +21,14 @@
   --text-main: #e0e6f8;
   --text-muted: #9499b8;
   --text-active: #ffffff;
+  --text-inverse: #ffffff; /* 强对比文字颜色 */
   --border-color: #24283b;
   --accent-color: #7aa2f7;
   --active-bg: #292e42;
   --active-text: #7aa2f7;
   --text-primary: var(--text-main);
   --text-secondary: var(--text-muted);
+  --bg-dropdown: #1e1e2e;
   --input-border: var(--border-color);
   --cursor-color: var(--accent-color);
   --bg-active-line: rgba(255, 255, 255, 0.05);
@@ -35,6 +38,7 @@
   --status-error: #ef4444;
   --status-warning: #f59e0b;
   --status-info: #3b82f6;
+  --text-on-error: #ffffff;
 
   /* Component Specific */
   --tab-active-border: var(--accent-color);
@@ -42,6 +46,7 @@
   --user-bubble-bg: var(--accent-color);
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --loading-text: var(--text-muted);
 
   /* Editor Syntax Highlighting (Tokyo Night inspired) */
   --syn-keyword: #bb9af7;   /* 紫 */
@@ -136,7 +141,7 @@
   --active-text: #ffffff;
   --text-primary: #ffffff; 
   --text-secondary: #ccddff;
-  --bg-dropdown: #181f2f;
+  --bg-dropdown: #051336;
   --dropdown-hover: #08286b;
   --input-bg: #000000;
   --input-border: #1d4a87;

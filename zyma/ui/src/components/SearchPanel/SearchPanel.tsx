@@ -23,14 +23,12 @@ interface SearchTreeNode {
     matches?: SearchResult[];
 }
 
-interface SearchPanelProps {
-    rootPath: string;
-    onFileSelect: (path: string, name: string, line?: number) => void;
-}
+interface SearchPanelProps {}
 
-const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => {
+const SearchPanel: React.FC<SearchPanelProps> = () => {
     const { t } = useTranslation();
-    const { settings } = useWorkbench();
+    const { settings, rootPath, fm } = useWorkbench();
+    const onFileSelect = fm.handleFileSelect;
     
     // --- 动态尺寸计算 ---
     const uiSize = settings?.ui_font_size || 13;

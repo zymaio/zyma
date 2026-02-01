@@ -8,14 +8,26 @@ export function registerWorkspaceCommands(t: any, handlers: any) {
         title: t('OpenFolder'),
         category: 'Workspace',
         callback: async () => {
-            const sel = await open({ directory: true });
-            if (sel) {
-                const newPath = sel as string;
-                handlers.setRootPath(newPath);
-                handlers.fm.setOpenFiles([]);
-                handlers.fm.setActiveFilePath(null);
-                handlers.setActiveTabId(null);
-                await invoke('fs_set_cwd', { path: newPath });
+            try {
+                const sel = await open({ directory: true });
+                if (sel) {
+                    const newPath = sel as string;
+                    console.log("[Workspace] Switching to:", newPath);
+                    
+                    // 1. 立即清理 UI 状态 (优化体验，防止闪烁)
+                    handlers.fm.setOpenFiles([]);
+                    handlers.fm.setActiveFilePath(null);
+                    handlers.setActiveTabId(null);
+
+                    // 2. Event-Driven: 仅通知后端切换
+                    try {
+                        await invoke('fs_set_cwd', { path: newPath });
+                    } catch (e) {
+                        console.error("[Workspace] Failed to set backend CWD:", e);
+                    }
+                }
+            } catch (e) {
+                console.error("[Workspace] Dialog Error:", e);
             }
         }
     });

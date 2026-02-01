@@ -17,6 +17,8 @@
   "View": "View",
   "Help": "Help",
   "OpenFolder": "Open Folder...",
+  "OpenRecent": "Open Recent Workspaces",
+  "NoRecentWorkspaces": "No recent workspaces",
   "Exit": "Exit",
   "Theme": "Theme",
   "Language": "Language",

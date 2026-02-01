@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import './i18n';
 import { useFileManagement } from './hooks/useFileManagement';
 import { useAppInitialization } from './hooks/useAppInitialization';
+import { useWorkbenchLogic } from './hooks/useWorkbenchLogic';
 import { useKeybindings } from './hooks/useKeybindings';
 import { useTabSystem } from './hooks/useTabSystem';
 import { useSidebarResize } from './hooks/useSidebarResize';
@@ -17,7 +18,8 @@ function App() {
   const fm = useFileManagement();
   
   // 1. 使用拆分后的 Tab 系统 Hook
-  const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = useTabSystem(fm);
+  const tabSystem = useTabSystem(fm);
+  const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = tabSystem;
   
   // 2. 使用拆分后的缩放 Hook
   const { sidebarWidth, startResizing } = useSidebarResize(250);
@@ -26,6 +28,8 @@ function App() {
       ready, settings, setSettings, isAdmin, platform, appVersion, productName,
       pluginMenus, pluginManager, handleAppExit
   } = useAppInitialization(fm, i18n, openCustomView);
+
+  const logic = useWorkbenchLogic({ fm, tabSystem, appInit: { ready, setSettings } });
 
   const chatComponents = useMemo(() => ({ 
       ChatPanel: (props: any) => <ChatPanel {...props} settings={settings} getContext={async () => {
@@ -61,13 +65,14 @@ function App() {
   return (
     <WorkbenchProvider value={{ 
         settings, setSettings, platform, appVersion, isAdmin, productName,
-        activeTabId, setActiveTabId
+        rootPath: logic.rootPath, setRootPath: logic.setRootPath,
+        activeTabId, setActiveTabId, fm
     }}>
         <Workbench 
             fm={fm}
             tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
             sidebarResize={{ sidebarWidth, startResizing }}
-            appInit={{ ready, settings, setSettings, isAdmin, platform, appVersion, productName, pluginMenus, pluginManager, handleAppExit }}
+            appInit={{ ...logic, ready, settings, setSettings, isAdmin, platform, appVersion, productName, pluginMenus, pluginManager, handleAppExit }}
             chatComponents={chatComponents}
         />
     </WorkbenchProvider>

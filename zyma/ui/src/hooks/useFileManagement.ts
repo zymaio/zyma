@@ -86,30 +86,41 @@ export function useFileManagement() {
         if (!force && normalizedCurrent === target.originalContent) return true;
 
         let targetPath = target.path;
-        if (!targetPath) {
-            const selected = await save({ defaultPath: target.name });
-            if (!selected) return false;
-            targetPath = selected;
-        }
 
         try {
+            // 如果是“另存为” (force 为 true) 或者新文件没有路径，则弹出对话框
+            if (force || !targetPath) {
+                const selected = await save({ defaultPath: targetPath || target.name });
+                if (!selected) return false;
+                targetPath = selected;
+            }
+
+            if (!targetPath) return false;
+
+            // 幂等校验：如果目标路径已存在，且内容完全一致，则跳过写入
+            if (targetPath === target.path && normalizedCurrent === target.originalContent) {
+                return true; 
+            }
+
             await fsWriteFile(targetPath, currentText);
             const fileName = pathUtils.getFileName(targetPath);
             
-            setOpenFiles(prev => prev.map(f => f.id === target!.id ? { 
+            const finalPath = targetPath; // 闭包安全
+            setOpenFiles(prev => prev.map(f => f.id === target.id ? { 
                 ...f, 
-                id: targetPath!,
-                path: targetPath,
+                id: finalPath,
+                path: finalPath,
                 name: fileName,
                 content: currentText,
                 originalContent: normalizedCurrent, 
                 isDirty: false 
             } : f));
             
-            if (activeFilePath === target.id) setActiveFilePath(targetPath);
+            if (activeFilePath === target.id) setActiveFilePath(finalPath);
             return true;
         } catch (e) { 
-            toast.error(`Save failed: ${target.name}`);
+            console.error("Save/Dialog Error:", e);
+            toast.error(`Save failed: ${String(e)}`);
             return false; 
         }
     }, [activeFilePath, openFiles]);

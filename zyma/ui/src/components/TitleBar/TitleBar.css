@@ -1,6 +1,6 @@
 .title-bar-container {
     height: 30px;
-    background-color: var(--bg-activity-bar);
+    background-color: var(--bg-active-tab);
     display: flex;
     align-items: center;
     user-select: none;
@@ -9,6 +9,7 @@
     flex-shrink: 0;
     position: relative;
     z-index: 1000;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .title-bar-main {
@@ -16,6 +17,7 @@
     align-items: center;
     height: 100%;
     flex: 1;
+    min-width: 0;
 }
 
 .logo-wrapper {
@@ -37,6 +39,10 @@
 .menu-container {
     display: flex;
     height: 100%;
+    flex-shrink: 0;
+    white-space: nowrap;
+    position: relative;
+    z-index: 1010;
 }
 
 .menu-item-wrapper {
@@ -67,7 +73,7 @@
     box-shadow: var(--shadow-main);
     min-width: 180px;
     padding: 4px 0;
-    z-index: 1001;
+    z-index: 1020;
 }
 
 .dropdown-separator {
@@ -82,6 +88,7 @@
     display: flex;
     justify-content: space-between;
     gap: 20px;
+    align-items: center;
 }
 
 .dropdown-shortcut {
@@ -89,15 +96,34 @@
     font-size: var(--ui-font-size);
 }
 
+.dropdown-item {
+    position: relative;
+}
+
+.dropdown-item:hover, .dropdown-item.active {
+    background-color: var(--active-bg);
+    color: var(--text-active);
+}
+
+.dropdown-menu.sub-menu {
+    top: -4px;
+    left: 100%;
+    min-width: 240px;
+}
+
 .title-drag-region {
     flex: 1;
     height: 100%;
     text-align: center;
-    opacity: 0.5;
     padding-top: 6px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .window-controls-wrapper {
     display: flex;
     height: 100%;
+    z-index: 1010;
 }

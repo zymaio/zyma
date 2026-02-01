@@ -2,9 +2,9 @@ use crate::models::SearchResult;
 use ignore::WalkBuilder;
 use std::sync::mpsc;
 use globset::{Glob, GlobSetBuilder};
-use walkdir::WalkDir;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
+use regex::RegexBuilder;
 
 // 简单的二进制文件检测：检查前 1024 字节是否包含 NULL 字符
 fn is_binary(path: &std::path::Path) -> bool {
@@ -32,10 +32,10 @@ pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>)
     };
 
     let mut results = Vec::new();
-    let walker = WalkDir::new(base_dir).into_iter();
+    let walker = WalkBuilder::new(base_dir).build();
 
     for entry in walker.filter_map(|e| e.ok()) {
-        if entry.file_type().is_file() {
+        if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
             let path = entry.path();
             if include_glob.is_match(path) {
                 if let Some(ref matcher) = exclude_matcher {
@@ -49,17 +49,6 @@ pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>)
     }
     Ok(results)
 }
-
-use crate::models::SearchResult;
-use ignore::WalkBuilder;
-use std::sync::mpsc;
-use globset::{Glob, GlobSetBuilder, GlobSet};
-use walkdir::WalkDir;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
-use regex::RegexBuilder;
-
-// ... (is_binary function remains same)
 
 #[tauri::command]
 pub fn search_in_dir(
@@ -87,7 +76,7 @@ pub fn search_in_dir(
         Some(RegexBuilder::new(&final_pattern)
             .case_insensitive(!is_case_sensitive)
             .build()
-            .map_err(|e| e.to_string())?)
+            .map_err(|e: regex::Error| e.to_string())?)
     } else {
         None
     };
@@ -144,7 +133,7 @@ pub fn search_in_dir(
                 let is_match = if let Some(ref re) = regex {
                     re.is_match(&rel_path_str)
                 } else {
-                    if is_case_sensitive { rel_path_str.contains(&pattern) }
+                    if is_case_sensitive { rel_path_str.contains(&pattern) } 
                     else { rel_path_str.to_lowercase().contains(&pattern.to_lowercase()) }
                 };
 
@@ -162,12 +151,12 @@ pub fn search_in_dir(
                     let reader = BufReader::new(file);
                     for (idx, line_res) in reader.lines().enumerate() {
                         if let Ok(line) = line_res {
-                            if line.len() > 10000 { continue; }
+                            if line.len() > 10000 { continue; } 
                             
                             let is_match = if let Some(ref re) = regex {
                                 re.is_match(&line)
                             } else {
-                                if is_case_sensitive { line.contains(&pattern) }
+                                if is_case_sensitive { line.contains(&pattern) } 
                                 else { line.to_lowercase().contains(&pattern.to_lowercase()) }
                             };
 

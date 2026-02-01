@@ -4,6 +4,7 @@ import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar } from '../components/StatusBar/StatusBarRegistry';
 import { registerFileCommands } from '../commands/file';
 import { registerViewCommands } from '../commands/view';
+import { registerWorkspaceCommands } from '../commands/workspace';
 import { slotRegistry } from './SlotRegistry';
 import OutputPanelWrapper from '../components/PluginSystem/OutputPanelWrapper';
 import type { CustomViewRequest } from '../hooks/useTabSystem';
@@ -28,6 +29,7 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
     // 1. 注册各模块命令
     registerFileCommands(t, handlers);
     registerViewCommands(t, handlers);
+    registerWorkspaceCommands(t, handlers);
 
     // 2. 注册视图
     views.registerView({ id: 'explorer', title: t('Workspace'), icon: <Files size={24} />, component: handlers.components.Sidebar, order: 1 });

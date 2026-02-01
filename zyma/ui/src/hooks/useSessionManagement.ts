@@ -21,28 +21,43 @@ export function useSessionManagement({
     const restoreSession = useCallback(async () => {
         const settings = appInit.settings;
         if (settings?.session) {
-            const { root_path, open_files, active_file } = settings.session;
+            const { root_path: savedRoot, open_files, active_file } = settings.session;
             
             // 1. 恢复工作区
-            if (root_path && root_path !== '.') {
-                setRootPath(root_path);
+            // 如果当前没有设置有效根目录，则从会话恢复
+            let targetRoot = rootPath;
+            if ((targetRoot === "." || targetRoot === "./") && savedRoot && savedRoot !== ".") {
+                targetRoot = savedRoot;
+                setRootPath(savedRoot);
             }
 
-            // 2. 恢复打开的文件
+            if (!targetRoot || targetRoot === "." || targetRoot === "./") return;
+
+            const normRoot = pathUtils.normalize(targetRoot);
+            const normRootWithSlash = normRoot.endsWith('/') ? normRoot : normRoot + '/';
+
+            // 2. 恢复打开的文件 (增强：仅恢复属于当前工作区的文件)
             if (open_files && open_files.length > 0) {
                 // 按顺序恢复，避免 Tab 顺序混乱
                 for (const path of open_files) {
-                    const name = pathUtils.getFileName(path);
-                    await fm.handleFileSelect(path, name);
+                    const normPath = pathUtils.normalize(path);
+                    // 校验：文件路径必须在根路径之下
+                    if (normPath === normRoot || normPath.startsWith(normRootWithSlash)) {
+                        const name = pathUtils.getFileName(path);
+                        await fm.handleFileSelect(path, name);
+                    }
                 }
             }
 
-            // 3. 恢复活动文件
+            // 3. 恢复活动文件 (同样需要校验)
             if (active_file) {
-                fm.setActiveFilePath(active_file);
+                const normActive = pathUtils.normalize(active_file);
+                if (normActive === normRoot || normActive.startsWith(normRootWithSlash)) {
+                    fm.setActiveFilePath(active_file);
+                }
             }
         }
-    }, [appInit.settings, fm, setRootPath]);
+    }, [appInit.settings, fm, rootPath, setRootPath]);
 
     // --- 生命周期：初始化恢复 ---
     useEffect(() => {

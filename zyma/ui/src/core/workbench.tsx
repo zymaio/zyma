@@ -121,7 +121,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
 
     useWorkbenchCommands({
         ready, t, i18n, fm, logic, settings, setSettings,
-        pluginMenus, pluginManager, chatComponents, openCustomView
+        pluginMenus, pluginManager, chatComponents, openCustomView, tabSystem
     });
 
     if (!ready) return null;
@@ -129,11 +129,21 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     return (
         <div className="app-root">
             <TitleBar 
-                onAction={(action) => {
+                onAction={(action, params) => {
                     switch (action) {
                         case 'new_file': commands.executeCommand('file.new'); break;
                         case 'open_folder': commands.executeCommand('workspace.openFolder'); break;
+                        case 'workspace.open_recent':
+                            if (params) {
+                                // 立即清理 UI 防止切换时的视觉闪烁
+                                fm.setOpenFiles([]);
+                                fm.setActiveFilePath(null);
+                                setActiveTabId(null);
+                                invoke('fs_set_cwd', { path: params });
+                            }
+                            break;
                         case 'save': commands.executeCommand('file.save'); break;
+                        case 'save_as': commands.executeCommand('file.saveAs'); break;
                         case 'exit': requestExit(); break;
                         case 'undo': if (fm.editorViewRef.current) undo(fm.editorViewRef.current); break;
                         case 'redo': if (fm.editorViewRef.current) redo(fm.editorViewRef.current); break;

@@ -41,6 +41,10 @@ pub struct AppSettings {
     // 会话信息
     pub session: Option<SessionInfo>,
 
+    // 最近打开的工作区
+    #[serde(default)]
+    pub recent_workspaces: Vec<String>,
+
     // AI Settings
     #[serde(default)]
     pub ai_provider: Option<String>,
@@ -74,6 +78,7 @@ impl Default for AppSettings {
             is_maximized: false,
             windows: None,
             session: None,
+            recent_workspaces: Vec::new(),
             ai_provider: None,
             ai_api_key: None,
             ai_base_url: None,
