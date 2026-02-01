@@ -7,6 +7,19 @@ export type TabItem = {
     component?: React.ReactNode;
 };
 
+export type CustomViewOptions = {
+    canSplit?: boolean;
+    preferLocation?: 'editor' | 'bottom';
+    persistent?: boolean;
+};
+
+export type CustomViewRequest = {
+    id: string;
+    title: string;
+    component: React.ReactNode;
+    options?: CustomViewOptions;
+};
+
 export function useTabSystem(fm: any) {
     const [activeTabs, setActiveTabs] = useState<TabItem[]>([]);
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -32,7 +45,8 @@ export function useTabSystem(fm: any) {
     }, [fm.activeFilePath]);
 
     // 3. 打开自定义视图
-    const openCustomView = useCallback((id: string, title: string, component: React.ReactNode) => {
+    const openCustomView = useCallback((request: CustomViewRequest) => {
+        const { id, title, component } = request;
         setActiveTabs(prev => {
             if (prev.some(t => t.id === id)) return prev;
             return [...prev, { id, title, type: 'view', component }];

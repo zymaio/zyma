@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Monitor, Trash2, X, Copy, Check, ZoomIn, ZoomOut } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Monitor, Trash2, X, Copy, Check, ZoomIn, ZoomOut, ArrowDown } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
+import { Virtuoso } from 'react-virtuoso';
+import type { VirtuosoHandle } from 'react-virtuoso';
 
 interface OutputLine {
     content: string;
@@ -20,33 +22,49 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
     const [selectedChannel, setSelectedChannel] = useState(channels[0] || "");
     const [lines, setLines] = useState<OutputLine[]>([]);
     const [isCopied, setIsCopied] = useState(false);
-    const [localFontSize, setLocalFontSize] = useState(13); // 默认 13px
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [localFontSize, setLocalFontSize] = useState(13);
+    const [atBottom, setAtBottom] = useState(true);
+    
+    const virtuosoRef = useRef<VirtuosoHandle>(null);
+    const bufferRef = useRef<OutputLine[]>([]);
+    const updateTimerRef = useRef<any>(null);
 
+    // 加载初始内容
     useEffect(() => {
-        if (channels.length > 0 && !selectedChannel) {
-            setSelectedChannel(channels[0]);
-        }
-    }, [channels]);
+        if (!selectedChannel) return;
+        invoke<OutputLine[]>('output_get_content', { channel: selectedChannel })
+            .then(setLines);
+    }, [selectedChannel]);
 
+    // 监听实时更新（带节流）
     useEffect(() => {
         if (!selectedChannel) return;
 
-        invoke<OutputLine[]>('output_get_content', { channel: selectedChannel })
-            .then(setLines);
-
         const unlisten = listen<OutputLine>(`output_${selectedChannel}`, (event) => {
-            setLines(prev => [...prev.slice(-999), event.payload]); 
+            bufferRef.current.push(event.payload);
+            
+            if (!updateTimerRef.current) {
+                updateTimerRef.current = setTimeout(() => {
+                    setLines(prev => [...prev, ...bufferRef.current].slice(-2000));
+                    bufferRef.current = [];
+                    updateTimerRef.current = null;
+                }, 100); // 100ms 批量更新一次
+            }
         });
 
-        return () => { unlisten.then(f => f()); };
+        return () => { 
+            unlisten.then(f => f()); 
+            if (updateTimerRef.current) clearTimeout(updateTimerRef.current);
+            bufferRef.current = [];
+        };
     }, [selectedChannel]);
 
+    // 自动滚动到底部
     useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (atBottom && lines.length > 0) {
+            virtuosoRef.current?.scrollToIndex({ index: lines.length - 1, behavior: 'auto' });
         }
-    }, [lines]);
+    }, [lines, atBottom]);
 
     const handleClear = async () => {
         await invoke('output_clear', { channel: selectedChannel });
@@ -54,20 +72,55 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
     };
 
     const handleCopyAll = () => {
-        const fullText = lines.map(l => l.content).join('\n');
+        const fullText = lines.map(l => l.content).join('');
         navigator.clipboard.writeText(fullText).then(() => {
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         });
     };
 
+    const renderLine = useCallback((index: number, line: OutputLine) => {
+        const text = line.content;
+        let color = 'var(--text-primary)';
+        let fontWeight = 'normal';
+
+        const lowerText = text.toLowerCase();
+        if (lowerText.includes('[error]') || lowerText.includes('[fatal]') || lowerText.includes('failed')) {
+            color = 'var(--status-error)'; 
+            fontWeight = 'bold';
+        } else if (lowerText.includes('[warning]') || lowerText.includes('warn')) {
+            color = 'var(--status-warning)'; 
+        } else if (lowerText.includes('[success]') || lowerText.includes('[done]') || lowerText.includes('成功')) {
+            color = 'var(--status-success)'; 
+        } else if (lowerText.includes('[info]') || lowerText.includes('[system]') || lowerText.includes('[restore]')) {
+            color = 'var(--status-info)'; 
+        }
+
+        return (
+            <div style={{ 
+                padding: '1px 12px',
+                color: color, 
+                fontWeight: fontWeight as any,
+                opacity: color === 'var(--text-primary)' ? 0.8 : 1,
+                fontSize: `${localFontSize}px`,
+                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                lineHeight: '1.5',
+                whiteSpace: 'pre-wrap', 
+                wordBreak: 'break-all'
+            }}>
+                {text}
+            </div>
+        );
+    }, [localFontSize]);
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-sidebar)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--bg-editor)' }}>
             {!hideHeader && (
                 <div style={{ 
                     padding: '8px 15px', borderBottom: '1px solid var(--border-color)', 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    backgroundColor: 'var(--bg-tabs)'
+                    backgroundColor: 'var(--bg-tabs)',
+                    zIndex: 10
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--ui-font-size)', fontWeight: 'bold' }}>
                         <Monitor size={14} style={{ color: 'var(--text-secondary)' }} /> 
@@ -111,49 +164,44 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
                     </div>
                 </div>
             )}
-            <div 
-                ref={scrollRef}
-                style={{ 
-                    flex: 1, overflowY: 'auto', padding: '12px', 
-                    fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace", 
-                    fontSize: `${localFontSize}px`,
-                    lineHeight: '1.5',
-                    whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                    userSelect: 'text',
-                    WebkitUserSelect: 'text',
-                    backgroundColor: 'var(--bg-editor)',
-                    color: 'var(--text-primary)'
-                }}
-            >
-                {lines.map((line, i) => {
-                    const text = line.content;
-                    let color = 'var(--text-primary)';
-                    let fontWeight = 'normal';
+            
+            <div style={{ flex: 1, position: 'relative' }}>
+                <Virtuoso
+                    ref={virtuosoRef}
+                    data={lines}
+                    atBottomStateChange={setAtBottom}
+                    initialTopMostItemIndex={lines.length > 0 ? lines.length - 1 : 0}
+                    itemContent={renderLine}
+                    followOutput="auto"
+                    style={{ height: '100%' }}
+                />
+                
+                {!atBottom && lines.length > 0 && (
+                    <div 
+                        onClick={() => {
+                            setAtBottom(true);
+                            virtuosoRef.current?.scrollToIndex({ index: lines.length - 1, behavior: 'smooth' });
+                        }}
+                        style={{
+                            position: 'absolute', bottom: '20px', right: '30px',
+                            backgroundColor: 'var(--accent-color)', color: 'white',
+                            borderRadius: '20px', padding: '5px 12px', fontSize: '11px',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 10
+                        }}
+                    >
+                        <ArrowDown size={12} /> {t('ScrollToBottom')}
+                    </div>
+                )}
 
-                    const lowerText = text.toLowerCase();
-                    if (lowerText.includes('[error]') || lowerText.includes('[fatal]') || lowerText.includes('failed')) {
-                        color = 'var(--status-error)'; 
-                        fontWeight = 'bold';
-                    } else if (lowerText.includes('[warning]') || lowerText.includes('warn')) {
-                        color = 'var(--status-warning)'; 
-                    } else if (lowerText.includes('[success]') || lowerText.includes('[done]') || lowerText.includes('成功')) {
-                        color = 'var(--status-success)'; 
-                    } else if (lowerText.includes('[info]') || lowerText.includes('[system]') || lowerText.includes('[restore]')) {
-                        color = 'var(--status-info)'; 
-                    }
-
-                    return (
-                        <div key={i} style={{ 
-                            marginBottom: '4px', 
-                            color: color, 
-                            fontWeight: fontWeight as any,
-                            opacity: color === 'var(--text-primary)' ? 0.8 : 1 
-                        }}>
-                            {text}
-                        </div>
-                    );
-                })}
-                {lines.length === 0 && <div style={{ opacity: 0.3, textAlign: 'center', marginTop: '20px', fontSize: 'var(--ui-font-size)' }}>{t('NoOutput')}</div>}
+                {lines.length === 0 && (
+                    <div style={{ 
+                        position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                        opacity: 0.3, textAlign: 'center', fontSize: 'var(--ui-font-size)' 
+                    }}>
+                        {t('NoOutput')}
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -45,6 +45,7 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send 
         system::open_url, 
         system::system_exit_all_windows,
         window::open_detached_output,
+        window::window_create,
         window::show_window,
         window::save_window_state,
         window::show_main_window, 

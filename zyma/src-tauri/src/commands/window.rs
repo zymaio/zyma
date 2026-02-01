@@ -90,7 +90,60 @@ pub async fn open_detached_output(app_handle: tauri::AppHandle, channel: String)
     Ok(())
 }
 
-#[tauri::command] 
+#[tauri::command]
+pub async fn window_create(app_handle: tauri::AppHandle, label: String, options: serde_json::Value) -> Result<(), String> {
+    if let Some(win) = app_handle.get_webview_window(&label) {
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    let title = options.get("title").and_then(|v| v.as_str()).unwrap_or("Zyma New Window");
+    let url_str = options.get("url").and_then(|v| v.as_str()).unwrap_or("index.html");
+    let width = options.get("width").and_then(|v| v.as_f64()).unwrap_or(800.0);
+    let height = options.get("height").and_then(|v| v.as_f64()).unwrap_or(600.0);
+    let decorations = options.get("decorations").and_then(|v| v.as_bool()).unwrap_or(true);
+
+    let url = if url_str.starts_with("http") {
+        WebviewUrl::External(url_str.parse().map_err(|e| format!("Invalid URL: {}", e))?)
+    } else {
+        WebviewUrl::App(url_str.into())
+    };
+
+    let mut builder = WebviewWindowBuilder::new(&app_handle, &label, url)
+        .title(title)
+        .inner_size(width, height)
+        .decorations(decorations)
+        .visible(false);
+
+    if let Some(x) = options.get("x").and_then(|v| v.as_i64()) {
+        if let Some(y) = options.get("y").and_then(|v| v.as_i64()) {
+            builder = builder.position(x as f64, y as f64);
+        }
+    }
+
+    let window = builder.build().map_err(|e| e.to_string())?;
+    let window_clone = window.clone();
+    
+    window.on_window_event(move |event| {
+        match event {
+            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                let _ = save_window_state(window_clone.clone());
+            },
+            _ => {}
+        }
+    });
+
+    let w = window.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        let _ = w.show();
+        let _ = w.set_focus();
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn show_window(window: tauri::WebviewWindow) -> Result<(), String> { 
     window.show().map_err(|e| e.to_string())?; 
     window.set_focus().map_err(|e| e.to_string())?; 

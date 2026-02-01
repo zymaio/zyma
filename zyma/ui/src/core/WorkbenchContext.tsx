@@ -1,13 +1,15 @@
 import React, { createContext, useContext } from 'react';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
-interface WorkbenchContextType {
+export interface WorkbenchContextType {
     settings: AppSettings;
     setSettings: (s: AppSettings) => void;
     platform: string;
     appVersion: string;
     productName: string;
     isAdmin: boolean;
+    activeTabId: string | null;
+    setActiveTabId: (id: string | null) => void;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined);

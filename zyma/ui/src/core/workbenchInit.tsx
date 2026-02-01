@@ -4,6 +4,9 @@ import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar } from '../components/StatusBar/StatusBarRegistry';
 import { registerFileCommands } from '../commands/file';
 import { registerViewCommands } from '../commands/view';
+import { slotRegistry } from './SlotRegistry';
+import OutputPanelWrapper from '../components/PluginSystem/OutputPanelWrapper';
+import type { CustomViewRequest } from '../hooks/useTabSystem';
 
 export function setupWorkbench(t: (key: string) => string, handlers: {
     handleNewFile: () => void,
@@ -20,7 +23,7 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
         PluginList: React.ComponentType,
         ChatPanel: (props: { getContext?: any }) => React.ReactNode,
     },
-    openCustomView: any
+    openCustomView: (request: CustomViewRequest) => void
 }) {
     // 1. 注册各模块命令
     registerFileCommands(t, handlers);
@@ -31,6 +34,13 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
     views.registerView({ id: 'search', title: t('Search'), icon: <Search size={24} />, component: handlers.components.SearchPanel, order: 2 });
     views.registerView({ id: 'plugins', title: t('Extensions'), icon: <Puzzle size={24} />, component: handlers.components.PluginList, order: 4 });
 
-    // 3. 状态栏项
+    // 3. 注册底部面板组件
+    slotRegistry.register('BOTTOM_PANEL', {
+        id: 'output',
+        component: () => <OutputPanelWrapper />,
+        order: 1
+    });
+
+    // 4. 状态栏项
     statusBar.registerItem({ id: 'editor-cursor', text: `${t('Ln')} 1, ${t('Col')} 1`, alignment: 'right', priority: 200 });
 }

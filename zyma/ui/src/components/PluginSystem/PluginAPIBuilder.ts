@@ -81,12 +81,12 @@ export class PluginAPIBuilder {
             window: {
                 create: (label: string, options: any) => invoke('window_create', { label, options }),
                 close: (label: string) => invoke('window_close', { label }),
-                openTab: (id: string, title: string, component: any) => {
+                openTab: (id: string, title: string, component: any, options?: any) => {
                     const element = typeof component === 'function' ? React.createElement(component) : component;
                     if (callbacks.openCustomView) {
                         // 记录此标签页属于该插件
                         (contributionRegistry as any).addOpenedTab(manifest.name, id);
-                        callbacks.openCustomView(id, title, element);
+                        callbacks.openCustomView({ id, title, component: element, options });
                     } else {
                         console.error("openCustomView callback is not defined");
                     }

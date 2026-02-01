@@ -6,7 +6,8 @@ export type SlotLocation =
     | 'ACTIVITY_BAR_TOP' 
     | 'ACTIVITY_BAR_BOTTOM' 
     | 'EDITOR_TITLE_RIGHT'
-    | 'SIDEBAR_HEADER_ACTIONS';
+    | 'SIDEBAR_HEADER_ACTIONS'
+    | 'BOTTOM_PANEL';
 
 export interface SlotContribution {
     id: string;

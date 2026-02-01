@@ -6,6 +6,7 @@ import TitleBar from '../components/TitleBar/TitleBar';
 import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import ActivityBar from '../components/ActivityBar';
 import StatusBar from '../components/StatusBar';
+import BottomPanel from '../components/BottomPanel/BottomPanel';
 import WorkbenchModals from './WorkbenchModals';
 import WorkbenchMain from './WorkbenchMain';
 import { views } from '../components/ViewSystem/ViewRegistry';
@@ -15,7 +16,10 @@ import { useWorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import { useWindowManagement } from '../hooks/useWindowManagement';
 import { useWorkbench } from './WorkbenchContext';
 import { useWorkbenchCommands } from '../hooks/useWorkbenchCommands';
+import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelResize';
 import { Toaster } from 'react-hot-toast';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 interface WorkbenchProps {
     fm: any;
@@ -37,6 +41,17 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     const logic = useWorkbenchLogic({ fm, tabSystem, appInit });
     const { activeTabs, activeTabId, activeTab, setActiveTabId, closeTab, openCustomView } = tabSystem;
     const { sidebarWidth, startResizing } = sidebarResize;
+
+    // 底部面板逻辑
+    const bottomPanel = useBottomPanelResize();
+
+    // 监听打开输出面板的内部事件
+    React.useEffect(() => {
+        const unlisten = listen<string>('open-output-panel', (e) => {
+            bottomPanel.setIsVisible(true);
+        });
+        return () => { unlisten.then(f => f()); };
+    }, []);
 
     // 关键：实时同步回调给插件管理器，解决禁用插件时不关闭窗口的 Bug
     React.useEffect(() => {
@@ -136,28 +151,42 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                 )}
 
                 <div className="editor-group-container">
-                    <TabBar 
-                        files={activeTabs.map((t: any) => {
-                            const file = fm.openFiles.find((f: any) => f.id === t.id);
-                            return { path: t.id, name: t.title, type: t.type, isDirty: file?.isDirty || false };
-                        })} 
-                        activePath={activeTabId} 
-                        onSwitch={(id) => { 
-                            setActiveTabId(id); 
-                            if (activeTabs.find((t: any) => t.id === id)?.type === 'file') fm.setActiveFilePath(id); 
-                        }} 
-                        onClose={handleCloseTab} 
-                    />
-                    
-                    <Breadcrumbs path={activeTab?.type === 'file' ? activeTabId : null} />
-                    
-                    <WorkbenchMain 
-                        activeTab={activeTab}
-                        activeFile={activeFile}
-                        isMarkdown={isMarkdown}
-                        settings={settings}
-                        fm={fm}
-                        productName={productName}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                        <TabBar 
+                            files={activeTabs.map((t: any) => {
+                                const file = fm.openFiles.find((f: any) => f.id === t.id);
+                                return { path: t.id, name: t.title, type: t.type, isDirty: file?.isDirty || false };
+                            })} 
+                            activePath={activeTabId} 
+                            onSwitch={(id) => { 
+                                setActiveTabId(id); 
+                                if (activeTabs.find((t: any) => t.id === id)?.type === 'file') fm.setActiveFilePath(id); 
+                            }} 
+                            onClose={handleCloseTab} 
+                        />
+                        
+                        <Breadcrumbs path={activeTab?.type === 'file' ? activeTabId : null} />
+                        
+                        <WorkbenchMain 
+                            activeTab={activeTab}
+                            activeFile={activeFile}
+                            isMarkdown={isMarkdown}
+                            settings={settings}
+                            fm={fm}
+                            productName={productName}
+                        />
+                    </div>
+
+                    <BottomPanel 
+                        isVisible={bottomPanel.isVisible}
+                        height={bottomPanel.panelHeight}
+                        onClose={() => bottomPanel.setIsVisible(false)}
+                        startResizing={bottomPanel.startResizing}
+                        onDetach={(id) => {
+                            bottomPanel.setIsVisible(false);
+                            // 复用底座现有的弹出命令
+                            invoke('open_detached_output', { channel: "绣智助手日志" });
+                        }}
                     />
                 </div>
             </div>

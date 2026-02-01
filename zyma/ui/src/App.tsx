@@ -59,7 +59,10 @@ function App() {
   if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1b26' }}></div>;
 
   return (
-    <WorkbenchProvider value={{ settings, setSettings, platform, appVersion, isAdmin, productName }}>
+    <WorkbenchProvider value={{ 
+        settings, setSettings, platform, appVersion, isAdmin, productName,
+        activeTabId, setActiveTabId
+    }}>
         <Workbench 
             fm={fm}
             tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
