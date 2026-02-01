@@ -71,6 +71,40 @@
 
 执行系统命令（如运行编译器或脚本）。
 
+## 窗口与标签页控制 (Window & Tab Control)
+底座提供了通用的事件接口，允许插件在不修改底座代码的情况下，在编辑器区域（Tab 栏）或独立窗口中显示自定义网页内容。
+
+### 全局事件 (Global Events)
+可以通过 Tauri 的 `emit` 或前端的 `listen` 触发以下行为：
+
+#### `zyma:open-tab` (打开自定义页签)
+在编辑器中心区域打开一个内嵌网页的 Tab。
+- **Payload 参数 (Object):**
+    - `id`: (string) 页签唯一标识，用于后续关闭。
+    - `title`: (string) 页签标题。
+    - `url`: (string) 要加载的网页地址（支持本地 http 或远程 https）。
+
+#### `zyma:close-tab` (关闭页签)
+- **Payload 参数 (string):** 要关闭的页签 `id`。
+
+**使用示例 (Rust):**
+```rust
+use tauri::Emitter;
+// 打开登录页
+app.emit("zyma:open-tab", serde_json::json!({
+    "id": "my-plugin-login",
+    "title": "插件登录",
+    "url": "http://localhost:5173/login"
+}));
+
+// 3秒后关闭
+let handle = app.handle().clone();
+tokio::spawn(async move {
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let _ = handle.emit("zyma:close-tab", "my-plugin-login");
+});
+```
+
 ---
 
 ## 🎨 UI 样式规范 (UI Style Guide)

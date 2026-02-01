@@ -47,11 +47,32 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
 
     // 监听打开输出面板的内部事件
     React.useEffect(() => {
-        const unlisten = listen<string>('open-output-panel', (e) => {
+        const unlistenOutput = listen<string>('open-output-panel', (e) => {
             bottomPanel.setIsVisible(true);
         });
-        return () => { unlisten.then(f => f()); };
-    }, []);
+
+        // 协议扩展：通用 Tab 控制指令
+        const unlistenOpenTab = listen<any>('zyma:open-tab', (e) => {
+            const { id, title, url } = e.payload;
+            openCustomView({
+                id, title,
+                component: React.createElement('iframe', {
+                    src: url,
+                    style: { width: '100%', height: '100%', border: 'none', backgroundColor: 'white' }
+                })
+            });
+        });
+
+        const unlistenCloseTab = listen<string>('zyma:close-tab', (e) => {
+            closeTab(e.payload);
+        });
+
+        return () => { 
+            unlistenOutput.then(f => f()); 
+            unlistenOpenTab.then(f => f());
+            unlistenCloseTab.then(f => f());
+        };
+    }, [openCustomView, closeTab]);
 
     // 关键：实时同步回调给插件管理器，解决禁用插件时不关闭窗口的 Bug
     React.useEffect(() => {

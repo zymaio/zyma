@@ -15,12 +15,20 @@ interface OutputPanelProps {
     channels: string[];
     onClose?: () => void;
     hideHeader?: boolean;
+    forcedChannel?: string;
 }
 
-const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader }) => {
+const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader, forcedChannel }) => {
     const { t } = useTranslation();
-    const [selectedChannel, setSelectedChannel] = useState(channels[0] || "");
+    const [selectedChannel, setSelectedChannel] = useState(forcedChannel || channels[0] || "");
     const [lines, setLines] = useState<OutputLine[]>([]);
+
+    // 响应外部强制切换频道
+    useEffect(() => {
+        if (forcedChannel && forcedChannel !== selectedChannel) {
+            setSelectedChannel(forcedChannel);
+        }
+    }, [forcedChannel]);
     const [isCopied, setIsCopied] = useState(false);
     const [localFontSize, setLocalFontSize] = useState(13);
     const [atBottom, setAtBottom] = useState(true);

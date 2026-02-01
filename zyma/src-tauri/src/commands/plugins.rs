@@ -1,12 +1,13 @@
 use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
-use crate::{NativeChatParticipant, NativeAuthProvider};
+use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem};
 
 pub struct PluginService {
     pub external_plugins: Vec<PathBuf>,
     pub native_chat_participants: Vec<NativeChatParticipant>,
     pub native_auth_providers: Vec<NativeAuthProvider>,
+    pub native_sidebar_items: Vec<NativeSidebarItem>,
 }
 
 /// 剥离 Windows 下 canonicalize 产生的 \\?\ 前缀

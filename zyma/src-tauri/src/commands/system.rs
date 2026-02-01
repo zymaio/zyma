@@ -84,7 +84,8 @@ use crate::commands::plugins::PluginService;
 pub fn get_native_extensions(state: tauri::State<'_, PluginService>) -> serde_json::Value { 
     serde_json::json!({
         "chat_participants": state.native_chat_participants,
-        "auth_providers": state.native_auth_providers
+        "auth_providers": state.native_auth_providers,
+        "sidebar_items": state.native_sidebar_items
     })
 }
 

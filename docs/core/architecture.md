@@ -102,9 +102,33 @@ slotRegistry.register('STATUS_BAR_RIGHT', {
 *   **保存**：由前端 `useSessionManagement` 钩子负责，采用 3s 延迟的防抖机制。
 *   **恢复**：在应用启动并完成初始化 (`ready === true`) 后，系统会自动按顺序重新加载文件并定位到上次的行号。
 
+## 7. 启动器扩展 (ZymaBuilder)
+
+为了支持 Pro 版在不侵入底座源码的情况下注入初始化逻辑，`ZymaBuilder` 提供了链式配置接口。
+
+### `ZymaBuilder::setup<F>(self, callback: F)`
+在底座初始化阶段注入自定义钩子。该钩子在所有核心服务（FS、LLM、Bus）注册完成后执行。
+
+**使用示例 (Pro 版 main.rs):**
+```rust
+ZymaBuilder::from_builder(builder)
+    .setup(|app| {
+        // 执行业务初始化，如开启特定的日志信道
+        let state = app.state::<zyma_lib::commands::output::OutputState>();
+        zyma_lib::commands::output::output_append(
+            app.handle().clone(),
+            state,
+            "system".into(),
+            "Pro Engine Ready.\n".into()
+        );
+        Ok(())
+    })
+    .run(tauri::generate_context!());
+```
+
 ---
 
-## 6. 现代搜索系统 (Modern Search)
+## 8. 现代搜索系统 (Modern Search)
 
 搜索模块 (`search.rs`) 已针对大规模生产力场景优化：
 *   **性能**：支持流式读取 (`BufReader`)、二进制自动跳过、多线程并行扫描。

@@ -6,7 +6,7 @@ import AccountMenu from './PluginSystem/AccountMenu';
 import { DynamicIcon } from './Common/DynamicIcon';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { commands } from './CommandSystem/CommandRegistry';
 import { slotRegistry } from '../core/SlotRegistry';
 
@@ -30,12 +30,19 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     const [, forceUpdate] = useReducer(x => x + 1, 0);
     const [activeViews, setActiveViews] = useState(views.getViews());
     const [isAIChatEnabled, setIsAIChatEnabled] = useState(false);
+    const [nativeSidebarItems, setNativeSidebarItems] = useState<any[]>([]);
 
     useEffect(() => {
-        const sync = () => {
+        const sync = async () => {
             setActiveViews([...views.getViews()]);
             setAuthProviders([...authRegistry.getProviders()]);
             setIsAIChatEnabled(commands.getCommands().some(c => c.id === 'ai.chat.open'));
+            
+            try {
+                const native = await invoke<any>('get_native_extensions');
+                setNativeSidebarItems(native.sidebar_items || []);
+            } catch(e) {}
+            
             forceUpdate();
         };
         const unsubViews = views.subscribe(sync);
@@ -44,21 +51,6 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
         const unsubSlots = slotRegistry.subscribe(sync);
         sync();
         return () => { unsubViews(); unsubAuth(); unsubCmds(); unsubSlots(); };
-    }, []);
-
-    useEffect(() => {
-        const checkOutput = async () => {
-            try {
-                const res = await invoke<string[]>('output_list_channels');
-                if (res && res.length > 0) setHasOutput(true);
-            } catch(e) {}
-        };
-        checkOutput();
-        const unlisten = listen<string>("output_channel_created", () => {
-            setHasOutput(true);
-            forceUpdate();
-        });
-        return () => { unlisten.then(f => f()); };
     }, []);
 
     const handleTabClick = (id: string) => {
@@ -141,6 +133,25 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                 
                 {renderSlot('ACTIVITY_BAR_BOTTOM')}
 
+                {nativeSidebarItems.map(item => (
+                    <div 
+                        key={item.id} 
+                        className="activity-icon" 
+                        onClick={() => {
+                            if (item.command === 'zyma:toggle-bottom-panel') {
+                                // 触发底座内部事件 (使用 Tauri 官方事件总线)
+                                emit('open-output-panel', item.params?.channel);
+                            } else {
+                                invoke(item.command, item.params || {});
+                            }
+                        }} 
+                        title={item.title}
+                        style={{ color: item.color || 'inherit' }}
+                    >
+                        <DynamicIcon icon={item.icon} />
+                    </div>
+                ))}
+
                 {authProviders.length > 0 && (
                     <div style={{ position: 'relative' }}>
                         <div 
@@ -155,11 +166,7 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                         <AccountMenu visible={showAccountMenu} onClose={() => setShowAccountMenu(false)} position={{ bottom: 50, left: 50 }} />
                     </div>
                 )}
-                {hasOutput && (
-                    <div className="activity-icon" onClick={() => invoke('open_detached_output', { channel: "绣智助手日志" })} title={t('Output')} style={{ color: 'var(--accent-color)' }}>
-                        <Monitor size={24} />
-                    </div>
-                )}
+                
                 <div className={`activity-icon ${showSettings ? 'active' : ''}`} onClick={onShowSettings} title={t('Settings')}>
                     <Settings size={24} />
                 </div>

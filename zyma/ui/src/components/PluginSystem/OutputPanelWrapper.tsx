@@ -5,6 +5,7 @@ import OutputPanel from './OutputPanel';
 
 const OutputPanelWrapper: React.FC = () => {
     const [channels, setChannels] = useState<string[]>([]);
+    const [activeChannel, setActiveChannel] = useState<string | undefined>(undefined);
 
     const refreshChannels = async () => {
         try {
@@ -17,14 +18,24 @@ const OutputPanelWrapper: React.FC = () => {
         refreshChannels();
         
         // 监听新信道创建事件
-        const unlisten = listen<string>("output_channel_created", (e) => {
+        const unlistenCreated = listen<string>("output_channel_created", (e) => {
             setChannels(prev => prev.includes(e.payload) ? prev : [...prev, e.payload]);
         });
 
-        return () => { unlisten.then(f => f()); };
+        // 监听强制打开并切换信道事件
+        const unlistenOpen = listen<string>("open-output-panel", (e) => {
+            if (e.payload) {
+                setActiveChannel(e.payload);
+            }
+        });
+
+        return () => { 
+            unlistenCreated.then(f => f()); 
+            unlistenOpen.then(f => f());
+        };
     }, []);
 
-    return <OutputPanel channels={channels} hideHeader={false} />;
+    return <OutputPanel channels={channels} forcedChannel={activeChannel} hideHeader={false} />;
 };
 
 export default OutputPanelWrapper;

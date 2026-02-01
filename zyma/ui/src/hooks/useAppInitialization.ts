@@ -8,7 +8,7 @@ import { authRegistry } from '../components/PluginSystem/AuthRegistry';
 import { chatRegistry } from '../components/Chat/Registry/ChatRegistry';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
-export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: string, title: string, component: any) => void) {
+export function useAppInitialization(fm: any, i18n: any, openCustomView?: (request: any) => void) {
     const [ready, setReady] = useState(false);
     const [settings, setSettings] = useState<AppSettings>({
         theme: 'dark', font_size: 14, ui_font_size: 13, tab_size: 4, language: 'zh-CN', context_menu: false, single_instance: true, auto_update: true,
@@ -59,7 +59,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                                 handler: async (req, stream) => {
                                     stream.status('thinking');
                                     const history = req.history.map((h: any) => ({
-                                        role: h.role === 'agent' ? 'assistant' : 'user', content: h.content
+                                        role: h.role === 'assistant' ? 'assistant' : 'user', content: h.content
                                     }));
                                     history.push({ role: 'user', content: req.prompt });
                                     const unlisten = await listen(p.thought_event || 'ai-thought', (e) => stream.markdown(e.payload as string));
@@ -94,7 +94,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
                                 }
                             });
                             if (p.auth_event) {
-                                listen(p.auth_event, (e: any) => authRegistry.updateAccount(p.id, e.payload.username));
+                                listen(p.auth_event, (e: any) => authRegistry.updateAccount(p.id, (e.payload as any).username));
                             }
                             const saved = localStorage.getItem(`auth_${p.id}_user`);
                             if (saved) {
@@ -111,7 +111,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (id: s
             } catch (e) { console.error('Init System Error:', e); setReady(true); }
         };
         initSystem();
-    }, []);
+    }, [openCustomView]);
 
     useEffect(() => {
         if (!pluginManager.current) {

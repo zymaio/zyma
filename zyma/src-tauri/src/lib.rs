@@ -32,10 +32,22 @@ pub struct NativeAuthProvider {
     pub auth_event: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NativeSidebarItem {
+    pub id: String,
+    pub title: String,
+    pub icon: String,
+    pub command: String,
+    pub params: Option<serde_json::Value>,
+    pub color: Option<String>,
+}
+
 pub struct ZymaBuilder {
     pub builder: tauri::Builder<Wry>,
     participants: Vec<NativeChatParticipant>,
     auth_providers: Vec<NativeAuthProvider>,
+    sidebar_items: Vec<NativeSidebarItem>,
+    setup_hook: Option<Box<dyn FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static>>,
 }
 
 impl ZymaBuilder {
@@ -44,11 +56,19 @@ impl ZymaBuilder {
             builder: tauri::Builder::new(),
             participants: Vec::new(),
             auth_providers: Vec::new(),
+            sidebar_items: Vec::new(),
+            setup_hook: None,
         }
     }
 
     pub fn from_builder(builder: tauri::Builder<Wry>) -> Self {
-        Self { builder, participants: Vec::new(), auth_providers: Vec::new() }
+        Self { 
+            builder, 
+            participants: Vec::new(), 
+            auth_providers: Vec::new(),
+            sidebar_items: Vec::new(),
+            setup_hook: None,
+        }
     }
 
     pub fn register_chat_participant(mut self, p: NativeChatParticipant) -> Self {
@@ -61,34 +81,48 @@ impl ZymaBuilder {
         self
     }
 
+    pub fn register_sidebar_item(mut self, item: NativeSidebarItem) -> Self {
+        self.sidebar_items.push(item);
+        self
+    }
+
+    pub fn setup<F>(mut self, callback: F) -> Self
+    where
+        F: FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
+    {
+        self.setup_hook = Some(Box::new(callback));
+        self
+    }
+
     pub fn run(self, context: tauri::Context) {
         let participants = self.participants;
         let auth = self.auth_providers;
+        let items = self.sidebar_items;
+        let custom_setup = self.setup_hook;
+
         self.builder
             .setup(move |app| {
                 // 1. 初始化并注册 WorkspaceService
                 app.manage(commands::fs::WorkspaceService::new(
                     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
                 ));
-
                 // 2. 初始化并注册 WatcherState
                 app.manage(commands::watcher::WatcherState { 
                     watchers: Mutex::new(HashMap::new()) 
                 });
-
                 // 3. 初始化并注册 OutputState
                 app.manage(commands::output::OutputState { 
                     channels: Mutex::new(HashMap::new()) 
                 });
-
                 // 4. 初始化并注册 LLMManager
                 app.manage(llm::LLMManager::new());
 
-                // 5. 初始化并注册 PluginService
+                // 5. 初始化并注册 PluginService (包含侧边栏项)
                 app.manage(commands::plugins::PluginService {
                     external_plugins: Vec::new(),
                     native_chat_participants: participants,
                     native_auth_providers: auth,
+                    native_sidebar_items: items,
                 });
 
                 // 6. 初始化并注册 EventBus (New)
@@ -96,6 +130,12 @@ impl ZymaBuilder {
                 app.manage(bus.clone());
 
                 setup_zyma(app, bus)?;
+
+                // 7. 最后执行业务层注入的自定义 setup 钩子
+                if let Some(hook) = custom_setup {
+                    hook(app)?;
+                }
+
                 Ok(())
             })
             .run(context)
