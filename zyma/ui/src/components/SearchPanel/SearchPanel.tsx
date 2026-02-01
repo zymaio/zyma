@@ -1,8 +1,13 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Search, Loader2, ChevronRight, ChevronDown, FileCode, Folder, List, Network } from 'lucide-react';
+import {
+    ChevronRight, ChevronDown, FileCode, Search,
+    Loader2, X, RefreshCw, Layers, CaseSensitive,
+    WholeWord, Regex, MoreHorizontal, List, Network, Folder
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { pathUtils } from '../../utils/pathUtils';
+import { useWorkbench } from '../../core/WorkbenchContext';
 
 interface SearchResult {
     path: string;
@@ -25,17 +30,48 @@ interface SearchPanelProps {
 
 const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => {
     const { t } = useTranslation();
+    const { settings } = useWorkbench();
+    
+    // --- 动态尺寸计算 ---
+    const uiSize = settings?.ui_font_size || 13;
+    const iconSizeSm = uiSize + 1;
+    const iconSizeMd = uiSize + 3;
+    
+    // --- 状态管理 ---
     const [query, setQuery] = useState('');
+    const [replaceQuery, setReplaceQuery] = useState('');
     const [results, setResults] = useState<SearchResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [searchMode, setSearchMode] = useState<'content' | 'filename'>('filename');
     const [viewMode, setViewMode] = useState<'list' | 'tree'>('list');
+    
+    // 搜索选项
+    const [caseSensitive, setCaseSensitive] = useState(false);
+    const [wholeWord, setWholeWord] = useState(false);
+    const [useRegex, setUseRegex] = useState(false);
+    
+    // 过滤选项
+    const [showDetails, setShowDetails] = useState(false);
+    const [includePattern, setIncludePattern] = useState('');
+    const [excludePattern, setExcludePattern] = useState('');
+    
     const [expandedFiles, setExpandedFiles] = useState<Record<string, boolean>>({});
+    const [showReplace, setShowReplace] = useState(false);
 
-    // 构建树形结构
+    // --- 计算属性 ---
+    
+    // 1. 分组结果 (用于列表模式)
+    const groupedResults = useMemo(() => {
+        const groups: Record<string, SearchResult[]> = {};
+        results.forEach(res => {
+            if (!groups[res.path]) groups[res.path] = [];
+            groups[res.path].push(res);
+        });
+        return groups;
+    }, [results]);
+
+    // 2. 树形数据 (用于树形模式)
     const treeData = useMemo(() => {
         const root: SearchTreeNode = { name: 'root', fullPath: rootPath, isDir: true, children: {} };
-        
         results.forEach(res => {
             const relPath = res.path.startsWith(rootPath) 
                 ? res.path.substring(rootPath.length).replace(/^[\/\\]+/, '') 
@@ -67,28 +103,32 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
         return root;
     }, [results, rootPath]);
 
-    // 按文件路径对结果进行分组 (用于列表模式)
-    const groupedResults = useMemo(() => {
-        const groups: Record<string, SearchResult[]> = {};
-        results.forEach(res => {
-            if (!groups[res.path]) groups[res.path] = [];
-            groups[res.path].push(res);
-        });
-        return groups;
-    }, [results]);
+    const resultStats = useMemo(() => {
+        const fileCount = Object.keys(groupedResults).length;
+        const matchCount = results.length;
+        return { fileCount, matchCount };
+    }, [groupedResults, results]);
 
+    // --- 核心逻辑 ---
     const handleSearch = useCallback(async () => {
-        if (!query.trim()) return;
+        if (!query.trim()) {
+            setResults([]);
+            return;
+        }
         setIsSearching(true);
-        setResults([]); 
         try {
             const data = await invoke<SearchResult[]>('search_in_dir', { 
                 root: rootPath, 
                 pattern: query,
-                mode: searchMode 
+                case_sensitive: caseSensitive,
+                whole_word: wholeWord,
+                use_regex: useRegex,
+                include: includePattern || undefined,
+                exclude: excludePattern || undefined
             });
             setResults(data);
             
+            // 默认展开所有结果
             const initialExpanded: Record<string, boolean> = {};
             data.forEach(r => {
                 initialExpanded[r.path] = true;
@@ -102,27 +142,35 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
             });
             setExpandedFiles(initialExpanded);
         } catch (e) {
-            alert('Search failed: ' + String(e));
+            console.error('Search failed:', e);
         } finally {
             setIsSearching(false);
         }
-    }, [query, rootPath, searchMode]);
+    }, [query, rootPath, caseSensitive, wholeWord, useRegex, includePattern, excludePattern]);
 
     const toggleExpand = (path: string) => {
         setExpandedFiles(prev => ({ ...prev, [path]: !prev[path] }));
     };
 
-    // 模式切换时立即重新搜索
-    React.useEffect(() => {
-        if (query.trim() && !isSearching) {
-            handleSearch();
-        }
-    }, [searchMode]);
+    useEffect(() => {
+        if (query) handleSearch();
+    }, [caseSensitive, wholeWord, useRegex]);
+
+    // --- 子组件渲染 ---
+    const SearchOptionBtn = ({ active, onClick, icon: Icon, title }: any) => (
+        <button onClick={onClick} title={title} style={{
+            padding: '2px', borderRadius: '3px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s',
+            backgroundColor: active ? 'var(--accent-color)' : 'transparent',
+            color: active ? 'var(--accent-foreground)' : 'var(--text-muted)'
+        }}>
+            <Icon size={iconSizeSm} />
+        </button>
+    );
 
     const renderTreeNodes = (nodes: Record<string, SearchTreeNode>, level: number) => {
         return Object.values(nodes)
             .sort((a, b) => {
-                if (a.isDir !== b.isDir) return b.isDir ? 1 : -1;
+                if (a.isDir !== b.isDir) return b.isDir ? -1 : 1;
                 return a.name.localeCompare(b.name);
             })
             .map(node => {
@@ -130,73 +178,41 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
                 const hasMatches = node.matches && node.matches.length > 0;
 
                 return (
-                        <div key={node.fullPath} style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div key={node.fullPath} style={{ display: 'flex', flexDirection: 'column' }}>
                         <div 
-                            onClick={() => {
-                                if (node.isDir || (hasMatches && searchMode === 'content')) {
-                                    toggleExpand(node.fullPath);
-                                } else {
-                                    onFileSelect(node.fullPath, node.name);
-                                }
-                            }}
+                            onClick={() => node.isDir || hasMatches ? toggleExpand(node.fullPath) : onFileSelect(node.fullPath, node.name)}
                             className="file-item-hover"
                             style={{ 
-                                padding: `6px 12px 6px ${12 + level * 12}px`, 
-                                cursor: 'pointer', 
-                                display: 'flex', 
-                                alignItems: 'center',
-                                gap: '8px',
-                                borderBottom: '1px solid var(--border-color)',
-                                backgroundColor: 'var(--bg-sidebar)'
+                                padding: `4px 8px 4px ${8 + level * 12}px`, 
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
                             }}
                         >
-                            {(node.isDir || (hasMatches && searchMode === 'content')) ? (
-                                isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />
-                            ) : (
-                                <div style={{ width: '16px' }} />
-                            )}
-                            {node.isDir ? <Folder size={16} style={{ color: 'var(--accent-color)' }} /> : <FileCode size={16} style={{ color: 'var(--accent-color)' }} />}
+                            {(node.isDir || hasMatches) ? (
+                                isExpanded ? <ChevronDown size={iconSizeSm} /> : <ChevronRight size={iconSizeSm} />
+                            ) : <div style={{ width: iconSizeSm }} />}
+                            
+                            {node.isDir ? <Folder size={16} style={{ color: 'var(--accent-color)', opacity: 0.8 }} /> : <FileCode size={16} style={{ color: 'var(--accent-color)' }} />}
+                            
                             <span style={{ 
-                                fontSize: 'var(--ui-font-size)', 
-                                color: node.isDir ? 'var(--text-secondary)' : 'var(--text-primary)',
-                                fontWeight: node.isDir ? 'normal' : '600'
+                                fontWeight: node.isDir ? 'normal' : '600', flex: 1, 
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                opacity: node.isDir ? 0.8 : 1
                             }}>
                                 {node.name}
                             </span>
+                            {hasMatches && <span style={{ opacity: 0.5, fontSize: '11px' }}>{node.matches?.length}</span>}
                         </div>
                         
                         {isExpanded && node.isDir && renderTreeNodes(node.children, level + 1)}
                         
-                        {isExpanded && !node.isDir && hasMatches && searchMode === 'content' && (
-                            <div style={{ backgroundColor: 'var(--bg-editor-dim, var(--bg-editor))' }}>
+                        {isExpanded && hasMatches && (
+                            <div style={{ marginBottom: '4px' }}>
                                 {node.matches?.map((res, idx) => (
-                                    <div 
-                                        key={idx} 
-                                        onClick={() => onFileSelect(res.path, node.name, res.line)}
-                                        style={{ 
-                                            padding: `6px 12px 6px ${44 + level * 12}px`, 
-                                            cursor: 'pointer', 
-                                            fontSize: 'var(--ui-font-size)', 
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '12px'
-                                        }}
-                                        className="file-item-hover"
-                                    >
-                                        <span style={{ 
-                                            color: 'var(--text-secondary)', 
-                                            minWidth: '32px', 
-                                            textAlign: 'right',
-                                            fontFamily: 'monospace',
-                                            opacity: 0.7,
-                                            userSelect: 'none'
-                                        }}>{res.line}</span>
-                                        <span style={{ 
-                                            fontFamily: 'var(--editor-font-family, monospace)', 
-                                            color: 'var(--text-primary)', 
-                                            wordBreak: 'break-all',
-                                            lineHeight: '1.5'
-                                        }}>{res.content}</span>
+                                    <div key={idx} onClick={() => onFileSelect(res.path, node.name, res.line)} className="file-item-hover" style={{ 
+                                        padding: `3px 8px 3px ${32 + level * 12}px`, cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '12px'
+                                    }}>
+                                        <span style={{ minWidth: '24px', textAlign: 'right', fontSize: '11px', fontFamily: 'monospace', opacity: 0.5, userSelect: 'none', paddingTop: '2px' }}>{res.line}</span>
+                                        <span style={{ fontFamily: 'var(--editor-font-family, monospace)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: '1.4', fontSize: 'calc(var(--ui-font-size) - 1px)' }}>{res.content}</span>
                                     </div>
                                 ))}
                             </div>
@@ -209,83 +225,118 @@ const SearchPanel: React.FC<SearchPanelProps> = ({ rootPath, onFileSelect }) => 
     return (
         <div style={{
             width: '100%', height: '100%', backgroundColor: 'var(--bg-sidebar)',
-            borderRight: '1px solid var(--border-color)', color: 'var(--text-primary)',
-            display: 'flex', flexDirection: 'column', fontSize: 'var(--ui-font-size)'
+            display: 'flex', flexDirection: 'column', fontSize: 'var(--ui-font-size)', color: 'var(--text-primary)', fontFamily: 'inherit'
         }}>
-            <div style={{ padding: '10px', fontSize: 'calc(var(--ui-font-size) - 2px)', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{t('Search')}</span>
+            {/* Header Toolbar */}
+            <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: 0.8 }}>
+                <span style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: 'calc(var(--ui-font-size) - 2px)', letterSpacing: '0.5px' }}>{t('Search')}</span>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <div 
                         onClick={() => setViewMode(viewMode === 'list' ? 'tree' : 'list')}
-                        style={{ cursor: 'pointer', color: 'var(--accent-color)', display: 'flex', alignItems: 'center' }}
-                        title={viewMode === 'list' ? t('SwitchToTree') : t('SwitchToList')}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        title={viewMode === 'list' ? "切换到树形视图" : "切换到列表视图"}
                     >
-                        {viewMode === 'list' ? <Network size={14} /> : <List size={14} />}
+                        {viewMode === 'list' ? <Network size={iconSizeSm} /> : <List size={iconSizeSm} />}
                     </div>
-                    {results.length > 0 && <span style={{ cursor: 'pointer', color: 'var(--accent-color)' }} onClick={() => setResults([])}>{t('Clear')}</span>}
+                    <RefreshCw size={iconSizeSm} className={`cursor-pointer ${isSearching ? 'animate-spin' : ''}`} onClick={handleSearch} />
+                    <Layers size={iconSizeSm} className="cursor-pointer" title="折叠全部" onClick={() => setExpandedFiles({})} />
+                    <X size={iconSizeSm} className="cursor-pointer" onClick={() => { setQuery(''); setResults([]); }} />
                 </div>
             </div>
 
-            <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ position: 'relative' }}>
-                    <input 
-                        type="text"
-                        placeholder={searchMode === 'content' ? t('SearchText') : t('SearchFilename')}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                        style={{
-                            width: '100%', backgroundColor: 'var(--input-bg)',
-                            border: '1px solid var(--input-border)', color: 'var(--text-primary)',
-                            padding: '4px 8px', fontSize: 'var(--ui-font-size)', outline: 'none'
-                        }}
-                    />
-                    {isSearching ? (
-                        <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: '8px', top: '6px' }} />
-                    ) : (
-                        <Search size={14} style={{ position: 'absolute', right: '8px', top: '6px', cursor: 'pointer', opacity: 0.6 }} onClick={handleSearch} />
-                    )}
+            {/* Input Section */}
+            <div style={{ padding: '0 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                    <div onClick={() => setShowReplace(!showReplace)} style={{ padding: '6px 0', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                        {showReplace ? <ChevronDown size={iconSizeMd} /> : <ChevronRight size={iconSizeMd} />}
+                    </div>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                        <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="搜索" style={{
+                            width: '100%', backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', padding: `4px ${iconSizeMd * 3 + 12}px 4px 8px`, outline: 'none', fontSize: 'var(--ui-font-size)', fontFamily: 'inherit'
+                        }} />
+                        <div style={{ position: 'absolute', right: '4px', top: '4px', display: 'flex', gap: '2px' }}>
+                            <SearchOptionBtn active={caseSensitive} onClick={() => setCaseSensitive(!caseSensitive)} icon={CaseSensitive} title="区分大小写" />
+                            <SearchOptionBtn active={wholeWord} onClick={() => setWholeWord(!wholeWord)} icon={WholeWord} title="全字匹配" />
+                            <SearchOptionBtn active={useRegex} onClick={() => setUseRegex(!useRegex)} icon={Regex} title="使用正则表达式" />
+                        </div>
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '4px' }}>
-                    <div title={t('SearchFilenameMode')} style={{ padding: '2px 8px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'filename' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'filename' ? 'var(--accent-foreground)' : 'var(--text-secondary)', opacity: 1, display: 'flex', alignItems: 'center', fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }} onClick={() => setSearchMode('filename')}>{t('ModeFile')}</div>
-                    <div title={t('SearchContentMode')} style={{ padding: '2px 8px', cursor: 'pointer', borderRadius: '3px', backgroundColor: searchMode === 'content' ? 'var(--accent-color)' : 'transparent', color: searchMode === 'content' ? 'var(--accent-foreground)' : 'var(--text-secondary)', opacity: 1, display: 'flex', alignItems: 'center', fontSize: 'calc(var(--ui-font-size) - 1px)', fontWeight: 'bold' }} onClick={() => setSearchMode('content')}>{t('ModeText')}</div>
+                {showReplace && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '20px' }}>
+                        <input value={replaceQuery} onChange={(e) => setReplaceQuery(e.target.value)} placeholder="替换" style={{
+                            flex: 1, backgroundColor: 'var(--input-bg)', color: 'var(--text-primary)', border: '1px solid var(--input-border)', padding: '4px 8px', outline: 'none', fontSize: 'var(--ui-font-size)', opacity: 0.7, fontFamily: 'inherit'
+                        }} />
+                    </div>
+                )}
+
+                <div onClick={() => setShowDetails(!showDetails)} style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                    <MoreHorizontal size={iconSizeSm} />
+                    <span>详细过滤选项</span>
                 </div>
 
-                <div style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', marginTop: '2px', opacity: 1, color: 'var(--text-secondary)', fontWeight: 'bold' }}>
-                    {results.length} {t('Results')}
-                </div>
+                {showDetails && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '4px 0 4px 20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', opacity: 0.6 }}>包含的文件 (glob)</span>
+                            <input value={includePattern} onChange={(e) => setIncludePattern(e.target.value)} placeholder="例如: src/**/*.ts" style={{
+                                backgroundColor: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '2px 6px', fontSize: 'calc(var(--ui-font-size) - 1px)', fontFamily: 'inherit'
+                            }} />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: 'calc(var(--ui-font-size) - 2px)', opacity: 0.6 }}>排除的文件 (glob)</span>
+                            <input value={excludePattern} onChange={(e) => setExcludePattern(e.target.value)} placeholder="例如: node_modules/**" style={{
+                                backgroundColor: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)', padding: '2px 6px', fontSize: 'calc(var(--ui-font-size) - 1px)', fontFamily: 'inherit'
+                            }} />
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                {viewMode === 'tree' ? (
-                    <div style={{ padding: '2px 0' }}>
-                        {renderTreeNodes(treeData.children, 0)}
-                    </div>
-                ) : (
-                    Object.keys(groupedResults).map((path) => {
+            {results.length > 0 && (
+                <div style={{ padding: '4px 12px', fontSize: 'calc(var(--ui-font-size) - 1px)', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tabs)', opacity: 0.8 }}>
+                    在 {resultStats.fileCount} 个文件中找到 {resultStats.matchCount} 个结果
+                </div>
+            )}
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+                {viewMode === 'tree' ? renderTreeNodes(treeData.children, 0) : (
+                    Object.keys(groupedResults).map(path => {
                         const fileName = pathUtils.getFileName(path);
-                        let displayPath = path;
-                        if (path.startsWith(rootPath)) displayPath = path.substring(rootPath.length);
-                        const cleanPath = displayPath.replace(fileName, '').replace(/^[\/\\]+/, '').replace(/[\/\\]+$/, '').split(/[\/\\]+/).filter(Boolean).join(' › ');
                         const isExpanded = expandedFiles[path];
-                        const fileMatches = groupedResults[path];
+                        const matches = groupedResults[path];
+                        const relPath = path.replace(rootPath, '').replace(/^[\/\\]+/, '');
 
                         return (
-                            <div key={path} style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--border-color)' }}>
-                                <div onClick={() => { if (searchMode === 'filename') onFileSelect(path, fileName); else toggleExpand(path); }} style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--bg-sidebar)' }} className="file-item-hover">
-                                    <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                                        {searchMode === 'content' && (<span style={{ marginRight: '6px', display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }}>{isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>)}
-                                        <FileCode size={16} style={{ color: 'var(--accent-color)', marginRight: '8px' }} />
-                                        <span style={{ fontWeight: '600', fontSize: 'var(--ui-font-size)', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fileName}</span>
-                                        {fileMatches.length > 1 && (<span style={{ marginLeft: 'auto', fontSize: 'calc(var(--ui-font-size) - 2px)', padding: '1px 8px', borderRadius: '12px', backgroundColor: 'var(--active-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>{fileMatches.length}</span>)}
-                                    </div>
-                                    {cleanPath && (<div style={{ paddingLeft: searchMode === 'content' ? '30px' : '24px', fontSize: 'calc(var(--ui-font-size) - 1px)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cleanPath}</span></div>)}
+                            <div key={path} style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div onClick={() => toggleExpand(path)} className="file-item-hover" style={{ padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {isExpanded ? <ChevronDown size={iconSizeSm} /> : <ChevronRight size={iconSizeSm} />}
+                                    <FileCode size={iconSizeMd} style={{ color: 'var(--accent-color)' }} />
+                                    <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</span>
+                                    <span style={{ opacity: 0.5, fontSize: '11px' }}>{matches.length}</span>
                                 </div>
-                                {isExpanded && searchMode === 'content' && (<div style={{ backgroundColor: 'var(--bg-editor-dim, var(--bg-editor))' }}>{fileMatches.map((res, idx) => (<div key={idx} onClick={() => onFileSelect(res.path, fileName, res.line)} style={{ padding: '6px 12px 6px 42px', cursor: 'pointer', fontSize: 'var(--ui-font-size)', display: 'flex', alignItems: 'flex-start', gap: '12px' }} className="file-item-hover"><span style={{ color: 'var(--accent-color)', minWidth: '32px', textAlign: 'right', fontSize: 'calc(var(--ui-font-size) - 1px)', fontFamily: 'monospace', opacity: 0.8 }}>{res.line}</span><span style={{ fontFamily: 'var(--editor-font-family, monospace)', color: 'var(--text-primary)', wordBreak: 'break-all', lineHeight: '1.5' }}>{res.content}</span></div>))}</div>)}
+                                {isExpanded && (
+                                    <div style={{ padding: '2px 28px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {relPath.replace(fileName, '')}
+                                    </div>
+                                )}
+                                {isExpanded && (
+                                    <div style={{ marginBottom: '4px' }}>
+                                        {matches.map((res, idx) => (
+                                            <div key={idx} onClick={() => onFileSelect(res.path, fileName, res.line)} className="file-item-hover" style={{ padding: '3px 8px 3px 44px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                                <span style={{ minWidth: '24px', textAlign: 'right', fontSize: 'calc(var(--ui-font-size) - 2px)', fontFamily: 'monospace', opacity: 0.5, userSelect: 'none', paddingTop: '2px' }}>{res.line}</span>
+                                                <span style={{ fontFamily: 'var(--editor-font-family, monospace)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: '1.4', fontSize: 'calc(var(--ui-font-size) - 1px)' }}>{res.content}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         );
                     })
+                )}
+
+                {query && !isSearching && results.length === 0 && (
+                    <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5 }}>未找到结果</div>
                 )}
             </div>
         </div>
