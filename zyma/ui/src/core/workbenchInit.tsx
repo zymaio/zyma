@@ -18,6 +18,9 @@ export function setupWorkbench(t: (key: string) => string, handlers: {
     setShowSearch: (show: boolean) => void,
     setSidebarTab: (id: string) => void,
     toggleSidebar: () => void,
+    setRootPath: (path: string) => void,
+    fm: any,
+    setActiveTabId: (id: string | null) => void,
     components: {
         Sidebar: React.ReactNode,
         SearchPanel: React.ReactNode,

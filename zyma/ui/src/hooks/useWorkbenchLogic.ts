@@ -6,7 +6,6 @@ import { pathUtils } from '../utils/pathUtils';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-import { registerWorkspaceCommands } from '../commands/workspace';
 import { useSessionManagement } from './useSessionManagement';
 
 const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
@@ -29,7 +28,6 @@ interface WorkbenchLogicProps {
 
 export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProps) {
     const { t } = useTranslation();
-    const { setActiveTabId } = tabSystem;
     const ready = appInit?.ready;
 
     const [rootPath, setRootPath] = useState<string>(".");

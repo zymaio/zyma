@@ -1,13 +1,24 @@
 use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
-use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem};
+use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent};
+use std::sync::{Mutex, RwLock};
+use tauri::{Emitter, Manager};
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct NativeCommand {
+    pub id: String,
+    pub title: String,
+    pub category: Option<String>,
+}
 
 pub struct PluginService {
     pub external_plugins: Vec<PathBuf>,
     pub native_chat_participants: Vec<NativeChatParticipant>,
     pub native_auth_providers: Vec<NativeAuthProvider>,
-    pub native_sidebar_items: Vec<NativeSidebarItem>,
+    pub native_sidebar_items: RwLock<Vec<NativeSidebarItem>>,
+    pub native_commands: RwLock<Vec<NativeCommand>>,
+    pub native_slot_components: Vec<NativeSlotComponent>,
 }
 
 /// 剥离 Windows 下 canonicalize 产生的 \\?\ 前缀
@@ -18,6 +29,51 @@ fn simplify_path(p: PathBuf) -> String {
     } else {
         s
     }
+}
+
+#[tauri::command]
+pub fn get_native_extensions(
+    plugin_service: tauri::State<'_, PluginService>,
+) -> serde_json::Value {
+    let sidebar_items = plugin_service.native_sidebar_items.read().unwrap();
+    let commands = plugin_service.native_commands.read().unwrap();
+    serde_json::json!({
+        "chat_participants": plugin_service.native_chat_participants,
+        "auth_providers": plugin_service.native_auth_providers,
+        "sidebar_items": *sidebar_items,
+        "commands": *commands,
+        "slot_components": plugin_service.native_slot_components,
+    })
+}
+
+#[tauri::command]
+pub fn update_native_commands(
+    app_handle: tauri::AppHandle,
+    plugin_service: tauri::State<'_, PluginService>,
+    commands: Vec<NativeCommand>,
+) -> Result<(), String> {
+    {
+        let mut native_commands = plugin_service.native_commands.write().unwrap();
+        *native_commands = commands.clone();
+    }
+    // 通知前端指令已更新
+    let _ = app_handle.emit("zyma:commands-updated", commands);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_sidebar_items(
+    app_handle: tauri::AppHandle,
+    plugin_service: tauri::State<'_, PluginService>,
+    items: Vec<NativeSidebarItem>,
+) -> Result<(), String> {
+    {
+        let mut sidebar_items = plugin_service.native_sidebar_items.write().unwrap();
+        *sidebar_items = items.clone();
+    }
+    // 通知前端侧边栏已更新
+    let _ = app_handle.emit("zyma:sidebar-updated", items);
+    Ok(())
 }
 
 #[tauri::command]

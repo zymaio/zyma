@@ -17,6 +17,14 @@ export interface AppSettings {
     window_x: number | null;
     window_y: number | null;
     is_maximized: boolean;
+    // 会话信息
+    session?: {
+        root_path?: string;
+        open_files: string[];
+        active_file?: string;
+    };
+    // 最近打开的工作区
+    recent_workspaces?: string[];
     // AI Settings
     ai_provider?: string;
     ai_api_key?: string;

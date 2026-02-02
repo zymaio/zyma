@@ -2,6 +2,8 @@ import React from 'react';
 import Editor from '../components/Editor/Editor';
 import Preview from '../components/Preview/Preview';
 import { useTranslation } from 'react-i18next';
+import { slotRegistry } from './SlotRegistry';
+import { WelcomeScreen } from '../components/Common/WelcomeScreen';
 
 interface WorkbenchMainProps {
     activeTab: any;
@@ -21,6 +23,14 @@ const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
     productName
 }) => {
     const { t } = useTranslation();
+    const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+
+    React.useEffect(() => {
+        const unsub = slotRegistry.subscribe(() => forceUpdate());
+        return () => unsub();
+    }, []);
+
+    const emptyStateComponents = slotRegistry.getContributedComponents('EDITOR_EMPTY_STATE');
 
     return (
         <div className="main-content-area" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
@@ -45,12 +55,7 @@ const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
                     color: 'var(--text-primary)'
                 }}>{activeTab.component}</div>
             ) : (
-                <div className="empty-state">
-                    <div className="logo-text">
-                        {t(`app_name_${productName}`)}
-                    </div>
-                    <div>{t('NoFile')}</div>
-                </div>
+                <WelcomeScreen productName={productName} />
             )}
         </div>
     );

@@ -1,6 +1,6 @@
-# Zyma 核心架构参考手册 (v2.1)
+# Zyma 核心架构参考手册 (v2.2)
 
-> **修订日期**：2026年1月31日
+> **修订日期**：2026年2月1日
 > **适用版本**：Zyma 底座重构版及 Zyma Pro
 
 ## 1. 架构概览：服务化与解耦
@@ -13,13 +13,50 @@ Zyma 采用 **SOA (Service-Oriented Architecture)** 架构。所有的运行时�
 | :--- | :--- | :--- |
 | **WorkspaceService** | `State<WorkspaceService>` | 封装了 VFS，负责全异步文件操作。 |
 | **EventBus** | `State<EventBus>` | 后端内部事件总线，支持多生产者多消费者。 |
-| **PluginService** | `State<PluginService>` | 管理插件路径及原生扩展（Chat/Auth）。 |
+| **ContextService** | `State<ContextService>` | **(New)** 全局上下文存储，允许跨模块共享业务状态。 |
+| **PluginService** | `State<PluginService>` | 管理插件路径、动态命令及原生扩展（Chat/Auth）。 |
 | **LLMManager** | `State<LLMManager>` | 统一管理大模型流式请求。 |
 | **WatcherState** | `State<WatcherState>` | 高效的文件系统监听服务（基于闭包模式）。 |
 
 ---
 
-## 2. 全异步虚拟文件系统 (VFS)
+## 2. 全局上下文系统 (Global Context)
+
+底座提供了一个线程安全的键值对存储，用于解耦业务层（Pro）与底座 UI。
+
+### 核心 API (Rust)
+*   `set_context(key, value)`: 存入状态并向前端广播 `zyma:context-changed` 事件。
+*   `get_context(key)`: 获取指定状态。
+
+### 应用场景
+Pro 版通过 API 设置 `active_platform: "esunny"`，底座的 AI 助手和侧边栏会自动读取此上下文并调整交互行为。
+
+---
+
+## 3. 动态原生扩展协议 (Dynamic Extensions)
+
+底座支持在运行时（Runtime）通过 API 动态修改界面元素，无需重启。
+
+### 动态侧边栏 (Dynamic Sidebar)
+*   **接口**: `update_sidebar_items(items)`
+*   **效果**: Activity Bar 图标实时刷新。Pro 版可根据探测到的工作区平台动态显示/隐藏图标。
+
+### 动态命令注册 (Dynamic Commands)
+*   **接口**: `update_native_commands(commands)`
+*   **效果**: Ctrl+Shift+P 搜索面板实时更新。允许 Pro 版在进入特定垂直领域时注入领域专属命令（如“Esunny: 编译策略”）。
+
+---
+
+## 4. 增强的 AI 协议 (Enhanced AI Protocol)
+
+底座采用“底座负责流，业务负责魂”的设计模式。
+
+*   **底座职责**: 提供 Chat UI、Markdown 渲染、多轮对话管理、上下文截断。
+*   **Pro 版职责**: 注入垂直领域上下文。底座在发起 LLM 请求前，会自动合并全局上下文中的业务参数，生成针对性强的 System Prompt。
+
+---
+
+## 5. 全异步虚拟文件系统 (VFS)
 
 Zyma 不再直接调用 `std::fs`。所有文件操作必须通过 `WorkspaceService` 提供的异步 `FileSystem` trait 进行。
 

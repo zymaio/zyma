@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -6,7 +6,9 @@ import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginManager';
 import { authRegistry } from '../components/PluginSystem/AuthRegistry';
 import { chatRegistry } from '../components/Chat/Registry/ChatRegistry';
+import { slotRegistry, type SlotLocation } from '../core/SlotRegistry';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import { GalleryContent } from '../components/Common/GalleryContent';
 
 export function useAppInitialization(fm: any, i18n: any, openCustomView?: (request: any) => void) {
     const [ready, setReady] = useState(false);
@@ -103,6 +105,28 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                                     authRegistry.updateAccount(p.id, typeof u === 'object' ? u.username : u);
                                 } catch(e) {}
                             }
+                        });
+                    }
+
+                    // 3. 同步插槽组件
+                    if (native.slot_components) {
+                        native.slot_components.forEach((s: any) => {
+                            slotRegistry.register(s.slot as SlotLocation, {
+                                id: s.id,
+                                params: s.params,
+                                component: () => {
+                                    if (s.component_type === 'webview') {
+                                        return React.createElement('iframe', {
+                                            src: s.params?.url,
+                                            style: { width: '100%', height: '100%', border: 'none', backgroundColor: 'transparent' }
+                                        });
+                                    }
+                                    if (s.component_type === 'gallery') {
+                                        return <GalleryContent title={s.params?.title} items={s.params?.items} />;
+                                    }
+                                    return null;
+                                }
+                            });
                         });
                     }
                 } catch(e) { console.log("Standard Zyma mode: No native extensions found."); }

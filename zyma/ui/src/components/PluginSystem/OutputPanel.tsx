@@ -87,7 +87,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader
         });
     };
 
-    const renderLine = useCallback((index: number, line: OutputLine) => {
+    const renderLine = useCallback((_index: number, line: OutputLine) => {
         const text = line.content;
         let color = 'var(--text-primary)';
         let fontWeight = 'normal';

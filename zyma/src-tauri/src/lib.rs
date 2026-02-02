@@ -42,11 +42,20 @@ pub struct NativeSidebarItem {
     pub color: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NativeSlotComponent {
+    pub slot: String, // 例如 "EDITOR_EMPTY_STATE"
+    pub id: String,
+    pub component_type: String, // "webview" 或 "command"
+    pub params: Option<serde_json::Value>,
+}
+
 pub struct ZymaBuilder {
     pub builder: tauri::Builder<Wry>,
     participants: Vec<NativeChatParticipant>,
     auth_providers: Vec<NativeAuthProvider>,
     sidebar_items: Vec<NativeSidebarItem>,
+    slot_components: Vec<NativeSlotComponent>,
     setup_hook: Option<Box<dyn FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static>>,
 }
 
@@ -57,6 +66,7 @@ impl ZymaBuilder {
             participants: Vec::new(),
             auth_providers: Vec::new(),
             sidebar_items: Vec::new(),
+            slot_components: Vec::new(),
             setup_hook: None,
         }
     }
@@ -67,6 +77,7 @@ impl ZymaBuilder {
             participants: Vec::new(), 
             auth_providers: Vec::new(),
             sidebar_items: Vec::new(),
+            slot_components: Vec::new(),
             setup_hook: None,
         }
     }
@@ -86,6 +97,11 @@ impl ZymaBuilder {
         self
     }
 
+    pub fn register_slot_component(mut self, component: NativeSlotComponent) -> Self {
+        self.slot_components.push(component);
+        self
+    }
+
     pub fn setup<F>(mut self, callback: F) -> Self
     where
         F: FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static,
@@ -98,14 +114,22 @@ impl ZymaBuilder {
         let participants = self.participants;
         let auth = self.auth_providers;
         let items = self.sidebar_items;
+        let slots = self.slot_components;
         let custom_setup = self.setup_hook;
 
         self.builder
             .setup(move |app| {
-                // 1. 初始化并注册 WorkspaceService
-                app.manage(commands::fs::WorkspaceService::new(
+                // 1. 初始化并注册 WorkspaceService (增加恢复逻辑)
+                let initial_path = if let Ok(settings) = commands::config::load_settings() {
+                    settings.session.and_then(|s| s.root_path).and_then(|p| {
+                        let path = PathBuf::from(p);
+                        if path.exists() && path.is_dir() { Some(path) } else { None }
+                    }).unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+                } else {
                     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-                ));
+                };
+
+                app.manage(commands::fs::WorkspaceService::new(initial_path));
                 // 2. 初始化并注册 WatcherState
                 app.manage(commands::watcher::WatcherState { 
                     watchers: Mutex::new(HashMap::new()) 
@@ -117,12 +141,17 @@ impl ZymaBuilder {
                 // 4. 初始化并注册 LLMManager
                 app.manage(llm::LLMManager::new());
 
-                // 5. 初始化并注册 PluginService (包含侧边栏项)
+                // 5. 初始化并注册 ContextService
+                app.manage(services::ContextService::new());
+
+                // 6. 初始化并注册 PluginService (包含侧边栏项、命令、插槽组件)
                 app.manage(commands::plugins::PluginService {
                     external_plugins: Vec::new(),
                     native_chat_participants: participants,
                     native_auth_providers: auth,
-                    native_sidebar_items: items,
+                    native_sidebar_items: std::sync::RwLock::new(items),
+                    native_commands: std::sync::RwLock::new(Vec::new()),
+                    native_slot_components: slots,
                 });
 
                 // 6. 初始化并注册 EventBus (New)

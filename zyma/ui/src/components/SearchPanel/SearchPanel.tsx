@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
-    ChevronRight, ChevronDown, FileCode, Search,
-    Loader2, X, RefreshCw, Layers, CaseSensitive,
+    ChevronRight, ChevronDown, FileCode,
+    X, RefreshCw, Layers, CaseSensitive,
     WholeWord, Regex, MoreHorizontal, List, Network, Folder
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -237,7 +237,9 @@ const SearchPanel: React.FC<SearchPanelProps> = () => {
                         {viewMode === 'list' ? <Network size={iconSizeSm} /> : <List size={iconSizeSm} />}
                     </div>
                     <RefreshCw size={iconSizeSm} className={`cursor-pointer ${isSearching ? 'animate-spin' : ''}`} onClick={handleSearch} />
-                    <Layers size={iconSizeSm} className="cursor-pointer" title="折叠全部" onClick={() => setExpandedFiles({})} />
+                    <div title="折叠全部" style={{ display: 'flex', alignItems: 'center' }}>
+                        <Layers size={iconSizeSm} className="cursor-pointer" onClick={() => setExpandedFiles({})} />
+                    </div>
                     <X size={iconSizeSm} className="cursor-pointer" onClick={() => { setQuery(''); setResults([]); }} />
                 </div>
             </div>

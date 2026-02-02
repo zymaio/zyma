@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getMenuData, type MenuItem } from './menuConfig';
 import './TitleBar.css';
 import { useWorkbench } from '../../core/WorkbenchContext';
+import { slotRegistry } from '../../core/SlotRegistry';
 
 interface TitleBarProps {
     onAction: (action: string, params?: any) => void;
@@ -25,6 +26,10 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
   const isMac = platform === 'macos' || platform === 'darwin';
   const MENU_DATA = getMenuData(t, themeMode);
   const recentWorkspaces = settings?.recent_workspaces || [];
+
+  // 获取插件注入的 Branding 信息
+  const slotConfigs = slotRegistry.getContributedComponents('WELCOME_CONTENT');
+  const customConfig = (slotConfigs.length > 0 ? slotConfigs[0].params : null) || {};
 
   useEffect(() => {
     const checkMaximized = async () => {
@@ -65,10 +70,14 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
       <div className="title-bar-main">
         {/* Logo area */}
         <div className="logo-wrapper" data-tauri-drag-region>
-          <div className="logo-box" data-tauri-drag-region>
-            <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
-            </svg>
+          <div className="logo-box" data-tauri-drag-region style={{ backgroundColor: customConfig.accentColor || 'var(--accent-color)' }}>
+            {customConfig.logoSvg ? (
+                <div dangerouslySetInnerHTML={{ __html: customConfig.logoSvg }} style={{ width: '12px', height: '12px', display: 'flex' }} data-tauri-drag-region />
+            ) : (
+                <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" data-tauri-drag-region>
+                    <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
+                </svg>
+            )}
           </div>
         </div>
 
@@ -112,7 +121,7 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                                         {hoverSubMenu === 'open_recent' && item.action === 'open_recent' && (
                                             <div className="dropdown-menu sub-menu">
                                                 {recentWorkspaces.length > 0 ? (
-                                                    recentWorkspaces.map((path, i) => (
+                                                    recentWorkspaces.map((path: string, i: number) => (
                                                         <div 
                                                             key={i} className="dropdown-item"
                                                             onClick={(e) => {

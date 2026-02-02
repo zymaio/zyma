@@ -78,17 +78,6 @@ pub async fn manage_context_menu<R: tauri::Runtime>(_app: AppHandle<R>, _enable:
     name.to_lowercase()
 }
 
-use crate::commands::plugins::PluginService;
-
-#[tauri::command] 
-pub fn get_native_extensions(state: tauri::State<'_, PluginService>) -> serde_json::Value { 
-    serde_json::json!({
-        "chat_participants": state.native_chat_participants,
-        "auth_providers": state.native_auth_providers,
-        "sidebar_items": state.native_sidebar_items
-    })
-}
-
 #[tauri::command] pub fn get_platform() -> String { std::env::consts::OS.to_string() }
 #[tauri::command] pub fn system_get_env(name: String) -> Option<String> { std::env::var(name).ok() }
 

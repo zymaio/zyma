@@ -7,11 +7,14 @@ export type SlotLocation =
     | 'ACTIVITY_BAR_BOTTOM' 
     | 'EDITOR_TITLE_RIGHT'
     | 'SIDEBAR_HEADER_ACTIONS'
-    | 'BOTTOM_PANEL';
+    | 'BOTTOM_PANEL'
+    | 'WELCOME_CONTENT'
+    | 'EDITOR_EMPTY_STATE';
 
 export interface SlotContribution {
     id: string;
     component: React.ReactNode | React.ComponentType<any>;
+    params?: any;
     order?: number;
 }
 

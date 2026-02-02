@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useReducer } from 'react';
-import { Settings, Monitor, User, MessageSquare } from 'lucide-react';
+import { Settings, User, MessageSquare } from 'lucide-react';
 import { views } from './ViewSystem/ViewRegistry';
 import { authRegistry } from './PluginSystem/AuthRegistry';
 import AccountMenu from './PluginSystem/AccountMenu';
@@ -24,7 +24,6 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     onShowSettings, showSettings 
 }) => {
     const { t } = useTranslation();
-    const [hasOutput, setHasOutput] = useState(false);
     const [authProviders, setAuthProviders] = useState(authRegistry.getProviders());
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [, forceUpdate] = useReducer(x => x + 1, 0);
@@ -45,12 +44,24 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
             
             forceUpdate();
         };
+
+        let unlistenSidebar: any = null;
+        listen('zyma:sidebar-updated', (e: any) => {
+            setNativeSidebarItems(e.payload || []);
+        }).then(u => unlistenSidebar = u);
+
         const unsubViews = views.subscribe(sync);
         const unsubAuth = authRegistry.subscribe(sync);
         const unsubCmds = commands.subscribe(sync);
         const unsubSlots = slotRegistry.subscribe(sync);
         sync();
-        return () => { unsubViews(); unsubAuth(); unsubCmds(); unsubSlots(); };
+        return () => { 
+            unsubViews(); 
+            unsubAuth(); 
+            unsubCmds(); 
+            unsubSlots(); 
+            if (unlistenSidebar) unlistenSidebar();
+        };
     }, []);
 
     const handleTabClick = (id: string) => {
@@ -125,6 +136,19 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                         <DynamicIcon icon={view.icon} />
                     </div>
                 ))}
+
+                {/* 新增：渲染原生顶部图标 (如开发平台) */}
+                {nativeSidebarItems.filter(item => !item.params || item.params.position !== 'bottom').map(item => (
+                    <div 
+                        key={item.id} 
+                        className="activity-icon" 
+                        onClick={() => invoke(item.command, item.params || {})} 
+                        title={item.title}
+                        style={{ color: item.color || 'inherit' }}
+                    >
+                        <DynamicIcon icon={item.icon} />
+                    </div>
+                ))}
             </div>
 
             <div style={{ flex: 1 }}></div>
@@ -133,13 +157,13 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                 
                 {renderSlot('ACTIVITY_BAR_BOTTOM')}
 
-                {nativeSidebarItems.map(item => (
+                {/* 仅渲染原生底部图标 (如日志) */}
+                {nativeSidebarItems.filter(item => item.params && item.params.position === 'bottom').map(item => (
                     <div 
                         key={item.id} 
                         className="activity-icon" 
                         onClick={() => {
                             if (item.command === 'zyma:toggle-bottom-panel') {
-                                // 触发底座内部事件 (使用 Tauri 官方事件总线)
                                 emit('open-output-panel', item.params?.channel);
                             } else {
                                 invoke(item.command, item.params || {});

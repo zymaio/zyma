@@ -47,7 +47,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
 
     // 监听打开输出面板的内部事件
     React.useEffect(() => {
-        const unlistenOutput = listen<string>('open-output-panel', (e) => {
+        const unlistenOutput = listen<string>('open-output-panel', (_e) => {
             bottomPanel.setIsVisible(true);
         });
 
@@ -213,7 +213,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                         height={bottomPanel.panelHeight}
                         onClose={() => bottomPanel.setIsVisible(false)}
                         startResizing={bottomPanel.startResizing}
-                        onDetach={(id) => {
+                        onDetach={(_id) => {
                             bottomPanel.setIsVisible(false);
                             // 复用底座现有的弹出命令
                             invoke('open_detached_output', { channel: "绣智助手日志" });

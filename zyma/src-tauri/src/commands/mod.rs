@@ -7,6 +7,7 @@ pub mod output;
 pub mod search;
 pub mod watcher;
 pub mod llm;
+pub mod context;
 
 pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
@@ -30,6 +31,9 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send 
         output::output_get_content,
         output::output_clear,
         output::output_list_channels,
+        context::set_context,
+        context::get_context,
+        context::get_all_contexts,
         system::manage_context_menu, 
         system::get_cli_args, 
         system::system_get_env,
@@ -41,7 +45,9 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send 
         system::get_platform, 
         system::get_app_version,
         system::get_product_name,
-        system::get_native_extensions,
+        plugins::get_native_extensions,
+        plugins::update_sidebar_items,
+        plugins::update_native_commands,
         system::open_url, 
         system::system_exit_all_windows,
         window::open_detached_output,

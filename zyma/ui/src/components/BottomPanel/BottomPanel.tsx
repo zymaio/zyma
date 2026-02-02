@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
 import { slotRegistry } from '../../core/SlotRegistry';
-import { useTranslation } from 'react-i18next';
 
 interface BottomPanelProps {
     height: number;
@@ -14,7 +13,6 @@ interface BottomPanelProps {
 const BottomPanel: React.FC<BottomPanelProps> = ({ 
     height, isVisible, onClose, onDetach, startResizing 
 }) => {
-    const { t } = useTranslation();
     const contributions = slotRegistry.getContributedComponents('BOTTOM_PANEL');
     const [activeTab, setActiveTab] = useState<string>(contributions[0]?.id || "");
 

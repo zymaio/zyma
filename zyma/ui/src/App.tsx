@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import './i18n';
 import { useFileManagement } from './hooks/useFileManagement';
 import { useAppInitialization } from './hooks/useAppInitialization';
@@ -58,6 +59,9 @@ function App() {
     document.body.classList.remove('theme-dark', 'theme-light', 'theme-abyss');
     document.body.classList.add(`theme-${settings.theme}`);
     document.documentElement.style.setProperty('--ui-font-size', (settings.ui_font_size || 13) + 'px');
+    
+    // 同步到全局上下文，供插件/业务层感知
+    invoke('set_context', { key: 'ui_theme', value: settings.theme }).catch(() => {});
   }, [ready, settings.theme, settings.ui_font_size]);
 
   if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1b26' }}></div>;
