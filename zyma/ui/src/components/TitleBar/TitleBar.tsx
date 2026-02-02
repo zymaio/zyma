@@ -75,7 +75,8 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
                 <div dangerouslySetInnerHTML={{ __html: customConfig.logoSvg }} style={{ width: '12px', height: '12px', display: 'flex' }} data-tauri-drag-region />
             ) : (
                 <svg width="12" height="12" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" data-tauri-drag-region>
-                    <path d="M110 20H470L180 260H400L20 492L130 260H20L110 20Z" fill="white"/>
+                    <rect width="512" height="512" rx="100" fill="#FF4D4F"/>
+                    <path d="M190 100H430L250 260H390L150 420L220 260H130L190 100Z" fill="white"/>
                 </svg>
             )}
           </div>
@@ -155,7 +156,11 @@ const TitleBar: React.FC<TitleBarProps> = ({ onAction, themeMode, isAdmin, platf
 
         {/* Title / Drag Area */}
         <div className="title-drag-region" data-tauri-drag-region style={{ flex: 1, minWidth: 0 }}>
-            <span data-tauri-drag-region style={{ opacity: 0.6, fontWeight: 500, letterSpacing: '0.3px' }}>{t(`app_name_${productName}`)} {isAdmin && `[${t('Administrator')}]`}</span>
+            <span data-tauri-drag-region style={{ opacity: 0.6, fontWeight: 500, letterSpacing: '0.3px' }}>
+                {customConfig.mainTitle || t(`app_name_${productName}`)} 
+                {customConfig.subTitle && ` - ${customConfig.subTitle}`}
+                {isAdmin && ` [${t('Administrator')}]`}
+            </span>
         </div>
       </div>
 
