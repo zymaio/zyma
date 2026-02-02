@@ -43,6 +43,14 @@ pub struct NativeSidebarItem {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct NativeFileMenuItem {
+    pub pattern: String, // e.g. "*.py"
+    pub title: String,
+    pub icon: Option<String>,
+    pub command: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NativeSlotComponent {
     pub slot: String, // 例如 "EDITOR_EMPTY_STATE"
     pub id: String,
@@ -55,6 +63,7 @@ pub struct ZymaBuilder {
     participants: Vec<NativeChatParticipant>,
     auth_providers: Vec<NativeAuthProvider>,
     sidebar_items: Vec<NativeSidebarItem>,
+    file_menu_items: Vec<NativeFileMenuItem>,
     slot_components: Vec<NativeSlotComponent>,
     setup_hook: Option<Box<dyn FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static>>,
 }
@@ -66,6 +75,7 @@ impl ZymaBuilder {
             participants: Vec::new(),
             auth_providers: Vec::new(),
             sidebar_items: Vec::new(),
+            file_menu_items: Vec::new(),
             slot_components: Vec::new(),
             setup_hook: None,
         }
@@ -77,6 +87,7 @@ impl ZymaBuilder {
             participants: Vec::new(), 
             auth_providers: Vec::new(),
             sidebar_items: Vec::new(),
+            file_menu_items: Vec::new(),
             slot_components: Vec::new(),
             setup_hook: None,
         }
@@ -97,6 +108,11 @@ impl ZymaBuilder {
         self
     }
 
+    pub fn register_file_menu_item(mut self, item: NativeFileMenuItem) -> Self {
+        self.file_menu_items.push(item);
+        self
+    }
+
     pub fn register_slot_component(mut self, component: NativeSlotComponent) -> Self {
         self.slot_components.push(component);
         self
@@ -114,6 +130,7 @@ impl ZymaBuilder {
         let participants = self.participants;
         let auth = self.auth_providers;
         let items = self.sidebar_items;
+        let file_menus = self.file_menu_items;
         let slots = self.slot_components;
         let custom_setup = self.setup_hook;
 
@@ -150,6 +167,7 @@ impl ZymaBuilder {
                     native_chat_participants: participants,
                     native_auth_providers: auth,
                     native_sidebar_items: std::sync::RwLock::new(items),
+                    native_file_menu_items: file_menus,
                     native_commands: std::sync::RwLock::new(Vec::new()),
                     native_slot_components: slots,
                 });

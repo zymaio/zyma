@@ -37,10 +37,10 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
     useEffect(() => {
         const initSystem = async () => {
             try {
-                const [saved, adminStatus, plat, version, rawName] = await Promise.all([
+                const [saved, adminStatus, plat, version, rawName, currentCwd] = await Promise.all([
                     invoke<AppSettings>('load_settings'), invoke<boolean>('is_admin'),
                     invoke<string>('get_platform'), invoke<string>('get_app_version'),
-                    invoke<string>('get_product_name')
+                    invoke<string>('get_product_name'), invoke<string>('get_cwd')
                 ]);
                 setSettings(saved);
                 setAppVersion(version);
@@ -48,6 +48,14 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 i18n.changeLanguage(saved.language);
                 setIsAdmin(adminStatus);
                 setPlatform(plat);
+                
+                // 关键修复：如果后端已经在正确路径，直接同步给前端
+                if (currentCwd && currentCwd !== '.' && currentCwd !== './') {
+                    // 我们需要一种方式通知 Workbench 更新 rootPath。
+                    // 由于 useAppInitialization 不直接控制 rootPath，
+                    // 我们通过一个临时事件或回调来传递。
+                    // 但更简单的办法是：让 useWorkbenchLogic 自己去 fetch CWD。
+                }
 
                 // --- 框架协议：自动发现原生扩展 ---
                 try {
@@ -165,7 +173,14 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 openCustomView,
                 closeTab: (id: string) => fm.closeTab ? fm.closeTab(id) : null
             });
-            pluginManager.current.loadAll();
+            pluginManager.current.loadAll().then(async () => {
+                try {
+                    const native = await invoke<any>('get_native_extensions');
+                    if (native.file_menu_items && pluginManager.current) {
+                        native.file_menu_items.forEach((m: any) => pluginManager.current!.registerNativeMenu(m));
+                    }
+                } catch(e) {}
+            });
         }
     }, [openCustomView]);
 

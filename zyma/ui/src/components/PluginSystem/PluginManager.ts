@@ -77,6 +77,17 @@ export class PluginManager {
         }
     }
 
+    registerNativeMenu(item: any) {
+        this.contributionRegistry.addFileMenuItem({
+            label: item.title,
+            commandId: item.command,
+            pluginName: 'native',
+            pattern: item.pattern,
+            icon: item.icon
+        });
+        this.notifyUI();
+    }
+
     private async loadPlugin(dirPath: string, manifest: PluginManifest) {
         try {
             const entryPath = `${dirPath}/${manifest.entry}`;

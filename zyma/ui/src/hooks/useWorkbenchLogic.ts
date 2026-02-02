@@ -33,6 +33,18 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
     const [rootPath, setRootPath] = useState<string>(".");
     const [sidebarTab, setSidebarTab] = useState<string>('explorer');
 
+    // 启动时同步后端 CWD
+    useEffect(() => {
+        if (ready) {
+            invoke<string>('get_cwd').then(cwd => {
+                if (cwd && cwd !== '.' && cwd !== './') {
+                    console.log("[Workbench] Syncing CWD from backend:", cwd);
+                    setRootPath(cwd);
+                }
+            }).catch(console.error);
+        }
+    }, [ready]);
+
     // 使用拆分后的会话管理 Hook
     useSessionManagement({
         ready,
@@ -53,6 +65,20 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
                 
                 // 1. 更新根路径
                 setRootPath(newPath);
+                
+                // 立即保存新路径到配置，防止退出时丢失
+                try {
+                    const currentSettings = await invoke<AppSettings>('load_settings');
+                    const newSettings = {
+                        ...currentSettings,
+                        session: {
+                            ...currentSettings.session,
+                            root_path: newPath
+                        }
+                    };
+                    await invoke('save_settings', { settings: newSettings });
+                    if (appInit.setSettings) appInit.setSettings(newSettings);
+                } catch (e) { console.warn("[Workbench] Failed to auto-save workspace:", e); }
                 
                 // 2. 重置编辑器状态 (类似 VS Code 的 Reload Window 效果)
                 fm.setOpenFiles([]);

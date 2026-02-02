@@ -1,7 +1,7 @@
 use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
-use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent};
+use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent, NativeFileMenuItem};
 use std::sync::{Mutex, RwLock};
 use tauri::{Emitter, Manager};
 
@@ -17,6 +17,7 @@ pub struct PluginService {
     pub native_chat_participants: Vec<NativeChatParticipant>,
     pub native_auth_providers: Vec<NativeAuthProvider>,
     pub native_sidebar_items: RwLock<Vec<NativeSidebarItem>>,
+    pub native_file_menu_items: Vec<NativeFileMenuItem>,
     pub native_commands: RwLock<Vec<NativeCommand>>,
     pub native_slot_components: Vec<NativeSlotComponent>,
 }
@@ -41,6 +42,7 @@ pub fn get_native_extensions(
         "chat_participants": plugin_service.native_chat_participants,
         "auth_providers": plugin_service.native_auth_providers,
         "sidebar_items": *sidebar_items,
+        "file_menu_items": plugin_service.native_file_menu_items,
         "commands": *commands,
         "slot_components": plugin_service.native_slot_components,
     })
