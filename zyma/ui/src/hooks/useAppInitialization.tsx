@@ -8,7 +8,6 @@ import { authRegistry } from '../components/PluginSystem/AuthRegistry';
 import { chatRegistry } from '../components/Chat/Registry/ChatRegistry';
 import { slotRegistry, type SlotLocation } from '../core/SlotRegistry';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
-import { GalleryContent } from '../components/Common/GalleryContent';
 
 export function useAppInitialization(fm: any, i18n: any, openCustomView?: (request: any) => void) {
     const [ready, setReady] = useState(false);
@@ -37,10 +36,10 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
     useEffect(() => {
         const initSystem = async () => {
             try {
-                const [saved, adminStatus, plat, version, rawName, currentCwd] = await Promise.all([
+                const [saved, adminStatus, plat, version, rawName] = await Promise.all([
                     invoke<AppSettings>('load_settings'), invoke<boolean>('is_admin'),
                     invoke<string>('get_platform'), invoke<string>('get_app_version'),
-                    invoke<string>('get_product_name'), invoke<string>('get_cwd')
+                    invoke<string>('get_product_name')
                 ]);
                 setSettings(saved);
                 setAppVersion(version);
@@ -48,14 +47,6 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 i18n.changeLanguage(saved.language);
                 setIsAdmin(adminStatus);
                 setPlatform(plat);
-                
-                // 关键修复：如果后端已经在正确路径，直接同步给前端
-                if (currentCwd && currentCwd !== '.' && currentCwd !== './') {
-                    // 我们需要一种方式通知 Workbench 更新 rootPath。
-                    // 由于 useAppInitialization 不直接控制 rootPath，
-                    // 我们通过一个临时事件或回调来传递。
-                    // 但更简单的办法是：让 useWorkbenchLogic 自己去 fetch CWD。
-                }
 
                 // --- 框架协议：自动发现原生扩展 ---
                 try {
@@ -129,9 +120,6 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                                             style: { width: '100%', height: '100%', border: 'none', backgroundColor: 'transparent' }
                                         });
                                     }
-                                    if (s.component_type === 'gallery') {
-                                        return <GalleryContent title={s.params?.title} items={s.params?.items} />;
-                                    }
                                     return null;
                                 }
                             });
@@ -173,6 +161,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 openCustomView,
                 closeTab: (id: string) => fm.closeTab ? fm.closeTab(id) : null
             });
+            
             pluginManager.current.loadAll().then(async () => {
                 try {
                     const native = await invoke<any>('get_native_extensions');
@@ -182,7 +171,7 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 } catch(e) {}
             });
         }
-    }, [openCustomView]);
+    }, [fm, openCustomView]);
 
     return useMemo(() => ({
         ready, settings, setSettings, isAdmin, platform, appVersion, productName,

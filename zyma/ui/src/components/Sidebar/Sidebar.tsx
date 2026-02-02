@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +16,55 @@ interface SidebarProps {
   pluginMenuItems?: { label: string, commandId: string }[];
 }
 
+export const InlineInput: React.FC<{ 
+    initialValue: string, 
+    type: 'file' | 'dir' | 'rename',
+    level: number,
+    onSubmit: (val: string) => void, 
+    onCancel: () => void 
+}> = ({ initialValue, type, level, onSubmit, onCancel }) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [val, setVal] = useState(initialValue);
+
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+            if (type === 'rename') {
+                const lastDot = initialValue.lastIndexOf('.');
+                inputRef.current.setSelectionRange(0, lastDot > 0 ? lastDot : initialValue.length);
+            }
+        }
+    }, []);
+
+    return (
+        <div style={{ 
+            display: 'flex', alignItems: 'center', padding: '3px 5px', gap: '5px', 
+            paddingLeft: `${10 + level * 10}px`,
+            backgroundColor: 'var(--bg-side)'
+        }}>
+            <span style={{ display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+                {type === 'dir' ? <Folder size={14} /> : <File size={14} />}
+            </span>
+            <input 
+                ref={inputRef} 
+                value={val}
+                onChange={e => setVal(e.target.value)}
+                onKeyDown={e => {
+                    if (e.key === 'Enter') onSubmit(val);
+                    if (e.key === 'Escape') onCancel();
+                }}
+                onBlur={() => onSubmit(val)}
+                style={{ 
+                    flex: 1, minWidth: 0, border: '1px solid var(--accent-color)', 
+                    backgroundColor: 'var(--bg-editor)', color: 'var(--text-primary)', 
+                    fontSize: 'var(--ui-font-size)', outline: 'none', padding: '1px 4px',
+                    borderRadius: '2px'
+                }}
+            />
+        </div>
+    );
+};
+
 const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
   const { t } = useTranslation();
   const { rootPath, fm } = useWorkbench();
@@ -26,33 +75,55 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: MenuItem[] } | null>(null);
 
+  const [editing, setEditing] = useState<{ 
+      parentPath: string, 
+      type: 'file' | 'dir' | 'rename', 
+      oldPath?: string, 
+      oldName?: string 
+  } | null>(null);
+
   const loadRoot = useCallback(async (path: string) => {
     setIsLoading(true);
     try {
       const items = await invoke<FileItemData[]>('read_dir', { path });
       setRootFiles(items);
-    } catch (error) {} finally {
-        setIsLoading(false);
-    }
+    } catch (error) {} finally { setIsLoading(false); }
   }, []);
 
-  const { handleCreate, handleRename, handleDelete } = useFileIO(loadRoot, onFileDelete);
+  const { handleDelete } = useFileIO(loadRoot, onFileDelete);
 
-  // 监听后端文件变动事件，实现自动刷新
+  const onInlineSubmit = async (name: string) => {
+      const currentEditing = editing;
+      setEditing(null);
+      if (!currentEditing || !name || (currentEditing.type === 'rename' && name === currentEditing.oldName)) return;
+      
+      try {
+          if (currentEditing.type === 'rename') {
+              const oldPath = currentEditing.oldPath!;
+              const lastSlashIndex = Math.max(oldPath.lastIndexOf('/'), oldPath.lastIndexOf('\\'));
+              const parentPath = lastSlashIndex > -1 ? oldPath.substring(0, lastSlashIndex) : '.';
+              const separator = lastSlashIndex > -1 ? oldPath[lastSlashIndex] : '/';
+              const newPath = parentPath === '.' ? name : `${parentPath}${separator}${name}`;
+              await invoke('rename_item', { at: oldPath, to: newPath });
+          } else {
+              const path = `${currentEditing.parentPath}/${name}`;
+              if (currentEditing.type === 'file') await invoke('create_file', { path });
+              else await invoke('create_dir', { path });
+          }
+          loadRoot(rootPath);
+      } catch (e) { alert(e); }
+  };
+
   useEffect(() => {
     let unlisten: (() => void) | null = null;
-    
     const setupListener = async () => {
       unlisten = await listen('fs_event', (event: any) => {
         const payload = event.payload;
-        // payload.kind: Create, Modify, Remove
-        // 如果是创建或删除，必须刷新
         if (payload.kind === 'Create' || payload.kind === 'Remove') {
           loadRoot(rootPath);
         }
       });
     };
-
     setupListener();
     return () => { if (unlisten) unlisten(); };
   }, [rootPath, loadRoot]);
@@ -61,26 +132,16 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
     let isMounted = true;
     const load = async () => {
         setIsLoading(true);
-        
         let displayPath = rootPath;
         if (rootPath === '.' || rootPath === './') {
-            try {
-                const cwd = await invoke<string>('get_cwd');
-                displayPath = cwd;
-            } catch (e) {}
+            try { displayPath = await invoke<string>('get_cwd'); } catch (e) {}
         }
-        
         const name = pathUtils.getFileName(displayPath);
         if (isMounted) setProjectName(name);
-
         try {
           const items = await invoke<FileItemData[]>('read_dir', { path: rootPath });
           if (isMounted) setRootFiles(items);
-        } catch (error) {
-          if (isMounted) setRootFiles([]);
-        } finally {
-            if (isMounted) setIsLoading(false);
-        }
+        } catch (error) { if (isMounted) setRootFiles([]); } finally { if (isMounted) setIsLoading(false); }
     };
     load();
     return () => { isMounted = false; };
@@ -96,32 +157,25 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
       const items: MenuItem[] = [];
       const parentPath = isDir ? path : path.substring(0, Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')));
       items.push(
-          { label: t('NewFile'), action: () => handleCreate(parentPath, 'file', rootPath) },
-          { label: t('NewFolder'), action: () => handleCreate(parentPath, 'dir', rootPath) },
+          { label: t('NewFile'), action: () => { setEditing({ parentPath, type: 'file' }); setIsRootOpen(true); } },
+          { label: t('NewFolder'), action: () => { setEditing({ parentPath, type: 'dir' }); setIsRootOpen(true); } },
           { label: '', action: () => {}, separator: true }
       );
       if (path !== rootPath) {
           items.push(
-              { label: t('Rename'), action: () => handleRename(path, name, rootPath) },
+              { label: t('Rename'), action: () => setEditing({ parentPath, type: 'rename', oldPath: path, oldName: name }) },
               { label: t('Delete'), action: () => handleDelete(path, name, rootPath), danger: true }
           );
       }
-
-      // 注入插件注册的菜单
       if (pluginMenuItems.length > 0) {
           items.push({ label: '', action: () => {}, separator: true });
           pluginMenuItems.forEach(mi => {
               items.push({
                   label: mi.label, 
-                  action: () => {
-                      import('../CommandSystem/CommandRegistry').then(m => {
-                          m.commands.executeCommand(mi.commandId, path);
-                      });
-                  } 
+                  action: () => { import('../CommandSystem/CommandRegistry').then(m => { m.commands.executeCommand(mi.commandId, path); }); } 
               });
           });
       }
-
       return items;
   };
 
@@ -131,7 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
       const isDir = item ? item.is_dir : true;
       const name = item ? item.name : projectName;
       setContextMenu({ x: e.clientX, y: e.clientY, items: getMenuItems(targetPath, isDir, name) });
-  }, [rootPath, projectName, t, handleCreate, handleRename, handleDelete]);
+  }, [rootPath, projectName, t, handleDelete]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', userSelect: 'none' }} onContextMenu={(e) => handleContextMenu(e)}>
@@ -141,7 +195,27 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
              <span style={{ marginRight: '5px', opacity: 0.8, display: 'flex', alignItems: 'center' }}>{isRootOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</span>
             <span style={{ marginRight: '5px', opacity: 0.8 }}>{projectName}</span>
         </div>
-        {isRootOpen && (<div>{isLoading && <div style={{ paddingLeft: '20px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--loading-text)' }}>{t('Loading')}...</div>}{rootFiles.map((file) => (<FileTreeItem key={file.path} item={file} onFileSelect={handleFileSelect} onContextMenu={handleContextMenu} activeFilePath={activeFilePath} level={1} />))}</div>)}
+        {isRootOpen && (
+            <div>
+                {isLoading && <div style={{ paddingLeft: '20px', fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--loading-text)' }}>{t('Loading')}...</div>}
+                {editing && editing.parentPath === rootPath && editing.type !== 'rename' && (
+                    <InlineInput initialValue="" type={editing.type} level={1} onSubmit={onInlineSubmit} onCancel={() => setEditing(null)} />
+                )}
+                {rootFiles.map((file) => (
+                    <FileTreeItem 
+                        key={file.path} 
+                        item={file} 
+                        onFileSelect={handleFileSelect} 
+                        onContextMenu={handleContextMenu} 
+                        activeFilePath={activeFilePath} 
+                        level={1}
+                        editing={editing}
+                        onInlineSubmit={onInlineSubmit}
+                        setEditing={setEditing}
+                    />
+                ))}
+            </div>
+        )}
       </div>
       {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onClose={() => setContextMenu(null)} />}
     </div>

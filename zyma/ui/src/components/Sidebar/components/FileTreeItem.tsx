@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { File, Folder, ChevronRight, ChevronDown, FileCode, FileJson, FileType, FileText, Image as ImageIcon } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { useTranslation } from 'react-i18next';
+import { InlineInput } from '../Sidebar';
 
 export interface FileItemData {
   name: string;
@@ -16,15 +17,23 @@ interface FileTreeItemProps {
   onContextMenu: (e: React.MouseEvent, item: FileItemData) => void;
   activeFilePath: string | null;
   level?: number;
+  editing: any;
+  onInlineSubmit: (val: string) => void;
+  setEditing: (val: any) => void;
 }
 
-const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect, onContextMenu, activeFilePath, level = 0 }) => {
+const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ 
+    item, onFileSelect, onContextMenu, activeFilePath, level = 0,
+    editing, onInlineSubmit, setEditing
+}) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<FileItemData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const isActive = activeFilePath === item.path;
+  const isRenaming = editing?.type === 'rename' && editing?.oldPath === item.path;
+  const isAddingUnderMe = editing?.type !== 'rename' && editing?.parentPath === item.path;
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -75,6 +84,10 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
       justifyContent: 'space-between'
   };
 
+  if (isRenaming) {
+      return <InlineInput initialValue={item.name} type="rename" level={level} onSubmit={onInlineSubmit} onCancel={() => setEditing(null)} />;
+  }
+
   return (
     <div className="sidebar-item-container">
       <div style={itemStyle} className="file-item-hover" onClick={handleToggle} onContextMenu={(e) => onContextMenu(e, item)}>
@@ -89,6 +102,12 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
       {item.is_dir && isOpen && (
         <div>
           {isLoading && <div style={{ paddingLeft: `${20 + level * 10}px`, fontSize: 'calc(var(--ui-font-size) - 2px)', color: 'var(--text-muted)' }}>{t('Loading')}...</div>}
+          
+          {/* 在展开的目录下显示新建项输入框 */}
+          {isAddingUnderMe && (
+              <InlineInput initialValue="" type={editing.type} level={level + 1} onSubmit={onInlineSubmit} onCancel={() => setEditing(null)} />
+          )}
+
           {children.map((child) => (
             <FileTreeItem 
                 key={child.path} 
@@ -96,7 +115,10 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
                 onFileSelect={onFileSelect} 
                 onContextMenu={onContextMenu} 
                 activeFilePath={activeFilePath} 
-                level={level + 1} 
+                level={level + 1}
+                editing={editing}
+                onInlineSubmit={onInlineSubmit}
+                setEditing={setEditing}
             />
           ))}
         </div>
@@ -106,13 +128,11 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({ item, onFileSelect
 };
 
 const FileTreeItem = memo(FileTreeItemComponent, (prev, next) => {
-    // 性能核心：判断激活状态是否发生实质性改变
     const wasActive = prev.activeFilePath === prev.item.path;
     const nowActive = next.activeFilePath === next.item.path;
-    
-    // 如果激活状态没变，且其他关键属性（路径、展开子项等）也没变，则不重绘
     return prev.item.path === next.item.path && 
            wasActive === nowActive && 
+           prev.editing === next.editing &&
            prev.onFileSelect === next.onFileSelect;
 });
 

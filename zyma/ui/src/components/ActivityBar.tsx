@@ -74,7 +74,6 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     };
 
     const handleAccountClick = () => {
-        // 智能路径：如果只有一个提供商且未登录，直接触发登录流程
         if (authProviders.length === 1 && !authProviders[0].accountName) {
             authProviders[0].onLogin();
             return;
@@ -137,12 +136,20 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                     </div>
                 ))}
 
-                {/* 新增：渲染原生顶部图标 (如开发平台) */}
+                {/* 渲染原生顶部图标 (如开发环境面板) */}
                 {nativeSidebarItems.filter(item => !item.params || item.params.position !== 'bottom').map(item => (
                     <div 
                         key={item.id} 
                         className="activity-icon" 
-                        onClick={() => invoke(item.command, item.params || {})} 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (item.command === 'zyma:toggle-bottom-panel') {
+                                emit('open-output-panel', item.params?.channel);
+                            } else {
+                                // 关键修复：包裹 params 字段
+                                invoke(item.command, { params: item.params || {} }).catch(console.error);
+                            }
+                        }} 
                         title={item.title}
                         style={{ color: item.color || 'inherit' }}
                     >
@@ -157,16 +164,17 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
                 
                 {renderSlot('ACTIVITY_BAR_BOTTOM')}
 
-                {/* 仅渲染原生底部图标 (如日志) */}
+                {/* 渲染原生底部图标 (如日志) */}
                 {nativeSidebarItems.filter(item => item.params && item.params.position === 'bottom').map(item => (
                     <div 
                         key={item.id} 
                         className="activity-icon" 
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             if (item.command === 'zyma:toggle-bottom-panel') {
                                 emit('open-output-panel', item.params?.channel);
                             } else {
-                                invoke(item.command, item.params || {});
+                                invoke(item.command, { params: item.params || {} }).catch(console.error);
                             }
                         }} 
                         title={item.title}

@@ -135,7 +135,7 @@
   --text-muted: #99aaff; 
   --text-active: #ffffff; 
   --border-color: #1a1a3a; /* 稍微加深边框，匹配纯黑 */
-  --accent-color: #fad000; /* 亮金黄 */
+  --accent-color: #E3B341; /* 改为暮光金，更有质感 */
   --accent-foreground: #000000; /* 金黄背景配黑字 */
   --active-bg: #08286b;
   --active-text: #ffffff;
@@ -145,8 +145,8 @@
   --dropdown-hover: #08286b;
   --input-bg: #000000;
   --input-border: #1d4a87;
-  --cursor-color: #fad000;
-  --bg-active-line: rgba(250, 208, 0, 0.08);
+  --cursor-color: #E3B341;
+  --bg-active-line: rgba(227, 179, 65, 0.08);
 
   /* Status Colors */
   --status-success: #22aa44;
@@ -163,7 +163,7 @@
 
   /* Editor Syntax Highlighting - 电竞霓虹版 Abyss (全彩解耦) */
   --syn-keyword: #ff79c6;   /* 粉色 - 逻辑关键字 */
-  --syn-string: #f1fa8c;    /* 黄色 - 字符串 */
+  --syn-string: #e2e98c;    /* 调低明度的黄色 - 字符串 */
   --syn-comment: #6272a4;   /* 灰蓝 - 注释 */
   --syn-function: #50fa7b;  /* 绿色 - 函数名 */
   --syn-variable: #9cdcfe;  /* 天蓝 - 变量名 */

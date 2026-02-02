@@ -20,6 +20,7 @@ import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelRe
 import { Toaster } from 'react-hot-toast';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { DynamicForm } from '../components/Common/DynamicForm';
 
 interface WorkbenchProps {
     fm: any;
@@ -53,13 +54,26 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
 
         // 协议扩展：通用 Tab 控制指令
         const unlistenOpenTab = listen<any>('zyma:open-tab', (e) => {
-            const { id, title, url } = e.payload;
-            openCustomView({
-                id, title,
-                component: React.createElement('iframe', {
+            const { id, title, url, type, params } = e.payload;
+            
+            let content;
+            if (type === 'native-form') {
+                content = <DynamicForm 
+                    {...params}
+                    onSave={async (values: any) => {
+                        await invoke(params.saveCommand, { values });
+                    }}
+                />;
+            } else {
+                content = React.createElement('iframe', {
                     src: url,
                     style: { width: '100%', height: '100%', border: 'none', backgroundColor: 'white' }
-                })
+                });
+            }
+
+            openCustomView({
+                id, title,
+                component: content
             });
         });
 
