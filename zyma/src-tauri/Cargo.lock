@@ -6311,7 +6311,7 @@ dependencies = [
 
 [[package]]
 name = "zyma"
-version = "0.9.5"
+version = "0.9.6"
 dependencies = [
  "async-trait",
  "bytes",

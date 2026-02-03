@@ -83,7 +83,7 @@ export const ZymaApp: React.FC<ZymaAppProps> = ({ brand, welcomeExtra }) => {
     }, [appInit.ready, chatComponents]);
 
     // 6. 构造全局上下文 (关键：连接 logic 状态)
-    const { settings, setSettings, platform, appVersion, isAdmin, productName: initProductName, handleAppExit, pluginMenus, pluginManager } = appInit;
+    const { settings, setSettings, platform, appVersion, isAdmin, productName: initProductName, handleAppExit } = appInit;
     const { rootPath, setRootPath } = logic;
     const { activeTabId, setActiveTabId } = tabSystem;
 

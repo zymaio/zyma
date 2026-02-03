@@ -67,7 +67,7 @@ export const InlineInput: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
   const { t } = useTranslation();
   const { rootPath, fm } = useWorkbench();
-  const { handleFileSelect, closeFile: onFileDelete, activeFilePath, handleCreate, handleRename, handleDelete } = fm;
+  const { handleFileSelect, activeFilePath, handleCreate, handleRename, handleDelete } = fm;
   const [rootFiles, setRootFiles] = useState<FileItemData[]>([]);
   const [isRootOpen, setIsRootOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -148,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
       if (path !== rootPath) {
           items.push(
               { label: t('Rename'), action: () => setEditing({ parentPath, type: 'rename', oldPath: path, oldName: name }) },
-              { label: t('Delete'), action: () => handleDelete(path, name, rootPath), danger: true }
+              { label: t('Delete'), action: () => handleDelete(path, name, loadRoot, rootPath), danger: true }
           );
       }
       if (pluginMenuItems.length > 0) {

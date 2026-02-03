@@ -1,7 +1,6 @@
 import React from 'react';
 import Editor from '../components/Editor/Editor';
 import Preview from '../components/Preview/Preview';
-import { useTranslation } from 'react-i18next';
 import { slotRegistry } from './SlotRegistry';
 import { WelcomeScreen } from '../components/Common/WelcomeScreen';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -23,7 +22,6 @@ const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
     productName,
     welcomeExtra
 }) => {
-    const { t } = useTranslation();
     const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
     React.useEffect(() => {

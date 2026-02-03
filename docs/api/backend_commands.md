@@ -55,6 +55,10 @@
 ### `zyma.workspace.readFile(path)`
 读取本地文件。
 
+**返回对象：**
+- `content`: (string) 文件内容文本。
+- `encoding`: (string) 检测到的文件编码（如 'UTF-8', 'GBK', 'ANSI'）。
+
 ### `zyma.workspace.writeFile(path, content)`
 
 写入本地文件（在面向入门级用户的模式下，建议通过 `stream.diff` 让用户确认后写入，以确保操作的安全性）。

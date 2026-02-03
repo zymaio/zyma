@@ -19,7 +19,6 @@ import { useWorkbenchCommands } from '../hooks/useWorkbenchCommands';
 import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelResize';
 import { Toaster } from 'react-hot-toast';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import type { WorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import type { FileManagement } from '../hooks/useFileManagement';
 
@@ -113,7 +112,7 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
                         <div className="sidebar-container" style={{ width: `${sidebarWidth}px` }}>
                             <ErrorBoundary>
                                 {(() => {
-                                    if (logic.sidebarTab === 'plugins') return <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => logic.forceUpdate(n => n + 1)} />;
+                                    if (logic.sidebarTab === 'plugins') return <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => logic.forceUpdate((n: number) => n + 1)} />;
                                     const view = views.getView(logic.sidebarTab);
                                     if (!view) return null;
                                     const Content = view.component;

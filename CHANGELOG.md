@@ -2,37 +2,30 @@
 
 本项所有显著更新都将记录在此文件中。
 
-## [Unreleased]
+## [0.9.6] - 2026-02-03
 
-### 🚀 架构大重塑：极致解耦与 IDE 平台化进阶
-本次更新标志着 Zyma 从一个轻量级编辑器正式进化为一个通用的、高性能的插件化 IDE 宿主平台。通过深度模块化和全量事件驱动设计，建立了工业级的开发底座。
+### 🚀 Zyma-ShovX 架构融合与工业级底座演进
+本次更新完成了 Zyma 历史上最深刻的一次架构重构，将项目彻底转变为“底座库 + 宿主 App”的现代大型工程模式，为 ShovX Pro 等闭源/定制化 App 提供了坚实的开源底座。
 
-#### 🧩 深度事件驱动插件 API (v1.1)
-- **复刻 VS Code 事件模型**: 提供了完整的“感知系统”，支持插件实时监听：
-    - `workspace.onDidSaveTextDocument`: 文件保存。
-    - `workspace.onDidOpenTextDocument`: 文件打开/切换。
-    - `workspace.onDidCreateFiles / onDidChangeFiles / onDidDeleteFiles`: 文件系统增删改。
-    - `window.onDidChangeActiveTextEditor`: 标签页焦点切换。
-    - `window.onDidChangeWindowState`: 窗口焦点（离开/回来）。
-    - `window.onDidChangeTextEditorSelection`: 光标移动与选区变化（已节流）。
-- **高性能驱动**: 所有文件系统监听均由 Rust `notify` 引擎承载，JS 插件零负载接收增量通知。
-- **内存安全销毁**: 引入 `Disposable` 模式，确保插件卸载或禁用时，所有异步监听器被物理销毁，拒绝内存泄露。
+#### 🏗️ 架构大重塑：组件库化 (@zyma/ui)
+- **依赖注入 (DI) 模式贯通**: 核心组件 `Workbench` 不再依赖隐式全局状态，全面通过 Props 接收 `fm` (文件管理)、`tabSystem` (标签系统)、`logic` (控制器) 等驱动器。
+- **ZymaApp 核心化**: 剥离业务逻辑，`ZymaApp.tsx` 成为自包含的 IDE 引擎入口。`App.tsx` 简化为纯净的示例/业务注入层，支持注入 `brand` (品牌) 和 `welcomeExtra` (自定义启动内容)。
+- **Hook 职责深度解耦**: 
+    - `useUIState`: 独立管理面板显隐等交互状态。
+    - `useNativeExtensions`: 自动发现并注册后端注入的原生 AI 参与者、账号提供商。
+    - `useWorkbenchLogic`: 专注于工作区管理与环境同步。
+- **Context 性能优化**: 扁平化 Context 依赖，解决因全局设置更新导致的“全量组件重绘”性能瓶颈。
 
-#### 🛠️ 代码治理与模块化深度优化
-- **App.tsx 终极瘦身**: 主入口逻辑大幅下沉，引入 `useKeybindings`, `useWindowManagement`, `useAppInitialization` 等专项钩子，布局代码纯净化。
-- **插件系统分层重构**: 拆分出 `PluginAPIBuilder` 模块，将生命周期管理与 API 注入逻辑彻底隔离，提升代码健壮性。
-- **全系统路径标准化**: 引入全局 `pathUtils` 工具类，统一全平台（Win/Mac/Linux）路径处理逻辑，彻底消灭路径识别 Bug。
-- **构建质量达标**: 清理了所有 TypeScript 警告，生产环境 `npm run build` 实现“零报错”通过。
+#### 📄 文件系统与编码革命
+- **智能编码检测**: 集成 `chardetng` (Mozilla) 与 `encoding_rs`。系统现在能**自动识别**并正确打开 ANSI (GBK)、UTF-8 等不同编码的源码文件，彻底告别乱码。
+- **状态栏编码联动**: 状态栏现在实时显示当前文件的真实编码，对于无法确定的编码显示“未知”。
+- **持久化 UID 系统**: 为每个打开的文件引入持久 `uid`。解决“另存为”导致的编辑器实例重置问题，完美保留 Undo 历史与滚动位置。
 
-#### 📊 智能输出控制台加固
-- **幽灵式显隐交互**: 实现了“初始隐藏，有输出即现，且显示后持久驻留”的高级交互逻辑。
-- **多屏位置记忆**: 每个日志频道（Channel）均具备独立的位置和尺寸记忆，支持跨显示器布局恢复。
-- **弹窗数据一致性**: 修正了独立窗口的 Props 同步机制，确保弹出监控窗口始终与主界面日志同步。
-
-#### 💄 体验与稳定性修复
-- **布局抖动修复**: 解决了设置面板字体调整时的界面剧烈跳动问题。
-- **Windows 路径深度兼容**: 修复了 Windows 长路径前缀导致的插件权限冲突。
-- **联动关闭逻辑**: 实现了主窗口与所有弹出窗口的有序销毁，消除了退出时的 WebView2 报错。
+#### 💄 界面与工程化精进
+- **样式隔离加固**: 将全局 CSS 规则锁定在 `.app-root` 内，防止底座库污染外部宿主应用的样式环境。
+- **稳定性防线**: 为所有插件视图和侧边栏面板全局包裹 `ErrorBoundary`。单个插件崩溃不再导致整个 IDE 白屏。
+- **国际化 (i18n) 逻辑修正**: 修复了初始化时的语言同步竞态 Bug，确保中文环境下“开箱即中”。
+- **冗余代码大扫除**: 合并了 `useFileIO` 与 `useFileManagement`，删除了大量过时的配置与 Hook 文件。
 
 ## [0.9.5] - 2026-01-24
 

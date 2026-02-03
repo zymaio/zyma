@@ -1,26 +1,46 @@
-# Zyma 核心架构参考手册 (v2.2)
+# Zyma 核心架构参考手册 (v2.3)
 
-> **修订日期**：2026年2月1日
-> **适用版本**：Zyma 底座重构版及 Zyma Pro
+> **修订日期**：2026年2月3日
+> **适用版本**：Zyma 工业级底座重构版 (v0.9.6+)
 
-## 1. 架构概览：服务化与解耦
+## 1. 架构理念：组件库化与依赖注入
 
-Zyma 采用 **SOA (Service-Oriented Architecture)** 架构。所有的运行时状态不再集中于单体对象，而是拆分为独立的、可注入的微服务。
+Zyma 已完全进化为 **"底座组件库 (@zyma/ui) + 核心运行时 (Rust)"** 的现代 IDE 架构。
 
-### 核心服务清单 (Rust 侧)
-
-| 服务名称 | 注入类型 | 职责 |
-| :--- | :--- | :--- |
-| **WorkspaceService** | `State<WorkspaceService>` | 封装了 VFS，负责全异步文件操作。 |
-| **EventBus** | `State<EventBus>` | 后端内部事件总线，支持多生产者多消费者。 |
-| **ContextService** | `State<ContextService>` | **(New)** 全局上下文存储，允许跨模块共享业务状态。 |
-| **PluginService** | `State<PluginService>` | 管理插件路径、动态命令及原生扩展（Chat/Auth）。 |
-| **LLMManager** | `State<LLMManager>` | 统一管理大模型流式请求。 |
-| **WatcherState** | `State<WatcherState>` | 高效的文件系统监听服务（基于闭包模式）。 |
+### 核心设计原则
+*   **极致解耦**：UI 布局组件（Workbench）与业务控制器（fm, logic, tabSystem）完全分离。
+*   **依赖注入 (DI)**：所有的核心驱动器均通过 React Props 或 Context 注入，不绑定任何特定业务。
+*   **单向数据流**：状态由专注于特定职责的 Hooks（如 `useUIState`, `useFileManagement`）统一管理。
 
 ---
 
-## 2. 全局上下文系统 (Global Context)
+## 2. 前端驱动架构 (Hook-based DI)
+
+### 核心控制器 (Controllers)
+
+| 控制器名称 | 职责 |
+| :--- | :--- |
+| **FileManagement (fm)** | 负责全量文件操作（读、写、创建、删除、另存为、编码检测）。 |
+| **TabSystem** | 负责管理编辑器标签页的开启、焦点切换与关闭逻辑。 |
+| **WorkbenchLogic** | 处理工作区切换监听、路径计算、UI 面板（设置/搜索）显隐状态。 |
+| **NativeExtensions** | 自动发现并桥接后端注入的原生能力（如 AI 插件、账号系统）。 |
+
+---
+
+## 3. 智能编码检测与持久化
+
+### 自动编码识别
+底座集成了 Mozilla 的 `chardetng` 引擎与 `encoding_rs`：
+*   **功能**：自动识别 ANSI (GBK)、UTF-8 等编码，彻底消除中文乱码。
+*   **UI 联动**：状态栏实时反馈文件的真实编码，并在无法确定时显示“未知”。
+
+### 持久化 UID 系统
+为了解决 React 在文件路径变更（如“另存为”）时销毁组件的问题，引入了持久化 `uid`：
+*   **效果**：文件 ID (路径) 改变时，编辑器实例通过 `uid` 保持稳定，完美保留撤销历史和滚动位置。
+
+---
+
+## 4. 全异步虚拟文件系统 (VFS)
 
 底座提供了一个线程安全的键值对存储，用于解耦业务层（Pro）与底座 UI。
 
