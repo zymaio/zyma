@@ -63,7 +63,7 @@ pub async fn read_dir(ws: State<'_, WorkspaceService>, path: String) -> Result<V
 }
 
 #[tauri::command]
-pub async fn read_file(ws: State<'_, WorkspaceService>, path: String) -> Result<String, String> {
+pub async fn read_file(ws: State<'_, WorkspaceService>, path: String) -> Result<crate::models::FileReadResponse, String> {
     ws.fs.read_file(&path).await
 }
 

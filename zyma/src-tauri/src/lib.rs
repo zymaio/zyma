@@ -135,6 +135,12 @@ impl ZymaBuilder {
         let custom_setup = self.setup_hook;
 
         self.builder
+            .plugin(tauri_plugin_dialog::init())
+            .plugin(tauri_plugin_shell::init())
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_log::Builder::new().build())
+            .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+            .plugin(tauri_plugin_cli::init())
             .setup(move |app| {
                 // 1. 初始化并注册 WorkspaceService (增加恢复逻辑)
                 let initial_path = if let Ok(settings) = commands::config::load_settings() {

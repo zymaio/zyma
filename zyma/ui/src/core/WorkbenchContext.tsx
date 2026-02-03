@@ -1,5 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import type { FileManagement } from '../hooks/useFileManagement';
 
 export interface WorkbenchContextType {
     settings: AppSettings;
@@ -12,7 +13,8 @@ export interface WorkbenchContextType {
     setRootPath: (path: string) => void;
     activeTabId: string | null;
     setActiveTabId: (id: string | null) => void;
-    fm: any;
+    fm: FileManagement;
+    handleAppExit: (saveAll: boolean) => Promise<void>;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined);

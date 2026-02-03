@@ -22,8 +22,9 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
     React.useEffect(() => {
         const unsubCursor = statusBar.subscribeCursor((pos) => setCursor(pos));
+        const unsubItems = statusBar.subscribe(() => forceUpdate(n => n + 1));
         const unsubSlots = slotRegistry.subscribe(() => forceUpdate(n => n + 1));
-        return () => { unsubCursor(); unsubSlots(); };
+        return () => { unsubCursor(); unsubItems(); unsubSlots(); };
     }, []);
 
     const renderSlot = (location: any) => {
@@ -54,7 +55,9 @@ const StatusBar: React.FC<StatusBarProps> = ({
                     {`${t('Ln')} ${cursor.line}, ${t('Col')} ${cursor.col}`}
                 </div>
                 <div style={{ color: 'var(--text-secondary)' }}>{t('Spaces')}: 4</div>
-                <div style={{ color: 'var(--text-secondary)' }}>{t('UTF8')}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>
+                    {activeFile?.encoding && activeFile.encoding !== 'Unknown' ? activeFile.encoding : t('Unknown')}
+                </div>
                 <div style={{ fontWeight: '500' }}>{getLanguageMode()}</div>
                 <div style={{ minWidth: '60px', textAlign: 'right' }}>
                     {activeFile && activeFile.content !== activeFile.originalContent ? '● ' + t('Unsaved') : ''}

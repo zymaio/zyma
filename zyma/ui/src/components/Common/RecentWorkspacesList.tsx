@@ -34,16 +34,19 @@ export const RecentWorkspacesList: React.FC = () => {
                         return (
                             <div 
                                 key={path}
-                                onClick={() => invoke('fs_set_cwd', { path })}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    invoke('fs_set_cwd', { path });
+                                }}
                                 className="welcome-item file-item-hover"
                             >
-                                <DynamicIcon icon="Folder" size={16} style={{ marginRight: '12px', color: 'var(--text-muted)' }} />
-                                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline' }}>
-                                    <span style={{ fontSize: '1.1em', fontWeight: 'bold', whiteSpace: 'nowrap', flexShrink: 0 }}>{name}</span>
+                                <DynamicIcon icon="Folder" size={16} style={{ marginRight: '12px', color: 'var(--text-muted)', flexShrink: 0 }} />
+                                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 'bold', whiteSpace: 'nowrap', marginRight: '12px' }}>{name}</span>
                                     <span style={{ 
-                                        marginLeft: '12px', fontSize: '12px', color: 'var(--text-primary)', 
+                                        fontSize: '11px', color: 'var(--text-muted)', 
                                         fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', 
-                                        textOverflow: 'ellipsis', opacity: 0.6, direction: 'rtl', textAlign: 'left' 
+                                        textOverflow: 'ellipsis', direction: 'rtl', textAlign: 'left', opacity: 0.7
                                     }}>
                                         {path}
                                     </span>
@@ -52,12 +55,12 @@ export const RecentWorkspacesList: React.FC = () => {
                                     className="tab-close-btn"
                                     onClick={(e) => handleRemoveRecent(e, path)}
                                     style={{ 
-                                        width: '24px', height: '24px', borderRadius: '6px', 
+                                        width: '20px', height: '20px', borderRadius: '4px', 
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        marginLeft: '8px', opacity: 0.5
+                                        marginLeft: '8px', opacity: 0.4
                                     }}
                                 >
-                                    <DynamicIcon icon="X" size={14} />
+                                    <DynamicIcon icon="X" size={12} />
                                 </div>
                             </div>
                         );

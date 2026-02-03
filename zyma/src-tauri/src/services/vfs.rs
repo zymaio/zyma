@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf, Component};
 use std::sync::Mutex;
-use crate::models::FileItem;
+use crate::models::{FileItem, FileReadResponse};
 use tokio::fs;
 use async_trait::async_trait;
 
@@ -8,7 +8,7 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait FileSystem: Send + Sync {
     async fn read_dir(&self, path: &str) -> Result<Vec<FileItem>, String>;
-    async fn read_file(&self, path: &str) -> Result<String, String>;
+    async fn read_file(&self, path: &str) -> Result<FileReadResponse, String>;
     async fn write_file(&self, path: &str, content: &str) -> Result<(), String>;
     async fn create_file(&self, path: &str) -> Result<(), String>;
     async fn create_dir(&self, path: &str) -> Result<(), String>;
@@ -88,9 +88,43 @@ impl FileSystem for LocalFileSystem {
         Ok(items)
     }
 
-    async fn read_file(&self, path: &str) -> Result<String, String> {
+    async fn read_file(&self, path: &str) -> Result<FileReadResponse, String> {
         let safe_path = self.validate_path(path)?;
-        fs::read_to_string(safe_path).await.map_err(|e| e.to_string())
+        let bytes = fs::read(safe_path).await.map_err(|e| e.to_string())?;
+        
+        // 自动检测编码
+        let mut detector = chardetng::EncodingDetector::new();
+        detector.feed(&bytes, true);
+        let encoding = detector.guess(None, true);
+        
+        let (res, _, has_errors) = encoding.decode(&bytes);
+        let mut encoding_name = encoding.name().to_string();
+
+        if has_errors && encoding == encoding_rs::UTF_8 {
+            // 如果 UTF-8 解码失败，尝试 GBK (Windows 常见 ANSI)
+            let (res_gbk, _, errors_gbk) = encoding_rs::GBK.decode(&bytes);
+            if !errors_gbk {
+                return Ok(FileReadResponse { 
+                    content: res_gbk.into_owned(), 
+                    encoding: "GBK".to_string() 
+                });
+            } else {
+                encoding_name = "Unknown".to_string();
+            }
+        }
+        
+        // 规范化显示名称
+        encoding_name = match encoding_name.as_str() {
+            "UTF-8" => "UTF-8".to_string(),
+            "windows-1252" | "ISO-8859-1" => "ANSI".to_string(),
+            "Unknown" => "Unknown".to_string(),
+            _ => encoding_name
+        };
+
+        Ok(FileReadResponse { 
+            content: res.into_owned(), 
+            encoding: encoding_name 
+        })
     }
 
     async fn write_file(&self, path: &str, content: &str) -> Result<(), String> {

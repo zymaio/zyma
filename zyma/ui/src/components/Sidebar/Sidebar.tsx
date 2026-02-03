@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ChevronRight, ChevronDown, File, Folder } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -9,7 +9,6 @@ import FileTreeItem from './components/FileTreeItem';
 import type { FileItemData } from './components/FileTreeItem';
 
 import { pathUtils } from '../../utils/pathUtils';
-import { useFileIO } from '../../hooks/useFileIO';
 import { useWorkbench } from '../../core/WorkbenchContext';
 
 interface SidebarProps {
@@ -68,12 +67,15 @@ export const InlineInput: React.FC<{
 const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
   const { t } = useTranslation();
   const { rootPath, fm } = useWorkbench();
-  const { handleFileSelect, closeFile: onFileDelete, activeFilePath } = fm;
+  const { handleFileSelect, closeFile: onFileDelete, activeFilePath, handleCreate, handleRename, handleDelete } = fm;
   const [rootFiles, setRootFiles] = useState<FileItemData[]>([]);
-  const [projectName, setProjectName] = useState<string>("Project");
   const [isRootOpen, setIsRootOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, items: MenuItem[] } | null>(null);
+
+  const projectName = useMemo(() => {
+      return pathUtils.getFileName(rootPath) || "Project";
+  }, [rootPath]);
 
   const [editing, setEditing] = useState<{ 
       parentPath: string, 
@@ -90,28 +92,16 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
     } catch (error) {} finally { setIsLoading(false); }
   }, []);
 
-  const { handleDelete } = useFileIO(loadRoot, onFileDelete);
-
   const onInlineSubmit = async (name: string) => {
       const currentEditing = editing;
       setEditing(null);
       if (!currentEditing || !name || (currentEditing.type === 'rename' && name === currentEditing.oldName)) return;
       
-      try {
-          if (currentEditing.type === 'rename') {
-              const oldPath = currentEditing.oldPath!;
-              const lastSlashIndex = Math.max(oldPath.lastIndexOf('/'), oldPath.lastIndexOf('\\'));
-              const parentPath = lastSlashIndex > -1 ? oldPath.substring(0, lastSlashIndex) : '.';
-              const separator = lastSlashIndex > -1 ? oldPath[lastSlashIndex] : '/';
-              const newPath = parentPath === '.' ? name : `${parentPath}${separator}${name}`;
-              await invoke('rename_item', { at: oldPath, to: newPath });
-          } else {
-              const path = `${currentEditing.parentPath}/${name}`;
-              if (currentEditing.type === 'file') await invoke('create_file', { path });
-              else await invoke('create_dir', { path });
-          }
-          loadRoot(rootPath);
-      } catch (e) { alert(e); }
+      if (currentEditing.type === 'rename') {
+          await handleRename(currentEditing.oldPath!, currentEditing.oldName!, loadRoot, rootPath, name);
+      } else {
+          await handleCreate(currentEditing.parentPath, currentEditing.type as any, loadRoot, rootPath, name);
+      }
   };
 
   useEffect(() => {
@@ -132,12 +122,6 @@ const Sidebar: React.FC<SidebarProps> = ({ pluginMenuItems = [] }) => {
     let isMounted = true;
     const load = async () => {
         setIsLoading(true);
-        let displayPath = rootPath;
-        if (rootPath === '.' || rootPath === './') {
-            try { displayPath = await invoke<string>('get_cwd'); } catch (e) {}
-        }
-        const name = pathUtils.getFileName(displayPath);
-        if (isMounted) setProjectName(name);
         try {
           const items = await invoke<FileItemData[]>('read_dir', { path: rootPath });
           if (isMounted) setRootFiles(items);

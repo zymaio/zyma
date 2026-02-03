@@ -5,13 +5,14 @@ import Sidebar from '../components/Sidebar/Sidebar';
 import SearchPanel from '../components/SearchPanel/SearchPanel';
 import PluginsPanel from '../components/PluginSystem/PluginsPanel';
 import { setupWorkbench } from '../core/workbenchInit';
+import type { WorkbenchLogic } from './useWorkbenchLogic';
 
 interface UseWorkbenchCommandsProps {
     ready: boolean;
     t: TFunction;
     i18n: any;
     fm: any;
-    logic: any;
+    logic: WorkbenchLogic;
     settings: any;
     setSettings: any;
     pluginMenus: any;
@@ -51,10 +52,12 @@ export function useWorkbenchCommands(props: UseWorkbenchCommandsProps) {
         openCustomView
     };
 
-    // 仅在就绪时注册一次指令
+    // 响应语言变化重新注册指令
     const isRegistered = useRef(false);
+    const lastLanguage = useRef(i18n.language);
     useEffect(() => {
-        if (!ready || isRegistered.current) return;
+        if (!ready) return;
+        if (isRegistered.current && lastLanguage.current === i18n.language) return;
 
         setupWorkbench(t, {
             handleNewFile: () => handlersRef.current.handleNewFile(),
@@ -73,5 +76,6 @@ export function useWorkbenchCommands(props: UseWorkbenchCommandsProps) {
         });
 
         isRegistered.current = true;
-    }, [ready, t]);
+        lastLanguage.current = i18n.language;
+    }, [ready, t, i18n.language]);
 }

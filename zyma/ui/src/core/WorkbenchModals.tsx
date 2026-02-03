@@ -5,9 +5,10 @@ import CommandPalette from '../components/CommandSystem/CommandPalette';
 import ConfirmModal from '../components/ConfirmModal/ConfirmModal';
 import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
+import type { WorkbenchLogic } from '../hooks/useWorkbenchLogic';
 
 interface WorkbenchModalsProps {
-    logic: any;
+    logic: WorkbenchLogic;
     settings: any;
     setSettings: (s: any) => void;
     platform: string;

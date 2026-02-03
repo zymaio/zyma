@@ -1,85 +1,45 @@
-import { useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { invoke } from '@tauri-apps/api/core';
+import { ZymaApp } from './core/ZymaApp';
+import { useMemo } from 'react';
 import './i18n';
-import { useFileManagement } from './hooks/useFileManagement';
-import { useAppInitialization } from './hooks/useAppInitialization';
-import { useWorkbenchLogic } from './hooks/useWorkbenchLogic';
-import { useKeybindings } from './hooks/useKeybindings';
-import { useTabSystem } from './hooks/useTabSystem';
-import { useSidebarResize } from './hooks/useSidebarResize';
-import ChatPanel from './components/Chat/ChatPanel';
-import Workbench from './core/Workbench';
-import { WorkbenchProvider } from './core/WorkbenchContext';
-import './App.css';
-import './components/ResizeHandle.css';
 
+/**
+ * App.tsx 现在作为 Zyma 框架的使用示例（或独立运行入口）。
+ * 它不再处理复杂的初始化逻辑，而是将自定义业务配置注入到 ZymaApp 组件中。
+ */
 function App() {
-  const { i18n } = useTranslation();
-  const fm = useFileManagement();
-  
-  // 1. 使用拆分后的 Tab 系统 Hook
-  const tabSystem = useTabSystem(fm);
-  const { activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab } = tabSystem;
-  
-  // 2. 使用拆分后的缩放 Hook
-  const { sidebarWidth, startResizing } = useSidebarResize(250);
+  // 定义业务特定的品牌信息
+  const brand = useMemo(() => ({
+    name: 'Zyma',
+    subName: 'Professional Code Editor',
+    logo: (
+        <svg width="100%" height="100%" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="512" height="512" rx="100" fill="#FF4D4F"/>
+            <path d="M190 100H430L250 260H390L150 420L220 260H130L190 100Z" fill="white"/>
+        </svg>
+    )
+  }), []);
 
-  const {
-      ready, settings, setSettings, isAdmin, platform, appVersion, productName,
-      pluginMenus, pluginManager, handleAppExit
-  } = useAppInitialization(fm, i18n, openCustomView);
-
-  const logic = useWorkbenchLogic({ fm, tabSystem, appInit: { ready, setSettings } });
-
-  const chatComponents = useMemo(() => ({ 
-      ChatPanel: (props: any) => <ChatPanel {...props} settings={settings} getContext={async () => {
-          const editor = fm.editorViewRef.current;
-          let selection = null;
-          let fileContent = null;
-          if (editor) {
-              const sel = editor.state.selection.main;
-              if (!sel.empty) selection = editor.state.doc.sliceString(sel.from, sel.to);
-              fileContent = editor.state.doc.toString();
-          }
-          return { filePath: fm.activeFilePath, selection, fileContent };
-      }} />
-  }), [fm.activeFilePath, settings]);
-
-  useEffect(() => {
-      if (ready && pluginManager.current) {
-          pluginManager.current.setComponents({ ChatPanel: chatComponents.ChatPanel });
-      }
-  }, [ready, chatComponents]);
-
-  useKeybindings();
-
-  useEffect(() => {
-    if (!ready) return;
-    document.body.classList.remove('theme-dark', 'theme-light', 'theme-abyss');
-    document.body.classList.add(`theme-${settings.theme}`);
-    document.documentElement.style.setProperty('--ui-font-size', (settings.ui_font_size || 13) + 'px');
-    
-    // 同步到全局上下文，供插件/业务层感知
-    invoke('set_context', { key: 'ui_theme', value: settings.theme }).catch(() => {});
-  }, [ready, settings.theme, settings.ui_font_size]);
-
-  if (!ready) return <div className="loading-screen" style={{ width: '100vw', height: '100vh', backgroundColor: '#1a1b26' }}></div>;
+  // 定义欢迎页的额外内容
+  const welcomeExtra = (
+    <div style={{ 
+        padding: '20px', 
+        backgroundColor: 'var(--active-bg)', 
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)',
+        marginTop: '20px'
+    }}>
+        <h3 style={{ margin: '0 0 10px 0' }}>🚀 快速开始</h3>
+        <p style={{ opacity: 0.7, fontSize: '0.9em' }}>
+            欢迎使用 Zyma 开源底座。你可以通过修改 <code>App.tsx</code> 来定制此界面。
+        </p>
+    </div>
+  );
 
   return (
-    <WorkbenchProvider value={{ 
-        settings, setSettings, platform, appVersion, isAdmin, productName,
-        rootPath: logic.rootPath, setRootPath: logic.setRootPath,
-        activeTabId, setActiveTabId, fm
-    }}>
-        <Workbench 
-            fm={fm}
-            tabSystem={{ activeTabs, activeTabId, activeTab, setActiveTabId, openCustomView, closeTab }}
-            sidebarResize={{ sidebarWidth, startResizing }}
-            appInit={{ ...logic, ready, settings, setSettings, isAdmin, platform, appVersion, productName, pluginMenus, pluginManager, handleAppExit }}
-            chatComponents={chatComponents}
-        />
-    </WorkbenchProvider>
+    <ZymaApp 
+        brand={brand}
+        welcomeExtra={welcomeExtra}
+    />
   );
 }
 

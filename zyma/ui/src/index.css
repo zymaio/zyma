@@ -1,322 +1,173 @@
+/* 基础布局锁定 */
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
   line-height: 1.5;
   --ui-font-size: 13px;
   font-size: var(--ui-font-size);
-  font-synthesis: none;
-  font-weight: 400;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
+html, body, #root {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-editor); /* 强制底层背景不透明 */
+}
+
+.app-root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-editor);
+  color: var(--text-primary);
+}
+
+/* --- 核心主题：深色 (Tokyo Night) --- */
 .theme-dark {
-  /* UI Colors */
   --bg-editor: #1a1b26;
   --bg-sidebar: #16161e;
   --bg-activity: #16161e;
   --bg-status: #1a1b26;
   --bg-tabs: #16161e;
   --bg-active-tab: #1a1b26;
+  --bg-dropdown: #1e1e2e; /* 弹窗背景 */
+  --input-bg: #1a1b26;
+  --input-border: #24283b;
+  
+  --text-primary: #e0e6f8;
   --text-main: #e0e6f8;
-  --text-muted: #9499b8;
-  --text-active: #ffffff;
-  --text-inverse: #ffffff; /* 强对比文字颜色 */
+  --text-secondary: #9499b8;
+  --text-muted: #565f89;
+  --text-active: #7aa2f7;
+  
   --border-color: #24283b;
   --accent-color: #7aa2f7;
+  --accent-foreground: #ffffff;
   --active-bg: #292e42;
-  --active-text: #7aa2f7;
-  --text-primary: var(--text-main);
-  --text-secondary: var(--text-muted);
-  --bg-dropdown: #1e1e2e;
-  --input-border: var(--border-color);
-  --cursor-color: var(--accent-color);
-  --bg-active-line: rgba(255, 255, 255, 0.05);
-
-  /* Status Colors */
-  --status-success: #10b981;
-  --status-error: #ef4444;
-  --status-warning: #f59e0b;
-  --status-info: #3b82f6;
+  --overlay-bg: rgba(0, 0, 0, 0.6);
+  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --status-error: #f7768e;
+  --status-warning: #e0af68;
+  --status-success: #9ccc65;
   --text-on-error: #ffffff;
 
-  /* Component Specific */
-  --tab-active-border: var(--accent-color);
-  --ai-bubble-bg: #10b981;
-  --user-bubble-bg: var(--accent-color);
-  --overlay-bg: rgba(0, 0, 0, 0.5);
-  --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.5);
-  --loading-text: var(--text-muted);
-
-  /* Editor Syntax Highlighting (Tokyo Night inspired) */
-  --syn-keyword: #bb9af7;   /* 紫 */
-  --syn-string: #9ece6a;    /* 绿 */
-  --syn-comment: #565f89;   /* 灰 */
-  --syn-function: #7aa2f7;  /* 蓝 */
-  --syn-variable: #9aa5ce;  /* 淡紫蓝 (非白) */
-  --syn-number: #ff9e64;    /* 橙 */
-  --syn-operator: #89ddff;  /* 青 */
-  --syn-type: #2ac3de;      /* 深青 */
-  --syn-className: #e0af68; /* 黄 */
-  --syn-builtin: #0db9d7;   /* 亮青 */
-  --syn-tag: #f7768e;       /* 红 */
-  --syn-attr: #73daca;      /* 碧绿 */
-  --syn-regex: #b4f9f8;     /* 浅青 */
+  /* 语法高亮 (Tokyo Night) */
+  --syn-keyword: #bb9af7;
+  --syn-operator: #89ddff;
+  --syn-string: #9ece6a;
+  --syn-comment: #565f89;
+  --syn-variable: #e0af68;
+  --syn-number: #ff9e64;
+  --syn-type: #2ac3de;
+  --syn-className: #7aa2f7;
+  --syn-builtin: #7dcfff;
+  --syn-tag: #f7768e;
+  --syn-attr: #bb9af7;
+  --syn-regex: #b4f9f8;
   --syn-md-heading: #7aa2f7;
   --syn-md-bold: #ff9e64;
-  --syn-md-link: #7ad9ff;
+  --syn-md-link: #73daca;
+  --bg-active-line: rgba(41, 46, 66, 0.35);
 }
 
+/* --- 核心主题：深渊 (Abyss Gold) --- */
+.theme-abyss {
+  --bg-editor: #000000;
+  --bg-sidebar: #060621;
+  --bg-activity: #051336;
+  --bg-status: #10192c;
+  --bg-tabs: #1c1c2a;
+  --bg-active-tab: #000000;
+  --bg-dropdown: #051336; /* 弹窗背景 */
+  --input-bg: #000000;
+  --input-border: #1d4a87;
+  
+  --text-primary: #ffffff;
+  --text-main: #ffffff;
+  --text-secondary: #ccddff;
+  --text-muted: #6272a4;
+  --text-active: #ffffff;
+  
+  --border-color: #1a1a3a;
+  --accent-color: #E3B341;
+  --accent-foreground: #000000;
+  --active-bg: #08286b;
+  --overlay-bg: rgba(0, 12, 24, 0.85);
+  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.8);
+  --status-error: #ff5555;
+  --status-warning: #ffb86c;
+  --status-success: #50fa7b;
+  --text-on-error: #ffffff;
+
+  /* 语法高亮 (Abyss Gold) */
+  --syn-keyword: #E3B341;
+  --syn-operator: #ffffff;
+  --syn-string: #90ee90;
+  --syn-comment: #6272a4;
+  --syn-variable: #ccddff;
+  --syn-number: #bd93f9;
+  --syn-type: #8be9fd;
+  --syn-className: #50fa7b;
+  --syn-builtin: #ffb86c;
+  --syn-tag: #ff79c6;
+  --syn-attr: #E3B341;
+  --syn-regex: #f1fa8c;
+  --syn-md-heading: #E3B341;
+  --syn-md-bold: #ffb86c;
+  --syn-md-link: #8be9fd;
+  --bg-active-line: rgba(8, 40, 107, 0.3);
+}
+
+/* --- 核心主题：亮色 --- */
 .theme-light {
-  /* UI Colors */
   --bg-editor: #ffffff;
   --bg-sidebar: #f6f8fa;
   --bg-activity: #f6f8fa;
   --bg-status: #f6f8fa;
   --bg-tabs: #f6f8fa;
   --bg-active-tab: #ffffff;
+  --bg-dropdown: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #d0d7de;
+  
+  --text-primary: #24292f;
   --text-main: #24292f;
-  --text-muted: #57606a;
+  --text-secondary: #57606a;
+  --text-muted: #6e7781;
   --text-active: #0969da;
+  
   --border-color: #d0d7de;
   --accent-color: #0969da;
+  --accent-foreground: #ffffff;
   --active-bg: #eaeff4;
-  --active-text: #0969da;
-  --text-primary: var(--text-main);
-  --text-secondary: var(--text-muted);
-  --bg-dropdown: #ffffff;
-  --dropdown-hover: var(--active-bg);
-  --input-bg: var(--bg-editor);
-  --input-border: var(--border-color);
-  --cursor-color: var(--accent-color);
-  --bg-active-line: rgba(0, 0, 0, 0.03);
-
-  /* Status Colors */
-  --status-success: #1a7f37;
+  --overlay-bg: rgba(255, 255, 255, 0.5);
+  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.1);
   --status-error: #cf222e;
   --status-warning: #9a6700;
-  --status-info: #0969da;
+  --status-success: #1a7f37;
+  --text-on-error: #ffffff;
 
-  /* Component Specific */
-  --tab-active-border: var(--accent-color);
-  --ai-bubble-bg: #dafbe1;
-  --user-bubble-bg: #ddf4ff;
-  --overlay-bg: rgba(255, 255, 255, 0.5);
-  --shadow-main: 0 4px 20px rgba(0, 0, 0, 0.1);
-
-  /* Editor Syntax Highlighting (GitHub Light inspired) */
-  --syn-keyword: #cf222e;   /* 红 */
-  --syn-string: #0a3069;    /* 深蓝 */
-  --syn-comment: #6e7781;   /* 灰 */
-  --syn-function: #8250df;  /* 紫 */
-  --syn-variable: #6f42c1;  /* 深紫 (非黑) */
-  --syn-number: #0550ae;    /* 蓝 */
-  --syn-operator: #24292f;  /* 黑 */
-  --syn-type: #953800;      /* 棕 */
-  --syn-className: #116329; /* 绿 */
-  --syn-builtin: #e36209;   /* 橙 */
-  --syn-tag: #22863a;       /* 亮绿 */
-  --syn-attr: #6f42c1;      /* 紫 */
-  --syn-regex: #cf222e;
+  /* 语法高亮 (Light) */
+  --syn-keyword: #cf222e;
+  --syn-operator: #0550ae;
+  --syn-string: #0a3069;
+  --syn-comment: #6e7781;
+  --syn-variable: #953800;
+  --syn-number: #0550ae;
+  --syn-type: #116329;
+  --syn-className: #8250df;
+  --syn-builtin: #0550ae;
+  --syn-tag: #116329;
+  --syn-attr: #cf222e;
+  --syn-regex: #0a3069;
   --syn-md-heading: #0550ae;
-  --syn-md-bold: #24292f;
+  --syn-md-bold: #953800;
   --syn-md-link: #0969da;
+  --bg-active-line: rgba(234, 239, 244, 0.5);
 }
 
-.theme-abyss {
-  /* UI Colors - 纯黑 OLED 增强版 */
-  --bg-editor: #000000;    /* 纯黑编辑区 */
-  --bg-sidebar: #060621;
-  --bg-activity: #051336;
-  --bg-status: #10192c;
-  --bg-tabs: #1c1c2a;
-  --bg-active-tab: #000000;
-  --text-main: #ffffff; 
-  --text-muted: #99aaff; 
-  --text-active: #ffffff; 
-  --border-color: #1a1a3a; /* 稍微加深边框，匹配纯黑 */
-  --accent-color: #E3B341; /* 改为暮光金，更有质感 */
-  --accent-foreground: #000000; /* 金黄背景配黑字 */
-  --active-bg: #08286b;
-  --active-text: #ffffff;
-  --text-primary: #ffffff; 
-  --text-secondary: #ccddff;
-  --bg-dropdown: #051336;
-  --dropdown-hover: #08286b;
-  --input-bg: #000000;
-  --input-border: #1d4a87;
-  --cursor-color: #E3B341;
-  --bg-active-line: rgba(227, 179, 65, 0.08);
-
-  /* Status Colors */
-  --status-success: #22aa44;
-  --status-error: #a22d44;
-  --status-warning: #fd971f;
-  --status-info: #6688cc;
-
-  /* Component Specific */
-  --tab-active-border: #80a2c2;
-  --ai-bubble-bg: #051336;
-  --user-bubble-bg: #08286b;
-  --overlay-bg: rgba(0, 12, 24, 0.85);
-  --shadow-main: 0 8px 32px rgba(0, 0, 0, 0.6);
-
-  /* Editor Syntax Highlighting - 电竞霓虹版 Abyss (全彩解耦) */
-  --syn-keyword: #ff79c6;   /* 粉色 - 逻辑关键字 */
-  --syn-string: #e2e98c;    /* 调低明度的黄色 - 字符串 */
-  --syn-comment: #6272a4;   /* 灰蓝 - 注释 */
-  --syn-function: #50fa7b;  /* 绿色 - 函数名 */
-  --syn-variable: #9cdcfe;  /* 天蓝 - 变量名 */
-  --syn-number: #bd93f9;    /* 浅紫 - 数字 */
-  --syn-operator: #ff9d00;  /* 琥珀 - 运算符 */
-  --syn-type: #8be9fd;      /* 青色 - 基础类型 */
-  --syn-className: #ff5555; /* 珊瑚红 - 类名 */
-  --syn-builtin: #00e8ff;   /* 电感青 - 内置对象 */
-  --syn-tag: #7aa2f7;       /* 浅蓝 - HTML 标签 */
-  --syn-attr: #adff00;      /* 柠檬绿 - HTML 属性 */
-  --syn-regex: #f280d0;     /* 玫瑰粉 - 正则表达式 */
-  --syn-md-heading: #ff79c6;
-  --syn-md-bold: #ffb86c;
-  --syn-md-link: #8be9fd;
-}
-
-body {
-  margin: 0;
-  overflow: hidden;
-  height: 100vh;
-  width: 100vw;
-  user-select: none;
-  font-size: var(--ui-font-size);
-  color: var(--text-main);
-  background-color: var(--bg-editor);
-}
-
-#root { height: 100%; width: 100%; }
-
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  border-radius: 5px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-  border: 2px solid transparent;
-  background-clip: padding-box;
-}
-
-.breadcrumb-item:hover { color: var(--text-primary); text-decoration: underline; }
-.breadcrumb-item { transition: color 0.2s; }
-
-/* 全局标准按钮样式 - 供插件使用 */
-.btn-primary {
-    background-color: var(--accent-color) !important;
-    color: var(--accent-foreground) !important;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: opacity 0.2s;
-}
-
-.btn-primary:hover {
-    opacity: 0.9;
-}
-
-.btn-primary:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-secondary {
-    background-color: var(--active-bg) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-secondary:hover {
-    background-color: var(--border-color) !important;
-}
-
-/* 批量应用全局缩放变量 */
-.menu-item, .dropdown-item, .breadcrumb-item, .command-palette-item, .context-menu-item, .status-bar, .activity-bar, .sidebar-item-container, .tab-item, .btn-primary, .btn-secondary {
-    font-size: var(--ui-font-size) !important;
-}
-
-/* 聊天消息 Markdown 样式适配 */
-.message-content {
-    color: var(--text-primary);
-    word-wrap: break-word;
-}
-
-.message-content p {
-    margin-bottom: 0.8em;
-    line-height: 1.6;
-}
-.message-content p:last-child {
-    margin-bottom: 0;
-}
-
-.message-content a {
-    color: var(--accent-color);
-    text-decoration: none;
-}
-.message-content a:hover {
-    text-decoration: underline;
-}
-
-.message-content code {
-    font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-    background-color: rgba(127, 127, 127, 0.15);
-    padding: 2px 4px;
-    border-radius: 4px;
-    font-size: 0.9em;
-}
-
-.message-content pre {
-    background-color: var(--bg-editor);
-    border: 1px solid var(--border-color);
-    padding: 10px;
-    border-radius: 6px;
-    overflow-x: auto;
-    margin: 8px 0;
-}
-
-.message-content pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: 0.9em;
-    color: var(--text-primary);
-}
-
-.message-content ul, .message-content ol {
-    padding-left: 20px;
-    margin-bottom: 0.8em;
-}
-
-.message-content h1, .message-content h2, .message-content h3, .message-content h4 {
-    font-weight: 600;
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    line-height: 1.3;
-}
-
-.message-content h1 { font-size: 1.4em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.3em; }
-.message-content h2 { font-size: 1.2em; }
-.message-content h3 { font-size: 1.1em; }
-
-.message-content blockquote {
-    margin: 0 0 1em 0;
-    padding-left: 1em;
-    border-left: 3px solid var(--accent-color);
-    color: var(--text-muted);
-}
+/* 样式隔离：仅在 IDE 根容器内生效 */
+.app-root * { color: inherit; }
+.app-root select, .app-root input { font-family: inherit; }

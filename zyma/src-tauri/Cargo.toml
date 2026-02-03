@@ -20,7 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.9.5", features = [] }
 tauri-plugin-log = "2"
-tauri-plugin-dialog = "2.5.0"
+tauri-plugin-dialog = "2.6.0"
 walkdir = "2.5.0"
 winreg = "0.55.0"
 winapi = { version = "0.3.9", features = ["processthreadsapi", "securitybaseapi", "winnt"] }
@@ -38,3 +38,5 @@ reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], defau
 futures = "0.3"
 bytes = "1.0"
 async-trait = "0.1"
+encoding_rs = "0.8"
+chardetng = "0.1"

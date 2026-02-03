@@ -7,14 +7,14 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 import { useSessionManagement } from './useSessionManagement';
+import { useUIState } from './useUIState';
+import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
 const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
     'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
     'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
     'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
 };
-
-import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
 interface WorkbenchLogicProps {
     fm: any;
@@ -26,118 +26,91 @@ interface WorkbenchLogicProps {
     };
 }
 
-export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProps) {
+export interface WorkbenchLogic extends ReturnType<typeof useUIState> {
+    rootPath: string;
+    setRootPath: (path: string) => void;
+    sidebarTab: string;
+    setSidebarTab: (id: string) => void;
+    relativePath: string;
+    getLanguageMode: () => string;
+    forceUpdate: (n: any) => void;
+}
+
+export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProps): WorkbenchLogic {
     const { t } = useTranslation();
     const ready = appInit?.ready;
 
     const [rootPath, setRootPath] = useState<string>(".");
     const [sidebarTab, setSidebarTab] = useState<string>('explorer');
+    const uiState = useUIState();
+    const [, forceUpdate] = useState(0);
 
-    // 启动时同步后端 CWD
+    // 1. 核心：监听工作区切换事件 (使用 Ref 确保清理彻底)
+    useEffect(() => {
+        let unlistenFn: (() => void) | null = null;
+        let isMounted = true;
+        
+        const setup = async () => {
+            const un = await listen<string>('workspace_changed', async (event) => {
+                if (!isMounted) return;
+                const newPath = event.payload;
+                console.log("[Logic] Workspace changed to:", newPath);
+                
+                setRootPath(newPath);
+                if (fm.setOpenFiles) fm.setOpenFiles([]);
+                if (fm.setActiveFilePath) fm.setActiveFilePath(null);
+                if (tabSystem.setActiveTabId) tabSystem.setActiveTabId(null);
+
+                if (appInit.setSettings) {
+                    const latest = await invoke<AppSettings>('load_settings');
+                    appInit.setSettings(latest);
+                }
+            });
+
+            if (isMounted) {
+                unlistenFn = un;
+            } else {
+                un();
+            }
+        };
+
+        setup();
+        return () => { 
+            isMounted = false;
+            if (unlistenFn) unlistenFn(); 
+        };
+    }, []); 
+
+    // 2. 启动时同步
     useEffect(() => {
         if (ready) {
             invoke<string>('get_cwd').then(cwd => {
-                if (cwd && cwd !== '.' && cwd !== './') {
-                    console.log("[Workbench] Syncing CWD from backend:", cwd);
-                    setRootPath(cwd);
-                }
-            }).catch(console.error);
+                if (cwd && cwd !== '.' && cwd !== './') setRootPath(cwd);
+            });
         }
     }, [ready]);
 
-    // 使用拆分后的会话管理 Hook
-    useSessionManagement({
-        ready,
-        rootPath,
-        setRootPath,
-        fm,
-        appInit
-    });
-
-    // 监听工作区切换事件 (Event-Driven Architecture)
+    // 3. 开启 Watcher
     useEffect(() => {
-        let unlisten: (() => void) | null = null;
-        
-        const setupListener = async () => {
-            unlisten = await listen<string>('workspace_changed', async (event) => {
-                const newPath = event.payload;
-                console.log("[Workbench] Workspace changed event received:", newPath);
-                
-                // 1. 更新根路径
-                setRootPath(newPath);
-                
-                // 立即保存新路径到配置，防止退出时丢失
-                try {
-                    const currentSettings = await invoke<AppSettings>('load_settings');
-                    const newSettings = {
-                        ...currentSettings,
-                        session: {
-                            ...currentSettings.session,
-                            root_path: newPath
-                        }
-                    };
-                    await invoke('save_settings', { settings: newSettings });
-                    if (appInit.setSettings) appInit.setSettings(newSettings);
-                } catch (e) { console.warn("[Workbench] Failed to auto-save workspace:", e); }
-                
-                // 2. 重置编辑器状态 (类似 VS Code 的 Reload Window 效果)
-                fm.setOpenFiles([]);
-                fm.setActiveFilePath(null);
-                tabSystem.setActiveTabId(null);
+        if (ready && rootPath && rootPath !== '.') {
+            invoke('fs_watch', { path: rootPath }).catch(console.warn);
+        }
+    }, [ready, rootPath]);
 
-                // 3. 重新加载设置以刷新最近打开记录
-                if (appInit.setSettings) {
-                    try {
-                        const newSettings = await invoke<AppSettings>('load_settings');
-                        appInit.setSettings(newSettings);
-                    } catch (e) {
-                        console.warn("[Workbench] Failed to refresh settings:", e);
-                    }
-                }
-            });
-        };
+    // 使用会话管理
+    useSessionManagement({ ready, rootPath, setRootPath, fm, appInit });
 
-        setupListener();
-        return () => { if (unlisten) unlisten(); };
-    }, [fm, tabSystem, appInit]);
-
-    const [showSettings, setShowSettings] = useState(false);
-    const [showCommandPalette, setShowCommandPalette] = useState(false);
-    const [showSearch, setShowSearch] = useState(false);
-    const [aboutState, setAboutState] = useState({ show: false, autoCheck: false });
-    const [showSidebar, setShowSidebar] = useState(true);
-    const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
-    const [, forceUpdate] = useState(0);
-
-    // 订阅 Registry 变化
     useEffect(() => {
         const unsubViews = views.subscribe(() => forceUpdate(n => n + 1));
         const unsubStatus = statusBarRegistry.subscribe(() => forceUpdate(n => n + 1));
         return () => { unsubViews(); unsubStatus(); };
     }, []);
 
-    // 开启后端文件监听
-    useEffect(() => {
-        if (!ready || !rootPath || rootPath === '.') return;
-
-        const startWatching = async () => {
-            try {
-                await invoke('fs_watch', { path: rootPath });
-                console.log("[Watcher] Started watching:", rootPath);
-            } catch (e) {
-                console.warn("[Watcher] Failed to start:", e);
-            }
-        };
-
-        startWatching();
-    }, [ready, rootPath]);
-
     const relativePath = useMemo(() => {
         const activeTab = tabSystem.activeTab;
         if (activeTab?.type !== 'file') return t('NoFile');
         const activeFile = fm.openFiles.find((f: any) => f.id === activeTab.id);
         if (!activeFile) return t('NoFile');
-        
         const path = activeFile.path || activeFile.name;
         const normRoot = pathUtils.toForwardSlashes(rootPath);
         return path.startsWith(normRoot) ? path.replace(normRoot, '').replace(/^[\/]/, '') : path;
@@ -148,21 +121,13 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
         if (activeTab?.type !== 'file') return '';
         const activeFile = fm.openFiles.find((f: any) => f.id === activeTab.id);
         if (!activeFile) return '';
-        
         const ext = activeFile.name.split('.').pop()?.toLowerCase() || '';
         return t(LANGUAGE_EXTENSION_MAP[ext] || 'Plaintext');
     }, [tabSystem.activeTab, fm.openFiles, t]);
 
     return {
-        rootPath, setRootPath,
-        sidebarTab, setSidebarTab,
-        showSettings, setShowSettings,
-        showCommandPalette, setShowCommandPalette,
-        showSearch, setShowSearch,
-        aboutState, setAboutState,
-        showSidebar, setShowSidebar,
-        pendingCloseId, setPendingCloseId,
-        relativePath, getLanguageMode,
-        forceUpdate
+        ...uiState,
+        rootPath, setRootPath, sidebarTab, setSidebarTab,
+        relativePath, getLanguageMode, forceUpdate
     };
 }

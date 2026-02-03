@@ -1,40 +1,60 @@
 import { useState, useCallback, useRef, useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { invoke } from '@tauri-apps/api/core';
-import { save } from '@tauri-apps/plugin-dialog';
+import { save, ask } from '@tauri-apps/plugin-dialog';
 import { pathUtils } from '../utils/pathUtils';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
 export interface FileData {
-    id: string;
+    id: string; // 磁盘路径或临时ID
+    uid: string; // 内部唯一持久ID，用于 React Key
     name: string;
     path: string | null;
     content: string;
     originalContent: string;
     isDirty: boolean;
+    encoding?: string;
 }
 
+const generateUid = () => Math.random().toString(36).substring(2, 11);
 const normalize = (str: string) => (str || '').replace(/\r\n/g, '\n');
 
 // 提取为普通的异步函数，避免 Hook 复杂度
-const fsReadFile = (path: string) => invoke<string>('read_file', { path });
+const fsReadFile = (path: string) => invoke<any>('read_file', { path });
 const fsWriteFile = (path: string, content: string) => invoke<void>('write_file', { path, content });
 
-export function useFileManagement() {
+export interface FileManagement {
+    openFiles: FileData[];
+    setOpenFiles: React.Dispatch<React.SetStateAction<FileData[]>>;
+    activeFilePath: string | null;
+    setActiveFilePath: (path: string | null) => void;
+    editorViewRef: React.MutableRefObject<EditorView | null>;
+    handleFileSelect: (path: string, name: string, line?: number) => Promise<void>;
+    handleEditorChange: (content: string) => void;
+    doSave: (file: FileData | null, force?: boolean) => Promise<boolean>;
+    closeFile: (id: string) => void;
+    handleNewFile: () => void;
+    handleCreate: (targetPath: string, type: 'file' | 'dir', reload?: (path: string) => void, rootPath?: string, name?: string) => Promise<void>;
+    handleRename: (oldPath: string, oldName: string, reload?: (path: string) => void, rootPath?: string, newName?: string) => Promise<void>;
+    handleDelete: (path: string, name: string, reload?: (path: string) => void, rootPath?: string) => Promise<void>;
+}
+
+export function useFileManagement(): FileManagement {
+    const { t } = useTranslation();
     const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
     const editorViewRef = useRef<EditorView | null>(null);
     const pendingFiles = useRef<Set<string>>(new Set());
 
     const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
-        // 1. 始终记录全局跳转意图，作为备份
+        // ... (保持原逻辑不变)
         if (line) {
             (window as any).__pendingLineJump = { path, line, ts: Date.now() };
         }
 
         const existing = openFiles.find(f => f.path === path);
         if (existing) {
-            // 2. 如果文件已激活，直接在现有视图跳转
             if (activeFilePath === existing.id && editorViewRef.current && line) {
                 try {
                     const view = editorViewRef.current;
@@ -43,27 +63,44 @@ export function useFileManagement() {
                         selection: { anchor: lineInfo.from, head: lineInfo.from },
                         scrollIntoView: true
                     });
-                    delete (window as any).__pendingLineJump; // 跳转成功，清除标记
-                } catch (e) {
-                    console.warn("Manual jump failed", e);
-                }
+                    delete (window as any).__pendingLineJump;
+                } catch (e) { console.warn("Manual jump failed", e); }
             }
-            
             setActiveFilePath(existing.id);
             return;
         }
 
-        // 避免重复读取正在处理中的文件（竞态保护）
         if (pendingFiles.current.has(path)) return;
         pendingFiles.current.add(path);
 
-        try {
-            const raw = await fsReadFile(path);
-            const content = normalize(raw);
-            const newFile: FileData = { id: path, name, path, content, originalContent: content, isDirty: false };
-            
+                try {
+
+                    const res = await fsReadFile(path);
+
+                    const content = normalize(res.content);
+
+                    const newFile: FileData = { 
+
+                        id: path, 
+
+                        uid: generateUid(),
+
+                        name, 
+
+                        path, 
+
+                        content, 
+
+                        originalContent: content, 
+
+                        isDirty: false,
+
+                        encoding: res.encoding 
+
+                    };
+
+        
             setOpenFiles(prev => {
-                // 在更新函数内再次检查，确保万无一失
                 if (prev.some(f => f.path === path)) return prev;
                 return [...prev, newFile];
             });
@@ -74,7 +111,7 @@ export function useFileManagement() {
         } finally {
             pendingFiles.current.delete(path);
         }
-    }, [openFiles]);
+    }, [openFiles, activeFilePath]);
 
     const doSave = useCallback(async (file: FileData | null, force: boolean = false) => {
         const target = file || openFiles.find(f => f.id === activeFilePath);
@@ -86,36 +123,21 @@ export function useFileManagement() {
         if (!force && normalizedCurrent === target.originalContent) return true;
 
         let targetPath = target.path;
-
         try {
-            // 如果是“另存为” (force 为 true) 或者新文件没有路径，则弹出对话框
             if (force || !targetPath) {
                 const selected = await save({ defaultPath: targetPath || target.name });
                 if (!selected) return false;
                 targetPath = selected;
             }
-
             if (!targetPath) return false;
-
-            // 幂等校验：如果目标路径已存在，且内容完全一致，则跳过写入
-            if (targetPath === target.path && normalizedCurrent === target.originalContent) {
-                return true; 
-            }
+            if (targetPath === target.path && normalizedCurrent === target.originalContent) return true; 
 
             await fsWriteFile(targetPath, currentText);
             const fileName = pathUtils.getFileName(targetPath);
-            
-            const finalPath = targetPath; // 闭包安全
+            const finalPath = targetPath;
             setOpenFiles(prev => prev.map(f => f.id === target.id ? { 
-                ...f, 
-                id: finalPath,
-                path: finalPath,
-                name: fileName,
-                content: currentText,
-                originalContent: normalizedCurrent, 
-                isDirty: false 
+                ...f, id: finalPath, path: finalPath, name: fileName, content: currentText, originalContent: normalizedCurrent, isDirty: false 
             } : f));
-            
             if (activeFilePath === target.id) setActiveFilePath(finalPath);
             return true;
         } catch (e) { 
@@ -125,17 +147,50 @@ export function useFileManagement() {
         }
     }, [activeFilePath, openFiles]);
 
+    // --- 新增：磁盘写操作 (合并自 useFileIO) ---
+    const handleCreate = useCallback(async (targetPath: string, type: 'file' | 'dir', reload?: (path: string) => void, rootPath?: string, name?: string) => {
+        const finalName = name || prompt(t('EnterName', { type }));
+        if (!finalName) return;
+        const path = `${targetPath}/${finalName}`;
+        try {
+            if (type === 'file') await invoke('create_file', { path });
+            else await invoke('create_dir', { path });
+            if (reload && rootPath) reload(rootPath);
+        } catch (e) { toast.error(String(e)); }
+    }, [t]);
+
+    const handleRename = useCallback(async (oldPath: string, oldName: string, reload?: (path: string) => void, rootPath?: string, newName?: string) => {
+        const finalNewName = newName || prompt(t('EnterName', { type: 'New' }), oldName);
+        if (!finalNewName || finalNewName === oldName) return;
+        const lastSlashIndex = Math.max(oldPath.lastIndexOf('/'), oldPath.lastIndexOf('\\'));
+        const parentPath = lastSlashIndex > -1 ? oldPath.substring(0, lastSlashIndex) : '.';
+        const separator = lastSlashIndex > -1 ? oldPath[lastSlashIndex] : '/';
+        const finalPath = parentPath === '.' ? finalNewName : `${parentPath}${separator}${finalNewName}`;
+        try {
+            await invoke('rename_item', { at: oldPath, to: finalPath });
+            if (reload && rootPath) reload(rootPath);
+        } catch (e) { toast.error(String(e)); }
+    }, [t]);
+
+    const handleDelete = useCallback(async (path: string, name: string, reload?: (path: string) => void, rootPath?: string) => {
+        const confirmed = await ask(t('ConfirmDelete', { name }), { title: t('File'), kind: 'warning' });
+        if (confirmed) {
+            try {
+                await invoke('remove_item', { path });
+                setOpenFiles(prev => prev.filter(f => f.id !== path));
+                if (reload && rootPath) reload(rootPath);
+            } catch (e) { toast.error(String(e)); }
+        }
+    }, [t]);
+
     const handleEditorChange = useCallback((content: string) => {
         setOpenFiles(prev => {
             const idx = prev.findIndex(f => f.id === activeFilePath);
             if (idx === -1) return prev;
-            
             const file = prev[idx];
             const normalizedNew = normalize(content);
             const isDirty = normalizedNew !== file.originalContent;
-            
             if (file.content === content && file.isDirty === isDirty) return prev;
-            
             const next = [...prev];
             next[idx] = { ...file, content, isDirty }; 
             return next;
@@ -149,13 +204,14 @@ export function useFileManagement() {
     const handleNewFile = useCallback(() => {
         const tempId = `untitled-${Date.now()}`;
         const name = `Untitled-${openFiles.filter(f => !f.path).length + 1}`;
-        const newFile: FileData = { id: tempId, name, path: null, content: '', originalContent: '', isDirty: false };
+        const newFile: FileData = { id: tempId, uid: generateUid(), name, path: null, content: '', originalContent: '', isDirty: false };
         setOpenFiles(prev => [...prev, newFile]);
         setActiveFilePath(tempId);
     }, [openFiles]);
 
     return useMemo(() => ({
         openFiles, setOpenFiles, activeFilePath, setActiveFilePath, editorViewRef,
-        handleFileSelect, handleEditorChange, doSave, closeFile, handleNewFile
-    }), [openFiles, activeFilePath, handleFileSelect, handleEditorChange, doSave, closeFile, handleNewFile]);
+        handleFileSelect, handleEditorChange, doSave, closeFile, handleNewFile,
+        handleCreate, handleRename, handleDelete
+    }), [openFiles, activeFilePath, handleFileSelect, handleEditorChange, doSave, closeFile, handleNewFile, handleCreate, handleRename, handleDelete]);
 }

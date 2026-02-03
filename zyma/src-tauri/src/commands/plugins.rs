@@ -2,8 +2,8 @@ use std::fs;
 use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
 use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent, NativeFileMenuItem};
-use std::sync::{Mutex, RwLock};
-use tauri::{Emitter, Manager};
+use std::sync::RwLock;
+use tauri::Emitter;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct NativeCommand {

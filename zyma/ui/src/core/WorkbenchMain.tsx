@@ -4,23 +4,24 @@ import Preview from '../components/Preview/Preview';
 import { useTranslation } from 'react-i18next';
 import { slotRegistry } from './SlotRegistry';
 import { WelcomeScreen } from '../components/Common/WelcomeScreen';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 interface WorkbenchMainProps {
     activeTab: any;
     activeFile: any;
-    isMarkdown: boolean;
     settings: any;
     fm: any;
     productName: string;
+    welcomeExtra?: React.ReactNode;
 }
 
 const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
     activeTab,
     activeFile,
-    isMarkdown,
     settings,
     fm,
-    productName
+    productName,
+    welcomeExtra
 }) => {
     const { t } = useTranslation();
     const [, forceUpdate] = React.useReducer(x => x + 1, 0);
@@ -30,12 +31,12 @@ const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
         return () => unsub();
     }, []);
 
-    const emptyStateComponents = slotRegistry.getContributedComponents('EDITOR_EMPTY_STATE');
+    const isMarkdown = activeFile?.name.toLowerCase().endsWith('.md');
 
     return (
         <div className="main-content-area" style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
             {activeTab?.type === 'file' && activeFile ? (
-                <div className="editor-instance-wrapper" style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={activeFile.id}>
+                <div className="editor-instance-wrapper" style={{ flex: 1, height: '100%', overflow: 'hidden' }} key={activeFile.uid}>
                     <Editor 
                         content={activeFile.content} 
                         fileName={activeFile.name} 
@@ -53,9 +54,13 @@ const WorkbenchMain: React.FC<WorkbenchMainProps> = ({
                     height: '100%', 
                     backgroundColor: 'var(--bg-editor)',
                     color: 'var(--text-primary)'
-                }}>{activeTab.component}</div>
+                }}>
+                    <ErrorBoundary>
+                        {activeTab.component}
+                    </ErrorBoundary>
+                </div>
             ) : (
-                <WelcomeScreen productName={productName} />
+                <WelcomeScreen productName={productName} extraContent={welcomeExtra} />
             )}
         </div>
     );

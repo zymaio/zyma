@@ -32,15 +32,17 @@ const ActivityBar: React.FC<ActivityBarProps> = ({
     const [nativeSidebarItems, setNativeSidebarItems] = useState<any[]>([]);
 
     useEffect(() => {
-        const sync = async () => {
-            setActiveViews([...views.getViews()]);
+        const sync = () => {
+            const allViews = views.getViews();
+            setActiveViews([...allViews]);
             setAuthProviders([...authRegistry.getProviders()]);
             setIsAIChatEnabled(commands.getCommands().some(c => c.id === 'ai.chat.open'));
             
-            try {
-                const native = await invoke<any>('get_native_extensions');
-                setNativeSidebarItems(native.sidebar_items || []);
-            } catch(e) {}
+            invoke<any>('get_native_extensions').then(native => {
+                if (native && native.sidebar_items) {
+                    setNativeSidebarItems(native.sidebar_items);
+                }
+            }).catch(() => {});
             
             forceUpdate();
         };

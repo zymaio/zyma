@@ -89,6 +89,12 @@ impl Default for AppSettings {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FileReadResponse {
+    pub content: String,
+    pub encoding: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PluginViewDef {
     pub id: String,
     pub title: String,
