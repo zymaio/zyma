@@ -41,6 +41,28 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 setIsAdmin(adminStatus);
                 setPlatform(plat);
                 setReady(true);
+
+                // 2. 处理启动参数 (初次启动打开文件/目录)
+                try {
+                    const matches = await invoke<any>('get_cli_matches');
+                    if (matches?.args?.path?.value) {
+                        const pathStr = matches.args.path.value;
+                        const stat = await invoke<any>('fs_stat', { path: pathStr });
+                        
+                        if (stat.is_dir) {
+                            await invoke('fs_set_cwd', { path: pathStr });
+                        } else {
+                            // 文件：切换到父目录并打开
+                            const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
+                            if (lastSlash !== -1) {
+                                const parent = pathStr.substring(0, lastSlash);
+                                await invoke('fs_set_cwd', { path: parent });
+                                const name = pathStr.substring(lastSlash + 1);
+                                fm.handleFileSelect(pathStr, name);
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('CLI Init Error:', e); }
             } catch (e) { 
                 console.error('Init System Error:', e); 
                 setReady(true); 

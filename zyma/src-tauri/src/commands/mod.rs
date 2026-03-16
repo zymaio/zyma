@@ -36,6 +36,7 @@ pub fn get_handlers() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool + Send 
         context::get_all_contexts,
         system::manage_context_menu, 
         system::get_cli_args, 
+        system::get_cli_matches,
         system::system_get_env,
         system::system_exec,
         system::emit_global_event,

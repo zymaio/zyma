@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { listen } from '@tauri-apps/api/event';
 
 export type TabItem = {
     id: string; // 对应 FileData.id
@@ -93,6 +94,40 @@ export function useTabSystem(fm: any) {
     }, [activeTabs, activeTabId, fm]);
 
     const activeTab = useMemo(() => activeTabs.find(t => t.id === activeTabId), [activeTabs, activeTabId]);
+
+    // 5. 监听来自后端的全局事件 (New: 支持 CLI/插件远程打开)
+    // 放在这里以确保 fm 和 closeTab 已初始化
+    const fmRef = useRef(fm);
+    const closeTabRef = useRef(closeTab);
+    fmRef.current = fm;
+    closeTabRef.current = closeTab;
+
+    useEffect(() => {
+        let unsubs: any[] = [];
+        
+        const setup = async () => {
+            // 监听打开页签事件
+            const u1 = await listen('zyma:open-tab', (event: any) => {
+                const { id, title, type } = event.payload;
+                if (type === 'file') {
+                    fmRef.current.handleFileSelect(id, title);
+                }
+            });
+            unsubs.push(u1);
+
+            // 监听关闭页签事件
+            const u2 = await listen('zyma:close-tab', (event: any) => {
+                const id = event.payload as string;
+                if (typeof closeTabRef.current === 'function') {
+                    closeTabRef.current(id);
+                }
+            });
+            unsubs.push(u2);
+        };
+
+        setup();
+        return () => unsubs.forEach(u => typeof u === 'function' && u());
+    }, []);
 
     return useMemo(() => ({
         activeTabs,

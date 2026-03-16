@@ -44,8 +44,14 @@ export class KeybindingManager {
         if (e.shiftKey) parts.push('shift');
         if (e.altKey) parts.push('alt');
         
-        // 获取实际按键名，统一转小写
-        const key = e.key.toLowerCase();
+        // 获取实际按键名
+        let key = e.key.toLowerCase();
+        
+        // 特殊处理：如果按下 Shift 且是字母，e.key 可能是大写，e.code 往往是 'KeyS'
+        // 对于快捷键匹配，我们通常希望 ctrl+s 匹配 Ctrl+S 和 Ctrl+Shift+S(如果有定义)
+        if (e.code && e.code.startsWith('Key')) {
+            key = e.code.slice(3).toLowerCase();
+        }
         
         // 过滤掉单独的修饰键本身
         if (!['control', 'shift', 'alt', 'meta'].includes(key)) {
@@ -53,9 +59,12 @@ export class KeybindingManager {
         }
 
         const combo = parts.join('+');
+        console.log('[Shortcut] Pressed:', combo, 'Original key:', e.key);
+        
         const match = this.keybindings.find(kb => kb.key === combo);
 
         if (match) {
+            console.log('[Shortcut] Match found:', match.command);
             e.preventDefault();
             commands.executeCommand(match.command);
             return true;

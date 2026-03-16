@@ -171,3 +171,45 @@ html, body, #root {
 /* 样式隔离：仅在 IDE 根容器内生效 */
 .app-root * { color: inherit; }
 .app-root select, .app-root input { font-family: inherit; }
+
+/* --- 通用按钮样式 --- */
+.app-root .btn-primary, 
+.app-root .btn-secondary {
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: var(--ui-font-size);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  font-weight: 500;
+}
+
+.app-root .btn-primary {
+  background-color: var(--accent-color);
+  color: var(--accent-foreground) !important;
+  border: 1px solid var(--accent-color);
+}
+
+.app-root .btn-primary:hover {
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.app-root .btn-primary:active {
+  opacity: 0.8;
+}
+
+.app-root .btn-secondary {
+  background-color: transparent;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color);
+}
+
+.app-root .btn-secondary:hover {
+  background-color: var(--active-bg);
+  border-color: var(--accent-color);
+}

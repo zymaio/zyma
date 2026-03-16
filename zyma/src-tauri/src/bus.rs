@@ -9,6 +9,7 @@ pub enum ZymaEvent {
     FileCreated(String),
     FileDeleted(String),
     WindowFocused(bool),
+    OpenPath(String), // 新增：请求打开指定路径 (文件或目录)
     // 未来可扩展：Git事件、LSP事件等
 }
 

@@ -32,6 +32,12 @@
       "description": "Zyma Code Editor",
       "args": [
         {
+          "name": "path",
+          "description": "Path to a file or directory to open",
+          "index": 1,
+          "takesValue": true
+        },
+        {
           "name": "plugin-dir",
           "short": "p",
           "description": "Path to additional plugins directory",

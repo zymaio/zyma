@@ -16,6 +16,7 @@ import { undo, redo } from '@codemirror/commands';
 import { useWindowManagement } from '../hooks/useWindowManagement';
 import { useWorkbench } from './WorkbenchContext';
 import { useWorkbenchCommands } from '../hooks/useWorkbenchCommands';
+import { useKeybindings } from '../hooks/useKeybindings';
 import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelResize';
 import { Toaster } from 'react-hot-toast';
 import { invoke } from '@tauri-apps/api/core';
@@ -66,6 +67,8 @@ const Workbench: React.FC<WorkbenchProps> = (props) => {
     };
 
     const { requestExit } = useWindowManagement(logic.rootPath, isExiting, fm.openFiles, handleAppExit, setIsClosingApp);
+
+    useKeybindings();
 
     const activeFile = useMemo(() => activeTab?.type === 'file' ? fm.openFiles.find((f: any) => f.id === activeTab.id) : null, [activeTab, fm.openFiles]);
 

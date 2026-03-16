@@ -115,12 +115,19 @@ export function useFileManagement(): FileManagement {
 
     const doSave = useCallback(async (file: FileData | null, force: boolean = false) => {
         const target = file || openFiles.find(f => f.id === activeFilePath);
+        console.log('[Save] Target found:', !!target, 'Active Path:', activeFilePath);
         if (!target) return false;
 
         const currentText = editorViewRef.current?.state.doc.toString() || target.content;
         const normalizedCurrent = normalize(currentText);
 
-        if (!force && normalizedCurrent === target.originalContent) return true;
+        console.log('[Save] Current length:', normalizedCurrent.length, 'Original length:', target.originalContent.length);
+        console.log('[Save] Is Dirty (internal):', target.isDirty);
+        
+        if (!force && normalizedCurrent === target.originalContent) {
+            console.log('[Save] Content unchanged, skipping save.');
+            return true;
+        }
 
         let targetPath = target.path;
         try {

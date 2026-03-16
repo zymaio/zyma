@@ -18,21 +18,18 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ title, message, onSave, onD
             <button 
                 onClick={onCancel}
                 className="btn-secondary"
-                style={{ padding: '6px 15px' }}
             >
                 {t('Cancel')}
             </button>
             <button 
                 onClick={onDontSave}
                 className="btn-secondary"
-                style={{ padding: '6px 15px' }}
             >
                 {t('DontSave')}
             </button>
             <button 
                 onClick={onSave}
                 className="btn-primary"
-                style={{ padding: '6px 15px' }}
             >
                 {t('Save')}
             </button>

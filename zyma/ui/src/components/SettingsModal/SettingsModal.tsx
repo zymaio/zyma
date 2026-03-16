@@ -58,10 +58,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
     const footer = (
         <button 
             onClick={onClose} 
-            style={{ 
-                padding: '6px 20px', backgroundColor: 'var(--accent-color)', border: 'none', 
-                color: 'var(--accent-foreground)', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' 
-            }}
+            className="btn-primary"
         >
             {t('Close')}
         </button>
