@@ -142,7 +142,6 @@ impl ZymaBuilder {
             .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
                 let bus = app.state::<bus::EventBus>();
                 if args.len() > 1 {
-                    // 通常第一个参数是可执行文件路径，第二个是传进来的 path
                     let path = args[1].clone();
                     bus.publish(bus::ZymaEvent::OpenPath(path));
                 }
@@ -153,11 +152,11 @@ impl ZymaBuilder {
             }))
             .plugin(tauri_plugin_cli::init())
             .setup(move |app| {
-                // 1. 初始化并注册 EventBus (提前注册，以便后续使用)
+                // 1. 初始化并注册 EventBus
                 let bus = bus::EventBus::new();
                 app.manage(bus.clone());
 
-                // 2. 初始化并注册 WorkspaceService (增加恢复逻辑)
+                // 2. 初始化并注册 WorkspaceService
                 let initial_path = if let Ok(settings) = commands::config::load_settings() {
                     settings.session.and_then(|s| s.root_path).and_then(|p| {
                         let path = PathBuf::from(p);
@@ -168,21 +167,12 @@ impl ZymaBuilder {
                 };
 
                 app.manage(commands::fs::WorkspaceService::new(initial_path));
-                // 3. 初始化并注册 WatcherState
-                app.manage(commands::watcher::WatcherState { 
-                    watchers: Mutex::new(HashMap::new()) 
-                });
-                // 4. 初始化并注册 OutputState
-                app.manage(commands::output::OutputState { 
-                    channels: Mutex::new(HashMap::new()) 
-                });
-                // 5. 初始化并注册 LLMManager
+                app.manage(commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) });
+                app.manage(commands::output::OutputState { channels: Mutex::new(HashMap::new()) });
                 app.manage(llm::LLMManager::new());
-
-                // 6. 初始化并注册 ContextService
                 app.manage(services::ContextService::new());
 
-                // 7. 初始化并注册 PluginService (包含侧边栏项、命令、插槽组件)
+                // 3. 初始化并注册 PluginService
                 app.manage(commands::plugins::PluginService {
                     external_plugins: Vec::new(),
                     native_chat_participants: participants,
@@ -193,9 +183,8 @@ impl ZymaBuilder {
                     native_slot_components: slots,
                 });
 
-                setup_zyma(app, bus.clone())?;
+                setup_zyma(app, bus)?;
 
-                // 8. 最后执行业务层注入的自定义 setup 钩子
                 if let Some(hook) = custom_setup {
                     hook(app)?;
                 }
@@ -210,79 +199,90 @@ impl ZymaBuilder {
 pub fn setup_zyma(app: &mut tauri::App<Wry>, bus: bus::EventBus) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
     restore_window_state(handle)?;
-    let h = handle.clone();
     
-    // 捕获 bus 的副本用于闭包
-    let bus_clone = bus.clone();
+    setup_window_events(handle, bus.clone());
+    setup_workspace_watcher(handle, bus.clone());
+    setup_external_open_handler(handle, bus);
 
-    if let Some(main_window) = app.get_webview_window("main") {
+    Ok(())
+}
+
+fn setup_window_events(handle: &AppHandle<Wry>, bus: bus::EventBus) {
+    let h = handle.clone();
+    if let Some(main_window) = handle.get_webview_window("main") {
         main_window.on_window_event(move |event| {
             match event {
                 tauri::WindowEvent::Focused(focused) => { 
                     let _ = h.emit("window-state-changed", *focused); 
-                    bus_clone.publish(bus::ZymaEvent::WindowFocused(*focused));
+                    bus.publish(bus::ZymaEvent::WindowFocused(*focused));
                 }
                 tauri::WindowEvent::CloseRequested { api, .. } => { api.prevent_close(); h.exit(0); }
                 _ => {}
             }
         });
     }
+}
 
-    // 联动：当工作区切换时，自动更新 Watcher
-    let h_bus = handle.clone();
+fn setup_workspace_watcher(handle: &AppHandle<Wry>, bus: bus::EventBus) {
+    let h = handle.clone();
     let mut bus_rx = bus.subscribe();
     tauri::async_runtime::spawn(async move {
         while let Ok(event) = bus_rx.recv().await {
             if let bus::ZymaEvent::WorkspaceChanged(new_path) = event {
-                // 1. 清理所有旧监听
-                let watcher_state = h_bus.state::<commands::watcher::WatcherState>();
+                let watcher_state = h.state::<commands::watcher::WatcherState>();
                 {
                     let mut watchers = watcher_state.watchers.lock().unwrap();
                     watchers.clear(); 
                 }
-                // 2. 开启新监听
-                let _ = commands::watcher::fs_watch(h_bus.clone(), watcher_state, new_path);
+                let _ = commands::watcher::fs_watch(h.clone(), watcher_state, new_path);
             }
         }
     });
+}
 
-    // 联动 2：处理外部打开请求 (CLI 或 Single Instance)
-    let h_open = handle.clone();
-    let mut bus_open_rx = bus.subscribe();
+fn setup_external_open_handler(handle: &AppHandle<Wry>, bus: bus::EventBus) {
+    let h = handle.clone();
+    let mut bus_rx = bus.subscribe();
     tauri::async_runtime::spawn(async move {
-        while let Ok(event) = bus_open_rx.recv().await {
+        while let Ok(event) = bus_rx.recv().await {
             if let bus::ZymaEvent::OpenPath(path_str) = event {
-                let path = PathBuf::from(&path_str);
-                if !path.exists() { continue; }
-
-                let ws = h_open.state::<commands::fs::WorkspaceService>();
-                let event_bus = h_open.state::<bus::EventBus>();
-
-                if path.is_dir() {
-                    let _ = commands::fs::fs_set_cwd(h_open.clone(), ws, event_bus, path_str).await;
-                } else if path.is_file() {
-                    if let Some(parent) = path.parent() {
-                        let parent_str = parent.to_string_lossy().to_string();
-                        // 1. 切换到父目录作为工作区
-                        let _ = commands::fs::fs_set_cwd(h_open.clone(), ws, event_bus, parent_str).await;
-                        // 2. 通知前端打开具体文件 (稍微延迟确保工作区切换完成)
-                        let h_emit = h_open.clone();
-                        let file_path = path_str.clone();
-                        tauri::async_runtime::spawn(async move {
-                            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-                            let _ = h_emit.emit("zyma:open-tab", serde_json::json!({
-                                "id": file_path,
-                                "title": PathBuf::from(&file_path).file_name().unwrap_or_default().to_string_lossy(),
-                                "type": "file"
-                            }));
-                        });
-                    }
-                }
+                handle_remote_open(&h, path_str).await;
             }
         }
     });
+}
 
-    Ok(())
+async fn handle_remote_open(handle: &AppHandle<Wry>, path_str: String) {
+    let mut path = PathBuf::from(&path_str);
+    if !path.exists() { return; }
+
+    // 统一路径格式为正斜杠，避免 Windows/Unix 差异
+    let normalized_path = path_str.replace("\\", "/");
+    let ws = handle.state::<commands::fs::WorkspaceService>();
+    let event_bus = handle.state::<bus::EventBus>();
+
+    if path.is_dir() {
+        let _ = commands::fs::fs_set_cwd(handle.clone(), ws, event_bus, normalized_path).await;
+    } else if path.is_file() {
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy().replace("\\", "/");
+            let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            
+            // 1. 切换到父目录作为工作区
+            let _ = commands::fs::fs_set_cwd(handle.clone(), ws, event_bus, parent_str).await;
+            
+            // 2. 通知前端打开具体文件
+            let h_emit = handle.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                let _ = h_emit.emit("zyma:open-tab", serde_json::json!({
+                    "id": normalized_path,
+                    "title": file_name,
+                    "type": "file"
+                }));
+            });
+        }
+    }
 }
 
 pub fn run() {

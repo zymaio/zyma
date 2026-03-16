@@ -21,6 +21,37 @@ export type CustomViewRequest = {
     options?: CustomViewOptions;
 };
 
+/**
+ * 专门处理来自后端的页签控制事件 (CLI, Single Instance, 插件)
+ */
+function useRemoteTabHandler(fm: any, closeTab: (id: string) => void) {
+    const fmRef = useRef(fm);
+    const closeTabRef = useRef(closeTab);
+    fmRef.current = fm;
+    closeTabRef.current = closeTab;
+
+    useEffect(() => {
+        let unsubs: any[] = [];
+        
+        const setup = async () => {
+            const u1 = await listen('zyma:open-tab', (event: any) => {
+                const { id, title, type } = event.payload;
+                if (type === 'file') fmRef.current.handleFileSelect(id, title);
+            });
+            unsubs.push(u1);
+
+            const u2 = await listen('zyma:close-tab', (event: any) => {
+                const id = event.payload as string;
+                if (typeof closeTabRef.current === 'function') closeTabRef.current(id);
+            });
+            unsubs.push(u2);
+        };
+
+        setup();
+        return () => unsubs.forEach(u => typeof u === 'function' && u());
+    }, []);
+}
+
 export function useTabSystem(fm: any) {
     const [activeTabs, setActiveTabs] = useState<TabItem[]>([]);
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
@@ -95,39 +126,8 @@ export function useTabSystem(fm: any) {
 
     const activeTab = useMemo(() => activeTabs.find(t => t.id === activeTabId), [activeTabs, activeTabId]);
 
-    // 5. 监听来自后端的全局事件 (New: 支持 CLI/插件远程打开)
-    // 放在这里以确保 fm 和 closeTab 已初始化
-    const fmRef = useRef(fm);
-    const closeTabRef = useRef(closeTab);
-    fmRef.current = fm;
-    closeTabRef.current = closeTab;
-
-    useEffect(() => {
-        let unsubs: any[] = [];
-        
-        const setup = async () => {
-            // 监听打开页签事件
-            const u1 = await listen('zyma:open-tab', (event: any) => {
-                const { id, title, type } = event.payload;
-                if (type === 'file') {
-                    fmRef.current.handleFileSelect(id, title);
-                }
-            });
-            unsubs.push(u1);
-
-            // 监听关闭页签事件
-            const u2 = await listen('zyma:close-tab', (event: any) => {
-                const id = event.payload as string;
-                if (typeof closeTabRef.current === 'function') {
-                    closeTabRef.current(id);
-                }
-            });
-            unsubs.push(u2);
-        };
-
-        setup();
-        return () => unsubs.forEach(u => typeof u === 'function' && u());
-    }, []);
+    // 5. 处理来自后端的全局事件 (碎片化提取)
+    useRemoteTabHandler(fm, closeTab);
 
     return useMemo(() => ({
         activeTabs,

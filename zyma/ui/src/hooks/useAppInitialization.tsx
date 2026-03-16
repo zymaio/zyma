@@ -6,6 +6,42 @@ import { PluginManager } from '../components/PluginSystem/PluginManager';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 import { useNativeExtensions } from './useNativeExtensions';
 
+/**
+ * 专门处理 CLI 启动参数的逻辑
+ */
+function useCLIHandler(ready: boolean, fm: any) {
+    const handledRef = useRef(false);
+
+    useEffect(() => {
+        if (!ready || handledRef.current) return;
+        handledRef.current = true;
+
+        const handleCLI = async () => {
+            try {
+                const matches = await invoke<any>('get_cli_matches');
+                if (matches?.args?.path?.value) {
+                    const pathStr = matches.args.path.value;
+                    const stat = await invoke<any>('fs_stat', { path: pathStr });
+                    
+                    if (stat.is_dir) {
+                        await invoke('fs_set_cwd', { path: pathStr });
+                    } else {
+                        const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
+                        if (lastSlash !== -1) {
+                            const parent = pathStr.substring(0, lastSlash);
+                            await invoke('fs_set_cwd', { path: parent });
+                            const name = pathStr.substring(lastSlash + 1);
+                            fm.handleFileSelect(pathStr, name);
+                        }
+                    }
+                }
+            } catch (e) { console.warn('CLI Init Error:', e); }
+        };
+
+        handleCLI();
+    }, [ready, fm]);
+}
+
 export function useAppInitialization(fm: any, i18n: any, openCustomView?: (request: any) => void) {
     const [ready, setReady] = useState(false);
     const [settings, setSettings] = useState<AppSettings>({
@@ -41,28 +77,6 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                 setIsAdmin(adminStatus);
                 setPlatform(plat);
                 setReady(true);
-
-                // 2. 处理启动参数 (初次启动打开文件/目录)
-                try {
-                    const matches = await invoke<any>('get_cli_matches');
-                    if (matches?.args?.path?.value) {
-                        const pathStr = matches.args.path.value;
-                        const stat = await invoke<any>('fs_stat', { path: pathStr });
-                        
-                        if (stat.is_dir) {
-                            await invoke('fs_set_cwd', { path: pathStr });
-                        } else {
-                            // 文件：切换到父目录并打开
-                            const lastSlash = Math.max(pathStr.lastIndexOf('/'), pathStr.lastIndexOf('\\'));
-                            if (lastSlash !== -1) {
-                                const parent = pathStr.substring(0, lastSlash);
-                                await invoke('fs_set_cwd', { path: parent });
-                                const name = pathStr.substring(lastSlash + 1);
-                                fm.handleFileSelect(pathStr, name);
-                            }
-                        }
-                    }
-                } catch (e) { console.warn('CLI Init Error:', e); }
             } catch (e) { 
                 console.error('Init System Error:', e); 
                 setReady(true); 
@@ -71,10 +85,13 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
         initSystem();
     }, [i18n]);
 
-    // 2. 发现原生扩展 (已拆分)
+    // 2. 发现原生扩展
     useNativeExtensions(ready, openCustomView);
 
-    // 3. 插件管理器初始化
+    // 3. 处理启动参数 (碎片化提取)
+    useCLIHandler(ready, fm);
+
+    // 4. 插件管理器初始化
     useEffect(() => {
         if (!pluginManager.current) {
             pluginManager.current = new PluginManager({

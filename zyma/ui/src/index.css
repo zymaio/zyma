@@ -169,7 +169,7 @@ html, body, #root {
 }
 
 /* 样式隔离：仅在 IDE 根容器内生效 */
-.app-root * { color: inherit; }
+.app-root *:not(.cm-editor *) { color: inherit; }
 .app-root select, .app-root input { font-family: inherit; }
 
 /* --- 通用按钮样式 --- */

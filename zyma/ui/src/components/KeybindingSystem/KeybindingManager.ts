@@ -59,12 +59,9 @@ export class KeybindingManager {
         }
 
         const combo = parts.join('+');
-        console.log('[Shortcut] Pressed:', combo, 'Original key:', e.key);
-        
         const match = this.keybindings.find(kb => kb.key === combo);
 
         if (match) {
-            console.log('[Shortcut] Match found:', match.command);
             e.preventDefault();
             commands.executeCommand(match.command);
             return true;
