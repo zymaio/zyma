@@ -1,7 +1,6 @@
 use std::fs;
-use crate::models::PluginManifest;
 use std::path::{Path, PathBuf};
-use crate::{NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent, NativeFileMenuItem};
+use crate::models::{PluginManifest, NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent, NativeFileMenuItem};
 use std::sync::RwLock;
 use tauri::Emitter;
 
@@ -13,22 +12,26 @@ pub struct NativeCommand {
 }
 
 pub struct PluginService {
-    pub external_plugins: Vec<PathBuf>,
-    pub native_chat_participants: Vec<NativeChatParticipant>,
-    pub native_auth_providers: Vec<NativeAuthProvider>,
+    pub external_plugins: RwLock<Vec<PathBuf>>,
+    pub native_chat_participants: RwLock<Vec<NativeChatParticipant>>,
+    pub native_auth_providers: RwLock<Vec<NativeAuthProvider>>,
     pub native_sidebar_items: RwLock<Vec<NativeSidebarItem>>,
-    pub native_file_menu_items: Vec<NativeFileMenuItem>,
+    pub native_file_menu_items: RwLock<Vec<NativeFileMenuItem>>,
     pub native_commands: RwLock<Vec<NativeCommand>>,
-    pub native_slot_components: Vec<NativeSlotComponent>,
+    pub native_slot_components: RwLock<Vec<NativeSlotComponent>>,
 }
 
-/// 剥离 Windows 下 canonicalize 产生的 \\?\ 前缀
-fn simplify_path(p: PathBuf) -> String {
-    let s = p.to_string_lossy().to_string();
-    if s.starts_with(r"\\?\") {
-        s[4..].to_string()
-    } else {
-        s
+impl PluginService {
+    pub fn new() -> Self {
+        Self {
+            external_plugins: RwLock::new(Vec::new()),
+            native_chat_participants: RwLock::new(Vec::new()),
+            native_auth_providers: RwLock::new(Vec::new()),
+            native_sidebar_items: RwLock::new(Vec::new()),
+            native_file_menu_items: RwLock::new(Vec::new()),
+            native_commands: RwLock::new(Vec::new()),
+            native_slot_components: RwLock::new(Vec::new()),
+        }
     }
 }
 
@@ -38,13 +41,18 @@ pub fn get_native_extensions(
 ) -> serde_json::Value {
     let sidebar_items = plugin_service.native_sidebar_items.read().unwrap();
     let commands = plugin_service.native_commands.read().unwrap();
+    let participants = plugin_service.native_chat_participants.read().unwrap();
+    let auth_providers = plugin_service.native_auth_providers.read().unwrap();
+    let file_menu_items = plugin_service.native_file_menu_items.read().unwrap();
+    let slot_components = plugin_service.native_slot_components.read().unwrap();
+    
     serde_json::json!({
-        "chat_participants": plugin_service.native_chat_participants,
-        "auth_providers": plugin_service.native_auth_providers,
+        "chat_participants": *participants,
+        "auth_providers": *auth_providers,
         "sidebar_items": *sidebar_items,
-        "file_menu_items": plugin_service.native_file_menu_items,
+        "file_menu_items": *file_menu_items,
         "commands": *commands,
-        "slot_components": plugin_service.native_slot_components,
+        "slot_components": *slot_components,
     })
 }
 
@@ -97,7 +105,8 @@ pub fn list_plugins(
     scan_dir(&user_path, false, &mut plugins, &mut seen_names);
 
     // 扫描通过命令行参数传入的动态路径
-    for p_dir in &plugin_service.external_plugins {
+    let external_paths = plugin_service.external_plugins.read().unwrap();
+    for p_dir in &*external_paths {
         scan_dir(p_dir, false, &mut plugins, &mut seen_names);
     }
 
@@ -118,8 +127,8 @@ fn scan_dir(dir: &Path, is_builtin: bool, plugins: &mut Vec<(String, PluginManif
                             if seen.contains(&m.name) { continue; }
                             if let Ok(abs_p) = fs::canonicalize(&p) {
                                 seen.insert(m.name.clone());
-                                // 使用 simplify_path 确保前端兼容性
-                                plugins.push((simplify_path(abs_p), m, is_builtin));
+                                // 使用 simplify_canonical 确保前端兼容性
+                                plugins.push((crate::services::path::simplify_canonical(abs_p), m, is_builtin));
                             }
                         }
                     }
@@ -174,5 +183,5 @@ pub fn read_plugin_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn get_plugins_root() -> String {
-    simplify_path(get_user_plugins_dir())
+    crate::services::path::simplify_canonical(get_user_plugins_dir())
 }

@@ -1,8 +1,9 @@
-use std::path::{Path, PathBuf, Component};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use crate::models::{FileItem, FileReadResponse};
 use tokio::fs;
 use async_trait::async_trait;
+use crate::services::path::{normalize, normalize_to_string};
 
 /// 异步核心文件系统接口
 #[async_trait]
@@ -47,7 +48,7 @@ impl LocalFileSystem {
             root.join(target)
         };
 
-        let clean_path = normalize_path(&target_path);
+        let clean_path = normalize(&target_path);
         
         // Editor Mode: Allow accessing files outside workspace
         // We trust the user's intent when opening specific files.
@@ -76,7 +77,7 @@ impl FileSystem for LocalFileSystem {
             let p = entry.path();
             items.push(FileItem {
                 name: entry.file_name().to_string_lossy().to_string(),
-                path: normalize_path_to_string(&p),
+                path: normalize_to_string(&p),
                 is_dir: p.is_dir(),
             });
         }
@@ -166,35 +167,4 @@ impl FileSystem for LocalFileSystem {
             .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
         Ok(FileStat { file_type: ftype.to_string(), size: metadata.len(), mtime })
     }
-}
-
-pub fn normalize_path_to_string(path: &Path) -> String {
-    normalize_path(path).to_string_lossy().to_string().replace("\\", "/")
-}
-
-pub fn normalize_path(path: &Path) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
-        components.next();
-        // 关键修复：在 Windows 上强制盘符大写，确保对比一致性
-        let prefix_os = c.as_os_str().to_string_lossy();
-        if prefix_os.contains(':') {
-            PathBuf::from(prefix_os.to_uppercase())
-        } else {
-            PathBuf::from(c.as_os_str())
-        }
-    } else {
-        PathBuf::new()
-    };
-
-    for component in components {
-        match component {
-            Component::Prefix(..) => unreachable!(),
-            Component::RootDir => { ret.push(component.as_os_str()); } 
-            Component::CurDir => {} 
-            Component::ParentDir => { ret.pop(); } 
-            Component::Normal(c) => { ret.push(c); }
-        }
-    }
-    ret
 }
