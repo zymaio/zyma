@@ -76,7 +76,7 @@ impl FileSystem for LocalFileSystem {
             let p = entry.path();
             items.push(FileItem {
                 name: entry.file_name().to_string_lossy().to_string(),
-                path: p.to_string_lossy().to_string().replace("\\", "/"),
+                path: normalize_path_to_string(&p),
                 is_dir: p.is_dir(),
             });
         }
@@ -168,7 +168,11 @@ impl FileSystem for LocalFileSystem {
     }
 }
 
-fn normalize_path(path: &Path) -> PathBuf {
+pub fn normalize_path_to_string(path: &Path) -> String {
+    normalize_path(path).to_string_lossy().to_string().replace("\\", "/")
+}
+
+pub fn normalize_path(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();

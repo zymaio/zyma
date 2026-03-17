@@ -253,11 +253,11 @@ fn setup_external_open_handler(handle: &AppHandle<Wry>, bus: bus::EventBus) {
 }
 
 async fn handle_remote_open(handle: &AppHandle<Wry>, path_str: String) {
-    let mut path = PathBuf::from(&path_str);
+    let path = PathBuf::from(&path_str);
     if !path.exists() { return; }
 
-    // 统一路径格式为正斜杠，避免 Windows/Unix 差异
-    let normalized_path = path_str.replace("\\", "/");
+    // 统一路径格式为正斜杠，并强制盘符大写，避免 Windows/Unix 差异导致的重复打开
+    let normalized_path = crate::services::vfs::normalize_path_to_string(&path);
     let ws = handle.state::<commands::fs::WorkspaceService>();
     let event_bus = handle.state::<bus::EventBus>();
 
@@ -265,7 +265,7 @@ async fn handle_remote_open(handle: &AppHandle<Wry>, path_str: String) {
         let _ = commands::fs::fs_set_cwd(handle.clone(), ws, event_bus, normalized_path).await;
     } else if path.is_file() {
         if let Some(parent) = path.parent() {
-            let parent_str = parent.to_string_lossy().replace("\\", "/");
+            let parent_str = crate::services::vfs::normalize_path_to_string(parent);
             let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
             
             // 1. 切换到父目录作为工作区

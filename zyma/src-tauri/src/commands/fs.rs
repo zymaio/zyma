@@ -35,7 +35,8 @@ pub async fn fs_set_cwd(
     ws.fs.set_cwd(&path)?;
     
     // 归一化路径以便去重和一致性显示
-    let normalized_path = path.replace("\\", "/");
+    let p = std::path::PathBuf::from(&path);
+    let normalized_path = crate::services::vfs::normalize_path_to_string(&p);
     let lower_path = normalized_path.to_lowercase();
 
     // 自动记录到最近工作区

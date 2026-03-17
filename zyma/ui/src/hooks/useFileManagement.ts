@@ -48,12 +48,14 @@ export function useFileManagement(): FileManagement {
     const pendingFiles = useRef<Set<string>>(new Set());
 
     const handleFileSelect = useCallback(async (path: string, name: string, line?: number) => {
-        // ... (保持原逻辑不变)
+        // 统一标准化路径，避免 Windows 下斜杠不一致导致的重复打开
+        const normalizedPath = pathUtils.toForwardSlashes(path);
+        
         if (line) {
-            (window as any).__pendingLineJump = { path, line, ts: Date.now() };
+            (window as any).__pendingLineJump = { path: normalizedPath, line, ts: Date.now() };
         }
 
-        const existing = openFiles.find(f => f.path === path);
+        const existing = openFiles.find(f => f.path === normalizedPath);
         if (existing) {
             if (activeFilePath === existing.id && editorViewRef.current && line) {
                 try {
@@ -70,24 +72,24 @@ export function useFileManagement(): FileManagement {
             return;
         }
 
-        if (pendingFiles.current.has(path)) return;
-        pendingFiles.current.add(path);
+        if (pendingFiles.current.has(normalizedPath)) return;
+        pendingFiles.current.add(normalizedPath);
 
                 try {
 
-                    const res = await fsReadFile(path);
+                    const res = await fsReadFile(normalizedPath);
 
                     const content = normalize(res.content);
 
                     const newFile: FileData = { 
 
-                        id: path, 
+                        id: normalizedPath, 
 
                         uid: generateUid(),
 
                         name, 
 
-                        path, 
+                        path: normalizedPath, 
 
                         content, 
 
@@ -101,15 +103,15 @@ export function useFileManagement(): FileManagement {
 
         
             setOpenFiles(prev => {
-                if (prev.some(f => f.path === path)) return prev;
+                if (prev.some(f => f.path === normalizedPath)) return prev;
                 return [...prev, newFile];
             });
-            setActiveFilePath(path);
+            setActiveFilePath(normalizedPath);
         } catch (e) { 
             console.error(e); 
             toast.error(`Failed to open file: ${name}`);
         } finally {
-            pendingFiles.current.delete(path);
+            pendingFiles.current.delete(normalizedPath);
         }
     }, [openFiles, activeFilePath]);
 
