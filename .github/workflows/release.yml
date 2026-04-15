@@ -34,12 +34,10 @@ jobs:
         working-directory: zyma/ui
 
       - name: cargo clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-        working-directory: zyma
+        run: cargo clippy --manifest-path zyma/src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
 
       - name: cargo test
-        run: cargo test --all
-        working-directory: zyma
+        run: cargo test --manifest-path zyma/src-tauri/Cargo.toml --all
 
       - name: TypeScript type check
         run: npx tsc --noEmit
