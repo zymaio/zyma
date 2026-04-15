@@ -19,4 +19,4 @@ Thumbs.db
 *.log
 
 # Vendor
-/vendor/
+/vendor/.qwen
