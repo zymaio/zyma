@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import OutputToolbar from './OutputToolbar';
 import OutputViewer from './OutputViewer';
 import { useOutputChannel } from '../../hooks/useOutputChannel';
@@ -12,7 +11,6 @@ interface OutputPanelProps {
 }
 
 const OutputPanel: React.FC<OutputPanelProps> = ({ channels, onClose, hideHeader, forcedChannel }) => {
-    const { t } = useTranslation();
     const [selectedChannel, setSelectedChannel] = useState(forcedChannel || channels[0] || "");
     const [localFontSize, setLocalFontSize] = useState(13);
     const { lines, handleClear, handleCopyAll } = useOutputChannel(selectedChannel);

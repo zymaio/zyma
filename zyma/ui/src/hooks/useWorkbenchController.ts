@@ -1,7 +1,5 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
-import type { i18n as I18nType } from 'i18next';
 import { undo, redo } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { commands } from '../components/CommandSystem/CommandRegistry';
@@ -9,7 +7,7 @@ import { useWindowManagement } from './useWindowManagement';
 import { useWorkbenchCommands } from './useWorkbenchCommands';
 import { useWorkbench } from '../core/WorkbenchContext';
 import type { FileManagement, FileData } from './useFileManagement';
-import type { TabItem, CustomViewRequest, TabSystem } from './useTabSystem';
+import type { TabSystem } from './useTabSystem';
 import type { WorkbenchLogic } from './useWorkbenchLogic';
 import type { PluginManager } from '../components/PluginSystem/PluginManager';
 import type { AppSettings } from '../components/PluginSystem/types';
@@ -67,13 +65,13 @@ export function useWorkbenchController(props: WorkbenchControllerProps) {
 
     const activeFile = useMemo(() =>
         tabSystem.activeTab?.type === 'file'
-            ? fm.openFiles.find((f: FileData) => f.id === tabSystem.activeTab.id)
+            ? fm.openFiles.find((f: FileData) => f.id === tabSystem.activeTab?.id)
             : null,
     [tabSystem.activeTab, fm.openFiles]);
 
     // Initialize workbench commands
     useWorkbenchCommands({ 
-        ready, t, i18n, fm, logic, settings, setSettings, 
+        ready, t, i18n, fm, logic, settings, setSettings: setSettings as any, 
         pluginMenus, pluginManager, chatComponents, 
         openCustomView: tabSystem.openCustomView, 
         tabSystem 

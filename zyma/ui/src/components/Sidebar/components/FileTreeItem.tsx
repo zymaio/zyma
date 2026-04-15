@@ -92,6 +92,8 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({
     return () => { if (unlisten) unlisten(); };
   }, [item.is_dir, item.path, isOpen]);
 
+  // TODO: handleToggle is currently unused but kept for future use
+  /*
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (item.is_dir) {
@@ -107,6 +109,7 @@ const FileTreeItemComponent: React.FC<FileTreeItemProps> = ({
       onFileSelect(item.path, item.name);
     }
   };
+  */
 
   const getFileIcon = () => {
       const ext = item.name.split('.').pop()?.toLowerCase() || '';

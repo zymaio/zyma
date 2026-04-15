@@ -36,7 +36,10 @@ export class PluginManager {
     setCallbacks(callbacks: Partial<PluginCallbacks>) {
         Object.assign(this.callbacks, callbacks);
         // 同时更新 contributionRegistry 的回调 (假设也是同一个对象引用)
-        Object.assign((this.contributionRegistry as Record<string, unknown>).callbacks, callbacks);
+        const registry = this.contributionRegistry as unknown as { callbacks?: Partial<PluginCallbacks> };
+        if (registry.callbacks) {
+            Object.assign(registry.callbacks, callbacks);
+        }
     }
 
     setComponents(components: PluginComponents) {

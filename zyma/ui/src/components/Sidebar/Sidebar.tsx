@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ContextMenu from '../ContextMenu/ContextMenu';
 import FileTreeItem from './components/FileTreeItem';
-import type { FileItemData } from './components/FileTreeItem';
 import { pathUtils } from '../../utils/pathUtils';
 import { useWorkbench } from '../../core/WorkbenchContext';
 import { InlineInput } from './InlineInput';

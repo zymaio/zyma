@@ -1,4 +1,3 @@
-import React from 'react';
 import { Files, Search, Puzzle } from 'lucide-react';
 import { views } from '../components/ViewSystem/ViewRegistry';
 import { statusBar } from '../components/StatusBar/StatusBarRegistry';
@@ -7,8 +6,7 @@ import { registerViewCommands } from '../commands/view';
 import { registerWorkspaceCommands } from '../commands/workspace';
 import { slotRegistry } from './SlotRegistry';
 import OutputPanelWrapper from '../components/PluginSystem/OutputPanelWrapper';
-import type { CustomViewRequest } from '../hooks/useTabSystem';
-import type { WorkbenchHandlers, WorkbenchComponents } from '../components/PluginSystem/types';
+import type { WorkbenchHandlers } from '../components/PluginSystem/types';
 
 export function setupWorkbench(t: (key: string) => string, handlers: WorkbenchHandlers) {
     // 1. 注册各模块命令

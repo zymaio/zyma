@@ -1,5 +1,5 @@
 import { commands } from '../components/CommandSystem/CommandRegistry';
-import type { WorkbenchHandlers, AppSettings } from '../components/PluginSystem/types';
+import type { WorkbenchHandlers } from '../components/PluginSystem/types';
 
 export function registerViewCommands(t: (key: string) => string, handlers: WorkbenchHandlers) {
     commands.registerCommand({

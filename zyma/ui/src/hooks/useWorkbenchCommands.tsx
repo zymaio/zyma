@@ -66,7 +66,7 @@ export function useWorkbenchCommands(props: UseWorkbenchCommandsProps) {
             Sidebar: <Sidebar pluginMenuItems={pluginMenus} />,
             SearchPanel: <SearchPanel />,
             PluginList: () => <PluginsPanel pluginManager={pluginManager.current} onUpdate={() => logic.forceUpdate((n: number) => n + 1)} />,
-            ChatPanel: chatComponents.ChatPanel
+            ChatPanel: chatComponents.ChatPanel as any
         },
         openCustomView
     };

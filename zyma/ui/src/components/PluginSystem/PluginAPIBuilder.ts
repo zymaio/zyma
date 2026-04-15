@@ -41,7 +41,7 @@ export class PluginAPIBuilder {
                     // 兼容性处理：支持 handler 的属性映射到 callback
                     const normalizedCmd = {
                         ...cmd,
-                        callback: cmd.callback || (cmd as Record<string, unknown>).handler
+                        callback: cmd.callback || (cmd as unknown as Record<string, unknown>).handler
                     };
                     resources.commands.push(normalizedCmd.id);
                     commands.registerCommand(normalizedCmd);
@@ -101,7 +101,10 @@ export class PluginAPIBuilder {
                     const element = typeof component === 'function' ? React.createElement(component) : component;
                     if (callbacks.openCustomView) {
                         // 记录此标签页属于该插件
-                        (contributionRegistry as Record<string, unknown>).addOpenedTab(manifest.name, id);
+                        const registry = contributionRegistry as unknown as { addOpenedTab?: (pluginName: string, tabId: string) => void };
+                        if (registry.addOpenedTab) {
+                            registry.addOpenedTab(manifest.name, id);
+                        }
                         callbacks.openCustomView({ id, title, component: element, options });
                     } else {
                         console.error("openCustomView callback is not defined");
@@ -132,7 +135,7 @@ export class PluginAPIBuilder {
                     commands?: { name: string; description: string }[];
                     handler: (request: Record<string, unknown>, stream: Record<string, unknown>) => Promise<void>;
                 }) => {
-                    chatRegistry.registerParticipant(participant);
+                    chatRegistry.registerParticipant(participant as any);
                     onNotify();
                 }
             },

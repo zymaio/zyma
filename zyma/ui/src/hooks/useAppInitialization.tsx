@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginManager';
-import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import type { AppSettings } from '../components/PluginSystem/types';
 import { useNativeExtensions } from './useNativeExtensions';
 import { logger } from '../utils/logger';
 
@@ -117,9 +117,8 @@ export function useAppInitialization(fm: any, i18n: any, openCustomView?: (reque
                     }
                 },
                 addFileMenuItem: () => {},
-                components: { ChatPanel: null },
-                openCustomView,
-                closeTab: (id: string) => fm.closeTab ? fm.closeTab(id) : null
+                components: { ChatPanel: () => null },
+                openCustomView
             });
             
             pluginManager.current.loadAll().then(async () => {

@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { useFileState } from './useFileState';
 import type { FileData } from './useFileState';

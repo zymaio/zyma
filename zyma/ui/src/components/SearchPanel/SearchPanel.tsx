@@ -44,8 +44,7 @@ const SearchPanel: React.FC<SearchPanelProps> = () => {
         toggleExpand,
         collapseAll,
         clearResults,
-        expandedFiles,
-        setExpandedFiles
+        expandedFiles
     } = useSearch(rootPath);
 
     // --- 自动搜索 ---
@@ -314,7 +313,7 @@ const SearchPanel: React.FC<SearchPanelProps> = () => {
                     })
                 )}
 
-                {query && !isSearching && results.length === 0 && (
+                {query && !isSearching && groupedResults && Object.keys(groupedResults).length === 0 && (
                     <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5 }}>
                         未找到结果
                     </div>

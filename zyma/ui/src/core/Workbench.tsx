@@ -7,7 +7,7 @@ import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelRe
 import type { WorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import type { FileManagement } from '../hooks/useFileManagement';
 import type { TabItem, CustomViewRequest } from '../hooks/useTabSystem';
-import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import type { AppSettings } from '../components/PluginSystem/types';
 
 // Sub-components
 import { WorkbenchLayout } from '../components/ViewSystem/WorkbenchLayout';
@@ -20,6 +20,12 @@ interface WorkbenchAppInit {
     settings: AppSettings;
     setSettings: (s: AppSettings) => void;
     pluginManager: any;
+    isAdmin: boolean;
+    platform: string;
+    appVersion: string;
+    productName: string;
+    pluginMenus: Array<{ label: string; commandId: string; order?: number; pluginName: string }>;
+    handleAppExit: (saveAll: boolean) => Promise<void>;
     [key: string]: unknown;
 }
 
@@ -39,7 +45,7 @@ interface WorkbenchProps {
     };
     appInit: WorkbenchAppInit;
     chatComponents: {
-        ChatPanel: React.ComponentType<{ getContext?: () => Promise<unknown> }>;
+        ChatPanel: React.ComponentType<unknown>;
     };
     logic: WorkbenchLogic;
     brand?: { name: string; subName?: string; logo?: React.ReactNode; };
