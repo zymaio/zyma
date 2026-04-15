@@ -1,6 +1,47 @@
 # 更新日志 (Changelog)
 
-本项所有显著更新都将记录在此文件中。
+本文件记录所有显著更新。
+
+## [0.9.7] - 2026-04-14
+
+### 🛡️ 安全加固与代码质量飞跃
+
+本次更新是 Zyma 历史上最全面的一次代码质量提升，专注于安全性、健壮性和可维护性。
+
+#### 🔒 安全性加固
+- **消除 unwrap() 崩溃风险**：替换所有 21 处 `unwrap()` 调用为安全错误处理，防止锁中毒导致进程崩溃
+- **命令注入防护**：`system_exec` 添加程序路径白名单，仅允许绝对路径或已知安全命令
+- **环境变量保护**：`system_get_env` 增加白名单机制，仅允许读取安全变量（PATH, HOME, USER 等）
+
+#### 🏗️ 架构优化
+- **依赖方向修复**：彻底消除 services→commands 和 core→commands 的反向依赖
+- **模块拆分**：
+  - `models.rs` (170行) → 4 个领域文件 (fs, settings, plugin, native_ext)
+  - `commands/system.rs` (117行) → 4 个子模块 (process, cli, app, context_menu)
+  - 删除冗余 re-export 文件 (output.rs, watcher.rs)
+- **泛型服务**：6 个重复的 Registry 服务合并为 1 个泛型 `RegistryService<T>`
+
+#### 🧪 测试与 CI/CD
+- **Rust 测试**：添加 `path.rs` 和 `settings.rs` 单元测试 (5 tests)
+- **前端测试**：搭建 Vitest + Testing Library，添加 `pathUtils` 测试 (12 tests)
+- **CI 完善**：release 前增加 clippy、cargo test、tsc 检查阶段
+
+#### 📝 类型安全
+- **TypeScript 接口完善**：为 Workbench、PluginSystem、ActivityBar 等核心组件定义完整接口
+- **消除 any 类型**：从 188+ 处减少到 < 30 处
+
+#### 📚 文档
+- **新增**：
+  - `docs/ARCHITECTURE.md` - 架构设计、依赖流向、核心模块说明
+  - `docs/PLUGIN_DEV.md` - 插件开发指南，包含 manifest 示例和 API 用法
+  - `docs/CONTRIBUTING.md` - 贡献指南，代码规范和 PR 流程
+- **更新**：
+  - `README.md` 添加 CI badges、版本标志、构建步骤和文档链接
+  - `update.json` 版本同步到 0.9.6
+
+#### 🔧 配置优化
+- 添加 `.cargo/config.toml` 使用 lld 链接器加快 Windows 构建
+- 创建结构化 logger，生产环境自动抑制 debug 输出
 
 ## [0.9.6] - 2026-02-03
 

@@ -5,6 +5,7 @@ import { authRegistry } from '../components/PluginSystem/AuthRegistry';
 import { chatRegistry } from '../components/Chat/Registry/ChatRegistry';
 import { slotRegistry, type SlotLocation } from '../core/SlotRegistry';
 import React from 'react';
+import { logger } from '../utils/logger';
 
 export function useNativeExtensions(ready: boolean, openCustomView?: (request: any) => void) {
     useEffect(() => {
@@ -13,8 +14,9 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
         const discover = async () => {
             try {
                 const native = await invoke<any>('get_native_extensions');
-                
-                // 1. 同步 AI 参与�?                if (native.chat_participants) {
+
+                // 1. Sync AI Participants
+                if (native.chat_participants) {
                     native.chat_participants.forEach((p: any) => {
                         chatRegistry.registerParticipant({
                             id: p.id, name: p.name, fullName: p.full_name, description: p.description,
@@ -25,7 +27,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                                 }));
                                 history.push({ role: 'user', content: req.prompt });
                                 const unlisten = await listen(p.thought_event || 'ai-thought', (e) => stream.markdown(e.payload as string));
-                                try { await invoke(p.command, { prompt: req.prompt, history }); } 
+                                try { await invoke(p.command, { prompt: req.prompt, history }); }
                                 catch(e) { stream.error(String(e)); }
                                 finally { unlisten(); stream.done(); }
                             }
@@ -33,7 +35,8 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                     });
                 }
 
-                // 2. 同步账号提供�?                if (native.auth_providers) {
+                // 2. Sync Auth Providers
+                if (native.auth_providers) {
                     native.auth_providers.forEach((p: any) => {
                         authRegistry.registerProvider({
                             id: p.id, label: p.label,
@@ -44,7 +47,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                                         localStorage.setItem(`auth_${p.id}_user`, JSON.stringify(res.user));
                                         authRegistry.updateAccount(p.id, res.user?.username || 'User');
                                     }
-                                } catch(e) { logger.warn(\x27Login failed:\x27, e); }
+                                } catch(e) { logger.warn('Login failed:', e); }
                             },
                             onLogout: async () => {
                                 try {
@@ -67,7 +70,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                     });
                 }
 
-                // 3. 同步插槽组件
+                // 3. Sync Slot Components
                 if (native.slot_components) {
                     native.slot_components.forEach((s: any) => {
                         slotRegistry.register(s.slot as SlotLocation, {
@@ -86,7 +89,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                     });
                 }
             } catch(e) {
-                logger.debug(\x27Standard Zyma mode': No native extensions found.");
+                logger.debug('Standard Zyma mode: No native extensions found.');
             }
         };
 

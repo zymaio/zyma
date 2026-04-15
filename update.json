@@ -1,11 +1,11 @@
 {
-  "version": "0.9.6",
-  "notes": "Zyma v0.9.6: 重构项目架构，优化文件系统服务，拆分插件模块，提升类型安全和代码质量。",
+  "version": "0.9.7",
+  "notes": "Zyma v0.9.7: 安全加固与代码质量飞跃。消除 unwrap() 崩溃风险、命令注入防护、模块拆分、泛型服务、测试覆盖、文档完善。",
   "pub_date": "2026-04-14T12:00:00Z",
   "platforms": {
     "windows-x86_64": {
       "signature": "在你发布新版本时，从构建输出中复制签名填入此处",
-      "url": "https://github.com/fourthz/zyma/releases/download/v0.9.6/zyma.exe.zip"
+      "url": "https://github.com/fourthz/zyma/releases/download/v0.9.7/zyma.exe.zip"
     }
   }
 }
