@@ -34,10 +34,12 @@ jobs:
         working-directory: zyma/ui
 
       - name: cargo clippy
-        run: cd zyma && cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
+        working-directory: zyma
 
       - name: cargo test
-        run: cd zyma && cargo test --all
+        run: cargo test --all
+        working-directory: zyma
 
       - name: TypeScript type check
         run: npx tsc --noEmit
