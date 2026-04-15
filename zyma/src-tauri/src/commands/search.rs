@@ -51,6 +51,7 @@ pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>)
     Ok(results)
 }
 
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn search_in_dir(
     root: String, 

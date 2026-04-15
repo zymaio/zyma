@@ -6,6 +6,12 @@ pub struct RegistryService<T> {
     items: RwLock<Vec<T>>,
 }
 
+impl<T: Clone> Default for RegistryService<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: Clone> RegistryService<T> {
     pub fn new() -> Self {
         Self {

@@ -5,6 +5,12 @@ pub struct OutputState {
     pub channels: Mutex<HashMap<String, Vec<String>>>,
 }
 
+impl Default for OutputState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OutputState {
     pub fn new() -> Self {
         Self {

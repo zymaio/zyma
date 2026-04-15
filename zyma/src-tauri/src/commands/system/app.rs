@@ -4,7 +4,7 @@ use tauri::Emitter;
 pub fn open_url(url: String) -> Result<(), String> {
     #[cfg(windows)] {
         use std::os::windows::process::CommandExt;
-        std::process::Command::new("cmd").args(&["/C", "start", &url]).creation_flags(0x08000000).spawn().map_err(|e| e.to_string())?;
+        std::process::Command::new("cmd").args(["/C", "start", &url]).creation_flags(0x08000000).spawn().map_err(|e| e.to_string())?;
     }
     #[cfg(not(windows))] {
         std::process::Command::new("open").arg(&url).spawn().map_err(|e| e.to_string())?;

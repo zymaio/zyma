@@ -6,6 +6,12 @@ pub struct PluginRegistryService {
     external_plugins: RwLock<Vec<PathBuf>>,
 }
 
+impl Default for PluginRegistryService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PluginRegistryService {
     pub fn new() -> Self {
         Self {

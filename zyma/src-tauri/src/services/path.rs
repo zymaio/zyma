@@ -42,8 +42,8 @@ pub fn is_within(parent: &Path, child: &Path) -> bool {
 /// Simplifies a canonical path by removing the Windows UNC prefix if present.
 pub fn simplify_canonical(path: PathBuf) -> String {
     let s = path.to_string_lossy().to_string();
-    if s.starts_with(r"\\?\") {
-        s[4..].to_string()
+    if let Some(stripped) = s.strip_prefix(r"\\?\") {
+        stripped.to_string()
     } else {
         s
     }

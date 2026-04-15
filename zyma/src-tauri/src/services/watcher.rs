@@ -23,6 +23,12 @@ pub struct WatcherState {
     pub watchers: Mutex<HashMap<String, notify::RecommendedWatcher>>,
 }
 
+impl Default for WatcherState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WatcherState {
     pub fn new() -> Self {
         Self {
@@ -52,7 +58,7 @@ pub fn fs_watch(
             };
 
             let paths: Vec<String> = event.paths.iter()
-                .map(|p| normalize_to_string(p))
+                .map(normalize_to_string)
                 .collect();
 
             let _ = app_handle_clone.emit("fs_event", FsEvent {

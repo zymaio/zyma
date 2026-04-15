@@ -11,7 +11,14 @@ pub struct ZymaBuilder {
     sidebar_items: Vec<NativeSidebarItem>,
     file_menu_items: Vec<NativeFileMenuItem>,
     slot_components: Vec<NativeSlotComponent>,
+    #[allow(clippy::type_complexity)]
     setup_hook: Option<Box<dyn FnOnce(&mut tauri::App<Wry>) -> Result<(), Box<dyn std::error::Error>> + Send + 'static>>,
+}
+
+impl Default for ZymaBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ZymaBuilder {

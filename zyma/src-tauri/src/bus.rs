@@ -18,6 +18,12 @@ pub struct EventBus {
     tx: broadcast::Sender<ZymaEvent>,
 }
 
+impl Default for EventBus {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EventBus {
     pub fn new() -> Self {
         // 容量 100，超过处理速度会丢弃旧消息（Lagged），这对于即时事件是合理的

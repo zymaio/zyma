@@ -8,6 +8,12 @@ pub struct LLMManager {
     client: Client,
 }
 
+impl Default for LLMManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LLMManager {
     pub fn new() -> Self {
         let client = Client::builder()

@@ -28,8 +28,7 @@ where S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin
                 let line = String::from_utf8_lossy(&line_bytes).trim().to_string();
 
                 if line.is_empty() { continue; }
-                if line.starts_with("data: ") {
-                    let data = &line[6..];
+                if let Some(data) = line.strip_prefix("data: ") {
                     if data == "[DONE]" {
                         return Poll::Ready(None);
                     }
@@ -52,8 +51,7 @@ where S: Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Unpin
                     if !self.buffer.is_empty() {
                         let line = String::from_utf8_lossy(&self.buffer).trim().to_string();
                         self.buffer.clear();
-                        if line.starts_with("data: ") {
-                            let data = &line[6..];
+                        if let Some(data) = line.strip_prefix("data: ") {
                             if data != "[DONE]" {
                                 if let Ok(chunk) = serde_json::from_str::<ChatCompletionChunk>(data) {
                                     return Poll::Ready(Some(Ok(chunk)));

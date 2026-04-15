@@ -9,6 +9,12 @@ pub struct ContextService {
     store: RwLock<HashMap<String, Value>>,
 }
 
+impl Default for ContextService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextService {
     pub fn new() -> Self {
         Self {
