@@ -163,7 +163,7 @@ export class PluginAPIBuilder {
                ChatPanel: callbacks.components.ChatPanel
             },
             system: {
-                version: "0.9.5",
+                version: "0.9.7",
                 invoke: (cmd: string, args?: Record<string, unknown>) => invoke(cmd, args),
                 getEnv: (name: string) => invoke<string | null>('system_get_env', { name }),
                 exec: (command: string, args: string[]) => invoke('system_exec', { program: command, args })

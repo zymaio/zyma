@@ -37,7 +37,7 @@
   - `docs/CONTRIBUTING.md` - 贡献指南，代码规范和 PR 流程
 - **更新**：
   - `README.md` 添加 CI badges、版本标志、构建步骤和文档链接
-  - `update.json` 版本同步到 0.9.6
+  - `update.json` 版本同步到 0.9.7
 
 #### 🔧 配置优化
 - 添加 `.cargo/config.toml` 使用 lld 链接器加快 Windows 构建
