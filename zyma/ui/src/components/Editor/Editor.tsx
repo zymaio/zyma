@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useCodeMirror } from './useCodeMirror';
 import { statusBar } from '../StatusBar/StatusBarRegistry';
+import { logger } from '../../utils/logger';
 
 interface EditorProps {
     content: string;
@@ -46,7 +47,7 @@ const Editor: React.FC<EditorProps> = (props) => {
                     // 只有成功定位后才删除
                     delete (window as any).__pendingLineJump;
                 } catch (e) {
-                    console.warn("Retrying jump to line:", jump.line);
+                    logger.warn("Retrying jump to line:", jump.line);
                 }
             }, 100);
             return () => clearTimeout(timer);

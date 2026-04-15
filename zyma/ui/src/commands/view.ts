@@ -1,6 +1,7 @@
 import { commands } from '../components/CommandSystem/CommandRegistry';
+import type { WorkbenchHandlers, AppSettings } from '../components/PluginSystem/types';
 
-export function registerViewCommands(t: any, handlers: any) {
+export function registerViewCommands(t: (key: string) => string, handlers: WorkbenchHandlers) {
     commands.registerCommand({
         id: 'view.toggleTheme',
         title: t('ToggleTheme'),
@@ -8,7 +9,7 @@ export function registerViewCommands(t: any, handlers: any) {
         callback: () => {
             const current = handlers.getSettings();
             const themes: ('dark' | 'light' | 'abyss')[] = ['dark', 'light', 'abyss'];
-            const nextIdx = (themes.indexOf(current.theme) + 1) % themes.length;
+            const nextIdx = (themes.indexOf(current.theme || 'dark') + 1) % themes.length;
             handlers.handleSaveSettings({ ...current, theme: themes[nextIdx] });
         }
     });

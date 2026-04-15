@@ -14,8 +14,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
             try {
                 const native = await invoke<any>('get_native_extensions');
                 
-                // 1. 同步 AI 参与者
-                if (native.chat_participants) {
+                // 1. 同步 AI 参与�?                if (native.chat_participants) {
                     native.chat_participants.forEach((p: any) => {
                         chatRegistry.registerParticipant({
                             id: p.id, name: p.name, fullName: p.full_name, description: p.description,
@@ -34,8 +33,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                     });
                 }
 
-                // 2. 同步账号提供商
-                if (native.auth_providers) {
+                // 2. 同步账号提供�?                if (native.auth_providers) {
                     native.auth_providers.forEach((p: any) => {
                         authRegistry.registerProvider({
                             id: p.id, label: p.label,
@@ -46,7 +44,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                                         localStorage.setItem(`auth_${p.id}_user`, JSON.stringify(res.user));
                                         authRegistry.updateAccount(p.id, res.user?.username || 'User');
                                     }
-                                } catch(e) { console.warn("Login failed:", e); }
+                                } catch(e) { logger.warn(\x27Login failed:\x27, e); }
                             },
                             onLogout: async () => {
                                 try {
@@ -88,7 +86,7 @@ export function useNativeExtensions(ready: boolean, openCustomView?: (request: a
                     });
                 }
             } catch(e) {
-                console.log("Standard Zyma mode: No native extensions found.");
+                logger.debug(\x27Standard Zyma mode': No native extensions found.");
             }
         };
 

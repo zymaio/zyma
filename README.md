@@ -8,6 +8,17 @@
   <b>智码 (Zyma) - 现代 IDE 引擎底座</b>
 </p>
 
+<p align="center">
+  <a href="https://github.com/fourthz/zyma/actions/workflows/release.yml">
+    <img src="https://github.com/fourthz/zyma/actions/workflows/release.yml/badge.svg" alt="CI Status">
+  </a>
+  <a href="https://github.com/fourthz/zyma/releases">
+    <img src="https://img.shields.io/github/v/release/fourthz/zyma?label=version&color=blue" alt="Latest Release">
+  </a>
+  <img src="https://img.shields.io/badge/license-MIT%2FApache--2.0-green" alt="License">
+  <img src="https://img.shields.io/badge/built%20with-Tauri-FFC131?logo=tauri" alt="Built with Tauri">
+</p>
+
 **智码 (Zyma)** 是一款基于 Rust 和 Tauri 开发的超轻量级、高性能、工业级 IDE 引擎底座。它旨在为开发者提供一个可插拔、可定制的核心框架，用于快速构建专业的 IDE 应用（如 **ShovX Pro**）。
 
 ### 💡 核心理念：解耦 · 引擎化 · 高性能
@@ -53,6 +64,40 @@ Zyma 已从传统的文本编辑器进化为 **"底座组件库 (@zyma/ui) + 核
 - **Frontend**: React + TypeScript + Vite (Hook-based Architecture)
 - **Editor**: CodeMirror 6
 - **IPC**: Event-driven Messaging Bridge
+
+## 🚀 快速开始
+
+### 环境要求
+- **Rust**: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- **Node.js**: v18+
+- **Tauri CLI**: `cargo install tauri-cli`
+
+### 构建与运行
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/fourthz/zyma.git
+cd zyma
+
+# 2. 安装前端依赖
+cd zyma/ui && npm install
+cd ../..
+
+# 3. 启动开发模式
+cargo tauri dev -C zyma
+
+# 4. 构建生产版本
+cargo tauri build -C zyma
+```
+
+> **提示**: 构建产物将输出到 `zyma/src-tauri/target/release/bundle/` 目录。
+
+## 📚 文档
+
+- [架构设计](./docs/ARCHITECTURE.md)
+- [插件开发指南](./docs/PLUGIN_DEV.md)
+- [贡献指南](./docs/CONTRIBUTING.md)
+- [更新日志](./CHANGELOG.md)
 
 ## 📄 开源协议
 

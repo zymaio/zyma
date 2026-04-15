@@ -1,13 +1,44 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import type { i18n as I18nType } from 'i18next';
 import { undo, redo } from '@codemirror/commands';
 import { invoke } from '@tauri-apps/api/core';
 import { commands } from '../components/CommandSystem/CommandRegistry';
 import { useWindowManagement } from './useWindowManagement';
 import { useWorkbenchCommands } from './useWorkbenchCommands';
 import { useWorkbench } from '../core/WorkbenchContext';
+import type { FileManagement, FileData } from './useFileManagement';
+import type { TabItem, CustomViewRequest, TabSystem } from './useTabSystem';
+import type { WorkbenchLogic } from './useWorkbenchLogic';
+import type { PluginManager } from '../components/PluginSystem/PluginManager';
+import type { AppSettings } from '../components/PluginSystem/types';
 
-export function useWorkbenchController(props: any) {
+interface AppInitReturn {
+    ready: boolean;
+    settings: AppSettings;
+    setSettings?: (s: AppSettings) => void;
+    isAdmin: boolean;
+    platform: string;
+    appVersion: string;
+    productName: string;
+    pluginMenus: Array<{ label: string; commandId: string; order?: number; pluginName: string }>;
+    pluginManager: React.MutableRefObject<PluginManager | null>;
+    handleAppExit: (saveAll: boolean) => Promise<void>;
+}
+
+export interface WorkbenchControllerProps {
+    fm: FileManagement;
+    tabSystem: TabSystem;
+    logic: WorkbenchLogic;
+    appInit: AppInitReturn;
+    chatComponents: { ChatPanel: React.ComponentType<unknown> };
+    brand?: {
+        name?: string;
+    };
+}
+
+export function useWorkbenchController(props: WorkbenchControllerProps) {
     const { fm, tabSystem, logic, appInit, chatComponents, brand } = props;
     const { t, i18n } = useTranslation();
     const context = useWorkbench();
@@ -18,7 +49,7 @@ export function useWorkbenchController(props: any) {
     const [isExiting, setIsExiting] = useState(false);
 
     const handleCloseTab = useCallback((id: string) => {
-        const file = fm.openFiles.find((f: any) => f.id === id);
+        const file = fm.openFiles.find((f: FileData) => f.id === id);
         if (file?.isDirty) {
             logic.setPendingCloseId(id);
         } else {
@@ -34,10 +65,10 @@ export function useWorkbenchController(props: any) {
         setIsClosingApp
     );
 
-    const activeFile = useMemo(() => 
-        tabSystem.activeTab?.type === 'file' 
-            ? fm.openFiles.find((f: any) => f.id === tabSystem.activeTab.id) 
-            : null, 
+    const activeFile = useMemo(() =>
+        tabSystem.activeTab?.type === 'file'
+            ? fm.openFiles.find((f: FileData) => f.id === tabSystem.activeTab.id)
+            : null,
     [tabSystem.activeTab, fm.openFiles]);
 
     // Initialize workbench commands
@@ -48,7 +79,7 @@ export function useWorkbenchController(props: any) {
         tabSystem 
     });
 
-    const onTitleBarAction = useCallback((action: string, params?: any) => {
+    const onTitleBarAction = useCallback((action: string, params?: string) => {
         switch (action) {
             case 'exit': requestExit(); break;
             case 'toggle_theme': commands.executeCommand('view.toggleTheme'); break;

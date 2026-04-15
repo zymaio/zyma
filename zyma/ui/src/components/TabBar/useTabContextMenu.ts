@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MenuItem } from '../ContextMenu/ContextMenu';
+import { pathUtils } from '../../utils/pathUtils';
 
 interface TabData {
     path: string;
@@ -12,11 +13,6 @@ interface TabData {
 export const useTabContextMenu = (files: TabData[], onClose: (path: string) => void) => {
     const { t } = useTranslation();
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
-
-    const isMatching = (p1: string | null, p2: string | null) => {
-        if (!p1 || !p2) return p1 === p2;
-        return p1.replace(/\\/g, '/').toLowerCase() === p2.replace(/\\/g, '/').toLowerCase();
-    };
 
     useEffect(() => {
         const handleClick = () => setContextMenu(null);
@@ -30,17 +26,17 @@ export const useTabContextMenu = (files: TabData[], onClose: (path: string) => v
     };
 
     const getMenuItems = (targetPath: string): MenuItem[] => {
-        const index = files.findIndex(f => isMatching(f.path, targetPath));
+        const index = files.findIndex(f => pathUtils.isEqual(f.path, targetPath));
         const isLeftmost = index === 0;
         const isRightmost = index === files.length - 1;
         const hasOnlyOne = files.length === 1;
 
         return [
             { label: t('Close'), action: () => onClose(targetPath) },
-            { 
-                label: t('CloseOthers'), 
+            {
+                label: t('CloseOthers'),
                 action: () => {
-                    files.forEach(f => { if (!isMatching(f.path, targetPath)) onClose(f.path); });
+                    files.forEach(f => { if (!pathUtils.isEqual(f.path, targetPath)) onClose(f.path); });
                 },
                 disabled: hasOnlyOne
             },

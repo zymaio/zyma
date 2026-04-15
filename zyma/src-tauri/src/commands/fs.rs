@@ -29,12 +29,12 @@ pub async fn fs_set_cwd(
 
 #[tauri::command]
 pub async fn read_dir(ws: State<'_, WorkspaceService>, path: String) -> Result<Vec<FileItem>, String> {
-    ws.fs.read_dir(&path).await
+    ws.fs.read_dir(&path).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn read_file(ws: State<'_, WorkspaceService>, path: String) -> Result<crate::models::FileReadResponse, String> {
-    ws.fs.read_file(&path).await
+    ws.fs.read_file(&path).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -54,7 +54,7 @@ pub async fn create_file(ws: State<'_, WorkspaceService>, bus: State<'_, EventBu
 
 #[tauri::command]
 pub async fn create_dir(ws: State<'_, WorkspaceService>, path: String) -> Result<(), String> {
-    ws.fs.create_dir(&path).await
+    ws.fs.create_dir(&path).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -66,10 +66,10 @@ pub async fn remove_item(ws: State<'_, WorkspaceService>, bus: State<'_, EventBu
 
 #[tauri::command]
 pub async fn rename_item(ws: State<'_, WorkspaceService>, at: String, to: String) -> Result<(), String> {
-    ws.fs.rename_item(&at, &to).await
+    ws.fs.rename_item(&at, &to).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn fs_stat(ws: State<'_, WorkspaceService>, path: String) -> Result<FileStat, String> {
-    ws.fs.stat(&path).await
+    ws.fs.stat(&path).await.map_err(|e| e.to_string())
 }

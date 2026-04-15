@@ -1,6 +1,28 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use serde::{Serialize, Deserialize};
 
+/// Setup window event listeners to auto-save state on move/resize
+fn setup_window_event_listeners(window: &tauri::WebviewWindow) {
+    let window_clone = window.clone();
+    window.on_window_event(move |event| {
+        match event {
+            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                let _ = save_window_state(window_clone.clone());
+            },
+            _ => {}
+        }
+    });
+}
+
+/// Show window with a short delay (150ms) to ensure proper rendering
+fn show_window_delayed(window: tauri::WebviewWindow) {
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        let _ = window.show();
+        let _ = window.set_focus();
+    });
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WindowState {
     pub width: f64,
@@ -35,7 +57,7 @@ pub fn save_window_state(window: tauri::WebviewWindow) -> Result<(), String> {
             Some(v) => v.as_object().cloned().unwrap_or_default(),
             None => serde_json::Map::new(),
         };
-        windows_map.insert(label, serde_json::to_value(state).unwrap());
+        windows_map.insert(label, serde_json::to_value(state).map_err(|e| e.to_string())?);
         settings.windows = Some(serde_json::Value::Object(windows_map));
     }
 
@@ -73,20 +95,8 @@ pub async fn open_detached_output(app_handle: tauri::AppHandle, channel: String)
     }
     
     let window = builder.build().map_err(|e| e.to_string())?;
-    let window_clone = window.clone();
-    window.on_window_event(move |event| { 
-        match event { 
-            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => { let _ = save_window_state(window_clone.clone()); }, 
-            _ => {} 
-        } 
-    });
-    
-    let w = window.clone();
-    tauri::async_runtime::spawn(async move { 
-        tokio::time::sleep(std::time::Duration::from_millis(150)).await; 
-        let _ = w.show(); 
-        let _ = w.set_focus(); 
-    });
+    setup_window_event_listeners(&window);
+    show_window_delayed(window);
     Ok(())
 }
 
@@ -122,29 +132,14 @@ pub async fn window_create(app_handle: tauri::AppHandle, label: String, options:
     }
 
     let window = builder.build().map_err(|e| e.to_string())?;
-    let window_clone = window.clone();
-    
-    window.on_window_event(move |event| {
-        match event {
-            tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
-                let _ = save_window_state(window_clone.clone());
-            },
-            _ => {}
-        }
-    });
-
-    let w = window.clone();
-    tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
-        let _ = w.show();
-        let _ = w.set_focus();
-    });
+    setup_window_event_listeners(&window);
+    show_window_delayed(window);
 
     Ok(())
 }
 
 #[tauri::command]
-pub fn show_window(window: tauri::WebviewWindow) -> Result<(), String> { 
+pub fn show_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.show().map_err(|e| e.to_string())?; 
     window.set_focus().map_err(|e| e.to_string())?; 
     Ok(()) 

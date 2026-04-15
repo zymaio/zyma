@@ -6,6 +6,8 @@ import { useKeybindings } from '../hooks/useKeybindings';
 import { useBottomPanelResize } from '../components/BottomPanel/useBottomPanelResize';
 import type { WorkbenchLogic } from '../hooks/useWorkbenchLogic';
 import type { FileManagement } from '../hooks/useFileManagement';
+import type { TabItem, CustomViewRequest } from '../hooks/useTabSystem';
+import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 
 // Sub-components
 import { WorkbenchLayout } from '../components/ViewSystem/WorkbenchLayout';
@@ -13,22 +15,32 @@ import { WorkbenchSidebar } from '../components/ViewSystem/WorkbenchSidebar';
 import { WorkbenchEditor } from '../components/ViewSystem/WorkbenchEditor';
 import { useWorkbenchController } from '../hooks/useWorkbenchController';
 
+interface WorkbenchAppInit {
+    ready: boolean;
+    settings: AppSettings;
+    setSettings: (s: AppSettings) => void;
+    pluginManager: any;
+    [key: string]: unknown;
+}
+
 interface WorkbenchProps {
     fm: FileManagement;
     tabSystem: {
-        activeTabs: any[];
+        activeTabs: TabItem[];
         activeTabId: string | null;
-        activeTab: any;
+        activeTab?: TabItem;
         setActiveTabId: (id: string | null) => void;
         closeTab: (id: string) => void;
-        openCustomView: (req: any) => void;
+        openCustomView: (req: CustomViewRequest) => void;
     };
     sidebarResize: {
         sidebarWidth: number;
         startResizing: () => void;
     };
-    appInit: any;
-    chatComponents: any;
+    appInit: WorkbenchAppInit;
+    chatComponents: {
+        ChatPanel: React.ComponentType<{ getContext?: () => Promise<unknown> }>;
+    };
     logic: WorkbenchLogic;
     brand?: { name: string; subName?: string; logo?: React.ReactNode; };
     welcomeExtra?: React.ReactNode;

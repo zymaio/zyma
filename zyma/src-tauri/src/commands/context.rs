@@ -9,7 +9,7 @@ pub fn set_context(
     key: String,
     value: Value
 ) -> Result<(), String> {
-    state.set(key.clone(), value.clone());
+    state.set(key.clone(), value.clone()).map_err(|e| e.to_string())?;
     // 发出事件通知前端状态已变
     let _ = app_handle.emit("zyma:context-changed", serde_json::json!({
         "key": key,
@@ -23,12 +23,12 @@ pub fn get_context(
     state: State<'_, ContextService>,
     key: String
 ) -> Option<Value> {
-    state.get(&key)
+    state.get(&key).unwrap_or(None)
 }
 
 #[tauri::command]
 pub fn get_all_contexts(
     state: State<'_, ContextService>
 ) -> serde_json::Value {
-    serde_json::to_value(state.get_all()).unwrap_or(serde_json::json!({}))
+    serde_json::to_value(state.get_all().unwrap_or_default()).unwrap_or(serde_json::json!({}))
 }

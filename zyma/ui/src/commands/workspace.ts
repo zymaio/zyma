@@ -1,8 +1,10 @@
 import { commands } from '../components/CommandSystem/CommandRegistry';
+import { logger } from '../utils/logger';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
+import type { WorkbenchHandlers } from '../components/PluginSystem/types';
 
-export function registerWorkspaceCommands(t: any, handlers: any) {
+export function registerWorkspaceCommands(t: (key: string) => string, handlers: WorkbenchHandlers) {
     commands.registerCommand({
         id: 'workspace.openFolder',
         title: t('OpenFolder'),
@@ -12,8 +14,8 @@ export function registerWorkspaceCommands(t: any, handlers: any) {
                 const sel = await open({ directory: true });
                 if (sel) {
                     const newPath = sel as string;
-                    console.log("[Workspace] Switching to:", newPath);
-                    
+                    logger.debug("[Workspace] Switching to:", newPath);
+
                     // 1. 立即清理 UI 状态 (优化体验，防止闪烁)
                     handlers.fm.setOpenFiles([]);
                     handlers.fm.setActiveFilePath(null);

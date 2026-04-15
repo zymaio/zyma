@@ -1,19 +1,19 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import type { PluginManifest } from './types';
+import type { PluginManifest, PluginCallbacks, PluginComponents } from './types';
 import { PluginAPIBuilder } from './PluginAPIBuilder';
 import { ContributionRegistry } from './ContributionRegistry';
 import toast from 'react-hot-toast';
 
 export class PluginManager {
-    private plugins: Map<string, any> = new Map();
+    private plugins: Map<string, Record<string, unknown>> = new Map();
     private manifests: Map<string, PluginManifest> = new Map();
     private unlisteners: Map<string, UnlistenFn[]> = new Map();
     private contributionRegistry: ContributionRegistry;
     private listeners: (() => void)[] = [];
-    private callbacks: any;
+    private callbacks: PluginCallbacks;
 
-    constructor(callbacks: any) {
+    constructor(callbacks: PluginCallbacks) {
         this.callbacks = callbacks;
         this.contributionRegistry = new ContributionRegistry({
             components: callbacks.components,
@@ -33,19 +33,19 @@ export class PluginManager {
 
     getFileMenuItems() { return this.contributionRegistry.getFileMenuItems(); }
 
-    setCallbacks(callbacks: any) {
+    setCallbacks(callbacks: Partial<PluginCallbacks>) {
         Object.assign(this.callbacks, callbacks);
         // 同时更新 contributionRegistry 的回调 (假设也是同一个对象引用)
-        Object.assign((this.contributionRegistry as any).callbacks, callbacks);
+        Object.assign((this.contributionRegistry as Record<string, unknown>).callbacks, callbacks);
     }
 
-    setComponents(components: any) {
+    setComponents(components: PluginComponents) {
         this.callbacks.components = components;
         this.contributionRegistry.updateComponents(components);
     }
 
     getLoadedPlugins() {
-        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
+        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]') as string[];
         return Array.from(this.manifests.values()).map(m => ({
             ...m, id: m.name, enabled: !disabled.includes(m.name)
         }));
@@ -53,9 +53,9 @@ export class PluginManager {
 
     async loadAll() {
         try {
-            const disabledPlugins = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
+            const disabledPlugins = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]') as string[];
             const pluginList = await invoke<[string, PluginManifest, boolean][]>('list_plugins');
-            
+
             // 清理
             for (const name of Array.from(this.manifests.keys())) { await this.unloadPlugin(name, true); }
             this.manifests.clear();
@@ -63,21 +63,21 @@ export class PluginManager {
             for (const [dirPath, manifest, isBuiltin] of pluginList) {
                 const isEnabled = !disabledPlugins.includes(manifest.name);
                 this.manifests.set(manifest.name, { ...manifest, path: dirPath, isBuiltin });
-                
+
                 if (isEnabled) {
                     this.contributionRegistry.handle(manifest);
                     await this.loadPlugin(dirPath, manifest);
                 }
             }
             this.notifyUI();
-        } catch (e) { 
-            console.error("[PluginManager] Load failed", e); 
+        } catch (e) {
+            console.error("[PluginManager] Load failed", e);
             toast.error('Failed to initialize plugin system');
-            this.notifyUI(); 
+            this.notifyUI();
         }
     }
 
-    registerNativeMenu(item: any) {
+    registerNativeMenu(item: { title: string; command: string; pattern?: string; icon?: string }) {
         this.contributionRegistry.addFileMenuItem({
             label: item.title,
             commandId: item.command,
@@ -92,7 +92,7 @@ export class PluginManager {
         try {
             const entryPath = `${dirPath}/${manifest.entry}`;
             const code = await invoke<string>('read_plugin_file', { path: entryPath });
-            const pluginModule = { exports: {} };
+            const pluginModule = { exports: {} as Record<string, unknown> };
             const runPlugin = new Function('module', 'exports', 'zyma', 'React', 'Lucide', code);
             const ReactInstance = await import('react');
             const LucideIcons = await import('lucide-react');
@@ -100,39 +100,39 @@ export class PluginManager {
             const resources = this.contributionRegistry.getResourceHandle(manifest.name);
 
             const api = PluginAPIBuilder.create(
-                manifest, 
-                resources, 
+                manifest,
+                resources,
                 this.contributionRegistry,
-                { ...this.callbacks, addFileMenuItem: (item: any) => this.contributionRegistry.addFileMenuItem(item) },
+                { ...this.callbacks, addFileMenuItem: (item: Record<string, unknown>) => this.contributionRegistry.addFileMenuItem(item) },
                 () => this.notifyUI(),
-                (un: any) => {
+                (un: UnlistenFn) => {
                     if (!this.unlisteners.has(manifest.name)) this.unlisteners.set(manifest.name, []);
                     this.unlisteners.get(manifest.name)!.push(un);
                 }
             );
 
             runPlugin(pluginModule, pluginModule.exports, api, ReactInstance, LucideIcons);
-            const pluginInstance: any = pluginModule.exports;
+            const pluginInstance: Record<string, unknown> = pluginModule.exports;
             if (pluginInstance && typeof pluginInstance.activate === 'function') {
-                const res = pluginInstance.activate(api, ReactInstance, LucideIcons);
+                const res = (pluginInstance.activate as (api: unknown, React: unknown, Lucide: unknown) => void | Promise<void>)(api, ReactInstance, LucideIcons);
                 if (res instanceof Promise) await res;
             }
             this.plugins.set(manifest.name, pluginInstance);
-        } catch (e) { 
-            console.error(`Error activating plugin ${manifest.name}:`, e); 
+        } catch (e) {
+            console.error(`Error activating plugin ${manifest.name}:`, e);
             toast.error(`Plugin failed to load: ${manifest.name}`);
         }
     }
 
     async enablePlugin(name: string) {
-        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
+        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]') as string[];
         localStorage.setItem('zyma_disabled_plugins', JSON.stringify(disabled.filter((n: string) => n !== name)));
         await this.loadAll();
     }
 
     async disablePlugin(name: string) {
         await this.unloadPlugin(name, true);
-        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]');
+        const disabled = JSON.parse(localStorage.getItem('zyma_disabled_plugins') || '[]') as string[];
         if (!disabled.includes(name)) {
             disabled.push(name);
             localStorage.setItem('zyma_disabled_plugins', JSON.stringify(disabled));
@@ -142,8 +142,8 @@ export class PluginManager {
 
     async unloadPlugin(name: string, keepManifest = false) {
         const pluginInstance = this.plugins.get(name);
-        if (pluginInstance?.deactivate) { try { pluginInstance.deactivate(); } catch (e) {} }
-        
+        if (pluginInstance?.deactivate) { try { (pluginInstance.deactivate as () => void)(); } catch (e) {} }
+
         const unlisteners = this.unlisteners.get(name);
         if (unlisteners) {
             for (const un of unlisteners) { try { (await un)(); } catch(e) {} }

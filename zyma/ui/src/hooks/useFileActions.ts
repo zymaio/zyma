@@ -6,6 +6,7 @@ import { pathUtils } from '../utils/pathUtils';
 import toast from 'react-hot-toast';
 import { generateUid, normalizeContent } from './useFileState';
 import type { FileData, UseFileStateReturn } from './useFileState';
+import { logger } from '../utils/logger';
 
 const fsReadFile = (path: string) => invoke<any>('read_file', { path });
 const fsWriteFile = (path: string, content: string) => invoke<void>('write_file', { path, content });
@@ -33,7 +34,7 @@ export function useFileActions(fileState: UseFileStateReturn) {
                         scrollIntoView: true
                     });
                     delete (window as any).__pendingLineJump;
-                } catch (e) { console.warn("Manual jump failed", e); }
+                } catch (e) { logger.warn("Manual jump failed", e); }
             }
             setActiveFilePath(existing.id);
             return;
@@ -100,7 +101,6 @@ export function useFileActions(fileState: UseFileStateReturn) {
                 targetPath = selected;
             }
             if (!targetPath) return false;
-            if (targetPath === target.path && normalizedCurrent === target.originalContent) return true; 
 
             await fsWriteFile(targetPath, currentText);
             const fileName = pathUtils.getFileName(targetPath);

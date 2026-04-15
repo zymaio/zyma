@@ -16,6 +16,7 @@ export class KeybindingManager {
             { key: 'ctrl+s', command: 'file.save' },
             { key: 'ctrl+shift+s', command: 'file.saveAs' },
             { key: 'ctrl+n', command: 'file.new' },
+            { key: 'delete', command: 'file.delete' },
             { key: 'ctrl+shift+p', command: 'workbench.action.showCommands' },
             { key: 'ctrl+shift+f', command: 'workbench.action.showAllSymbols' },
             { key: 'ctrl+b', command: 'workbench.action.toggleSidebarVisibility' },

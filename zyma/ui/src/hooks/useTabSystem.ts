@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import type { FileManagement } from './useFileManagement';
 
 export type TabItem = {
     id: string; // 对应 FileData.id
@@ -21,18 +22,27 @@ export type CustomViewRequest = {
     options?: CustomViewOptions;
 };
 
+export interface TabSystem {
+    activeTabs: TabItem[];
+    activeTabId: string | null;
+    activeTab?: TabItem;
+    setActiveTabId: (id: string | null) => void;
+    openCustomView: (request: CustomViewRequest) => void;
+    closeTab: (id: string) => void;
+}
+
 /**
  * 专门处理来自后端的页签控制事件 (CLI, Single Instance, 插件)
  */
-function useRemoteTabHandler(fm: any, closeTab: (id: string) => void) {
+function useRemoteTabHandler(fm: FileManagement, closeTab: (id: string) => void) {
     const fmRef = useRef(fm);
     const closeTabRef = useRef(closeTab);
     fmRef.current = fm;
     closeTabRef.current = closeTab;
 
     useEffect(() => {
-        let unsubs: any[] = [];
-        
+        let unsubs: Array<(() => void) | null> = [];
+
         const setup = async () => {
             const u1 = await listen('zyma:open-tab', (event: any) => {
                 const { id, title, type } = event.payload;
@@ -52,7 +62,7 @@ function useRemoteTabHandler(fm: any, closeTab: (id: string) => void) {
     }, []);
 }
 
-export function useTabSystem(fm: any) {
+export function useTabSystem(fm: FileManagement): TabSystem {
     const [activeTabs, setActiveTabs] = useState<TabItem[]>([]);
     const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
@@ -60,7 +70,7 @@ export function useTabSystem(fm: any) {
     useEffect(() => {
         setActiveTabs(prev => {
             const viewTabs = prev.filter(t => t.type === 'view');
-            const fileTabs: TabItem[] = fm.openFiles.map((f: any) => ({
+            const fileTabs: TabItem[] = fm.openFiles.map((f) => ({
                 id: f.id,
                 title: f.name,
                 type: 'file'

@@ -1,4 +1,4 @@
-use crate::commands::config::{load_settings, save_settings};
+use crate::services::settings::{load_settings, save_settings};
 use crate::services::path::normalize_to_string;
 
 pub fn add_recent_workspace(path: &str) -> Result<String, String> {
@@ -20,7 +20,7 @@ pub fn add_recent_workspace(path: &str) -> Result<String, String> {
             settings.recent_workspaces.truncate(10);
         }
         
-        let _ = save_settings(settings);
+        let _ = save_settings(&settings);
     }
     
     Ok(normalized_path)

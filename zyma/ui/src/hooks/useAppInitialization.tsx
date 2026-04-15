@@ -5,6 +5,7 @@ import { ask } from '@tauri-apps/plugin-dialog';
 import { PluginManager } from '../components/PluginSystem/PluginManager';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
 import { useNativeExtensions } from './useNativeExtensions';
+import { logger } from '../utils/logger';
 
 /**
  * 专门处理 CLI 启动参数的逻辑
@@ -35,7 +36,7 @@ function useCLIHandler(ready: boolean, fm: any) {
                         }
                     }
                 }
-            } catch (e) { console.warn('CLI Init Error:', e); }
+            } catch (e) { logger.warn('CLI Init Error:', e); }
         };
 
         handleCLI();

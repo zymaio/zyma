@@ -12,7 +12,6 @@ pub fn normalize(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
-        // Force uppercase drive letters on Windows for consistency
         let prefix_os = c.as_os_str().to_string_lossy();
         if prefix_os.contains(':') {
             PathBuf::from(prefix_os.to_uppercase())
@@ -26,9 +25,9 @@ pub fn normalize(path: &Path) -> PathBuf {
     for component in components {
         match component {
             Component::Prefix(..) => unreachable!(),
-            Component::RootDir => { ret.push(component.as_os_str()); } 
-            Component::CurDir => {} 
-            Component::ParentDir => { ret.pop(); } 
+            Component::RootDir => { ret.push(component.as_os_str()); }
+            Component::CurDir => {}
+            Component::ParentDir => { ret.pop(); }
             Component::Normal(c) => { ret.push(c); }
         }
     }
@@ -47,5 +46,40 @@ pub fn simplify_canonical(path: PathBuf) -> String {
         s[4..].to_string()
     } else {
         s
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_to_string_forward_slashes() {
+        let path = Path::new("some\\path\\to\\file.txt");
+        let result = normalize_to_string(path);
+        assert!(result.contains('/'));
+        assert!(!result.contains('\\'));
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_normalize_windows_drive_uppercase() {
+        let path = Path::new("c:\\Users\\test");
+        let normalized = normalize(path);
+        assert!(normalized.to_string_lossy().starts_with("C:"));
+    }
+
+    #[test]
+    fn test_simplify_canonical_unc_prefix() {
+        let path = PathBuf::from(r"\\?\C:\Users\test");
+        let result = simplify_canonical(path);
+        assert_eq!(result, r"C:\Users\test");
+    }
+
+    #[test]
+    fn test_simplify_canonical_no_prefix() {
+        let path = PathBuf::from(r"C:\Users\test");
+        let result = simplify_canonical(path);
+        assert_eq!(result, r"C:\Users\test");
     }
 }

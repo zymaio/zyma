@@ -1,0 +1,8 @@
+# Cargo build optimization for faster development
+[build]
+# Use mold linker for faster builds on Linux (optional)
+# rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+
+[target.'cfg(windows)']
+# Use lld linker for faster linking on Windows
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]

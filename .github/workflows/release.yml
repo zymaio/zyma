@@ -26,8 +26,25 @@ jobs:
         with:
           node-version: 20
 
+      - name: install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
       - name: install frontend dependencies
         run: npm install
+        working-directory: zyma/ui
+
+      - name: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: cargo test
+        run: cargo test --all
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+        working-directory: zyma/ui
+
+      - name: frontend tests
+        run: npm test
         working-directory: zyma/ui
 
       - uses: tauri-apps/tauri-action@v0

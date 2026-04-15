@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { pathUtils } from '../utils/pathUtils';
+import { logger } from '../utils/logger';
 
 interface SessionManagementProps {
     ready: boolean;
@@ -86,7 +87,7 @@ export function useSessionManagement({
                     }
                 });
             } catch (e) {
-                console.warn("[Session] Auto-save failed:", e);
+                logger.warn("[Session] Auto-save failed:", e);
             }
         }, 3000);
 

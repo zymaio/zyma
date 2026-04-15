@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 
 export interface FileData {
     id: string; // 磁盘路径或临时ID
@@ -18,12 +18,12 @@ export function useFileState() {
     const [openFiles, setOpenFiles] = useState<FileData[]>([]);
     const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
 
-    return useMemo(() => ({
+    return {
         openFiles,
         setOpenFiles,
         activeFilePath,
         setActiveFilePath
-    }), [openFiles, activeFilePath]);
+    };
 }
 
 export type UseFileStateReturn = ReturnType<typeof useFileState>;

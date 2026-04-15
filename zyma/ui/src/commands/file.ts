@@ -1,6 +1,7 @@
 import { commands } from '../components/CommandSystem/CommandRegistry';
+import type { WorkbenchHandlers } from '../components/PluginSystem/types';
 
-export function registerFileCommands(t: any, handlers: any) {
+export function registerFileCommands(t: (key: string) => string, handlers: WorkbenchHandlers) {
     commands.registerCommand({
         id: 'file.new',
         title: t('NewFile'),
@@ -20,5 +21,21 @@ export function registerFileCommands(t: any, handlers: any) {
         title: t('SaveAs'),
         category: 'File',
         callback: () => handlers.handleSave(true)
+    });
+
+    commands.registerCommand({
+        id: 'file.delete',
+        title: t('Delete'),
+        category: 'File',
+        callback: () => {
+            const path = handlers.fm.activeFilePath;
+            if (!path) return;
+
+            // 从路径中提取文件名
+            const name = path.split('/').pop() || path.split('\\').pop() || 'file';
+
+            // handleDelete 内部会显示确认对话框
+            handlers.fm.handleDelete(path, name);
+        }
     });
 }

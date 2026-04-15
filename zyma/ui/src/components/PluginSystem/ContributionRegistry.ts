@@ -1,25 +1,29 @@
 import { views } from '../ViewSystem/ViewRegistry';
 import { statusBar } from '../StatusBar/StatusBarRegistry';
 import { commands } from '../CommandSystem/CommandRegistry';
-import type { PluginManifest } from './types';
+import type { PluginManifest, PluginComponents } from './types';
 
 /**
  * 专门负责解析和管理插件的声明式贡献 (Contributes)
  */
 export class ContributionRegistry {
-    private resources: Map<string, { views: string[], statusItems: string[], commands: string[], tabs: string[] }> = new Map();
-    private fileMenuItems: { label: string, commandId: string, order?: number, pluginName: string }[] = [];
-    private callbacks: { 
-        components: { ChatPanel: any }, 
-        addFileMenuItem: (item: any) => void,
-        closeTab?: (id: string) => void
+    private resources: Map<string, { views: string[]; statusItems: string[]; commands: string[]; tabs: string[] }> = new Map();
+    private fileMenuItems: { label: string; commandId: string; order?: number; pluginName: string }[] = [];
+    private callbacks: {
+        components: PluginComponents;
+        addFileMenuItem: (item: Record<string, unknown>) => void;
+        closeTab?: (id: string) => void;
     };
 
-    constructor(callbacks: { components: { ChatPanel: any }, addFileMenuItem: (item: any) => void, closeTab?: (id: string) => void }) {
+    constructor(callbacks: {
+        components: PluginComponents;
+        addFileMenuItem: (item: Record<string, unknown>) => void;
+        closeTab?: (id: string) => void;
+    }) {
         this.callbacks = callbacks;
     }
 
-    updateComponents(components: any) {
+    updateComponents(components: PluginComponents) {
         this.callbacks.components = components;
     }
 
@@ -67,7 +71,7 @@ export class ContributionRegistry {
             res.views.forEach(id => views.unregisterView(id));
             res.statusItems.forEach(id => statusBar.unregisterItem(id));
             res.commands.forEach(id => commands.unregisterCommand(id));
-            
+
             // 关键：关闭插件打开的所有标签页
             if (this.callbacks.closeTab) {
                 res.tabs.forEach(tabId => this.callbacks.closeTab!(tabId));
@@ -78,8 +82,8 @@ export class ContributionRegistry {
         this.fileMenuItems = this.fileMenuItems.filter(m => m.pluginName !== pluginName);
     }
 
-    addFileMenuItem(item: any) {
-        this.fileMenuItems.push(item);
+    addFileMenuItem(item: Record<string, unknown>) {
+        this.fileMenuItems.push(item as { label: string; commandId: string; order?: number; pluginName: string });
         this.callbacks.addFileMenuItem(item);
     }
 

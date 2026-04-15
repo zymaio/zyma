@@ -1,8 +1,8 @@
 use tauri::{Emitter, Manager, AppHandle, Wry};
 use std::fs;
 use std::path::PathBuf;
-use crate::{bus, commands, services};
-use crate::commands::config::get_config_path;
+use crate::{bus, services};
+use crate::services::settings::get_config_path;
 
 pub fn setup_zyma(app: &mut tauri::App<Wry>, bus: bus::EventBus) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
@@ -36,13 +36,27 @@ fn setup_workspace_watcher(handle: &AppHandle<Wry>, bus: bus::EventBus) {
     let mut bus_rx = bus.subscribe();
     tauri::async_runtime::spawn(async move {
         while let Ok(event) = bus_rx.recv().await {
-            if let bus::ZymaEvent::WorkspaceChanged(new_path) = event {
-                let watcher_state = h.state::<commands::watcher::WatcherState>();
-                {
-                    let mut watchers = watcher_state.watchers.lock().unwrap();
-                    watchers.clear(); 
+            match event {
+                bus::ZymaEvent::WorkspaceChanged(new_path) => {
+                    let watcher_state = h.state::<services::watcher::WatcherState>();
+                    if let Ok(mut watchers) = watcher_state.watchers.lock() {
+                        watchers.clear();
+                    }
+                    let _ = services::watcher::fs_watch(h.clone(), watcher_state, new_path);
                 }
-                let _ = commands::watcher::fs_watch(h.clone(), watcher_state, new_path);
+                bus::ZymaEvent::FileCreated(path) => {
+                    let _ = h.emit("fs_event", serde_json::json!({
+                        "kind": "Create",
+                        "paths": [path]
+                    }));
+                }
+                bus::ZymaEvent::FileDeleted(path) => {
+                    let _ = h.emit("fs_event", serde_json::json!({
+                        "kind": "Remove",
+                        "paths": [path]
+                    }));
+                }
+                _ => {}
             }
         }
     });
@@ -70,15 +84,20 @@ async fn handle_remote_open(handle: &AppHandle<Wry>, path_str: String) {
     let event_bus = handle.state::<bus::EventBus>();
 
     if path.is_dir() {
-        let _ = commands::fs::fs_set_cwd(handle.clone(), ws, event_bus, normalized_path).await;
+        // Use the service method directly instead of calling command
+        let _ = ws.set_cwd(&path_str);
+        let _ = handle.emit("workspace_changed", &normalized_path);
+        event_bus.publish(bus::ZymaEvent::WorkspaceChanged(normalized_path));
     } else if path.is_file() {
         if let Some(parent) = path.parent() {
             let parent_str = crate::services::path::normalize_to_string(parent);
             let file_name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
-            
+
             // 1. 切换到父目录作为工作区
-            let _ = commands::fs::fs_set_cwd(handle.clone(), ws, event_bus, parent_str).await;
-            
+            let _ = ws.set_cwd(&parent_str);
+            let _ = handle.emit("workspace_changed", &parent_str);
+            event_bus.publish(bus::ZymaEvent::WorkspaceChanged(parent_str));
+
             // 2. 通知前端打开具体文件
             let h_emit = handle.clone();
             tauri::async_runtime::spawn(async move {

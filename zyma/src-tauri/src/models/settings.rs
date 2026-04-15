@@ -1,0 +1,75 @@
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SessionInfo {
+    pub root_path: Option<String>,
+    pub open_files: Vec<String>,
+    pub active_file: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AppSettings {
+    pub theme: String,
+    pub font_size: u32,
+    pub ui_font_size: u32,
+    pub tab_size: u32,
+    pub language: String,
+    pub context_menu: bool,
+    pub single_instance: bool,
+    pub auto_update: bool,
+    pub window_width: f64,
+    pub window_height: f64,
+    pub window_x: Option<i32>,
+    pub window_y: Option<i32>,
+    pub is_maximized: bool,
+    pub windows: Option<serde_json::Value>,
+
+    // 会话信息
+    pub session: Option<SessionInfo>,
+
+    // 最近打开的工作区
+    #[serde(default)]
+    pub recent_workspaces: Vec<String>,
+
+    // AI Settings
+    #[serde(default)]
+    pub ai_provider: Option<String>,
+    #[serde(default)]
+    pub ai_api_key: Option<String>,
+    #[serde(default)]
+    pub ai_base_url: Option<String>,
+    #[serde(default)]
+    pub ai_model: Option<String>,
+
+    // 扩展字段
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            theme: "dark".to_string(),
+            font_size: 14,
+            ui_font_size: 13,
+            tab_size: 4,
+            language: "zh-CN".to_string(),
+            context_menu: false,
+            single_instance: true,
+            auto_update: true,
+            window_width: 800.0,
+            window_height: 600.0,
+            window_x: None,
+            window_y: None,
+            is_maximized: false,
+            windows: None,
+            session: None,
+            recent_workspaces: Vec::new(),
+            ai_provider: None,
+            ai_api_key: None,
+            ai_base_url: None,
+            ai_model: None,
+            extra: std::collections::HashMap::new(),
+        }
+    }
+}

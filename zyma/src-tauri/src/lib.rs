@@ -1,3 +1,4 @@
+pub mod errors;
 pub mod models;
 pub mod commands;
 pub mod llm;

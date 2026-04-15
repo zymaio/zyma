@@ -1,4 +1,5 @@
 use crate::models::SearchResult;
+use crate::services::path::normalize_to_string;
 use ignore::WalkBuilder;
 use std::sync::mpsc;
 use globset::{Glob, GlobSetBuilder};
@@ -43,7 +44,7 @@ pub fn fs_find_files(base_dir: String, include: String, exclude: Option<String>)
                         continue;
                     }
                 }
-                results.push(path.to_string_lossy().replace("\\", "/"));
+                results.push(normalize_to_string(path));
             }
         }
     }
@@ -119,7 +120,7 @@ pub fn search_in_dir(
 
             let path = entry.path();
             let rel_path_raw = path.strip_prefix(&root_path).unwrap_or(path);
-            let rel_path_str = rel_path_raw.to_string_lossy().replace("\\", "/");
+            let rel_path_str = normalize_to_string(rel_path_raw);
 
             // 文件过滤
             if let Some(ref set) = include_set {
@@ -138,10 +139,10 @@ pub fn search_in_dir(
                 };
 
                 if is_match {
-                    let _ = tx.send(SearchResult { 
-                        path: path.to_string_lossy().replace("\\", "/"), 
-                        line: 0, 
-                        content: String::new() 
+                    let _ = tx.send(SearchResult {
+                        path: normalize_to_string(path),
+                        line: 0,
+                        content: String::new()
                     });
                 }
             } else {
@@ -162,7 +163,7 @@ pub fn search_in_dir(
 
                             if is_match {
                                 let _ = tx.send(SearchResult {
-                                    path: path.to_string_lossy().replace("\\", "/"),
+                                    path: normalize_to_string(path),
                                     line: idx + 1,
                                     content: line.trim().chars().take(100).collect(),
                                 });

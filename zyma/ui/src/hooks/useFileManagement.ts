@@ -28,10 +28,11 @@ export function useFileManagement(): FileManagement {
     const fileSystem = useFileSystem(fileState);
     const fileActions = useFileActions(fileState);
 
-    return useMemo(() => ({
+    // Removed useMemo as object spread always creates a new object
+    return {
         ...fileState,
         ...fileSystem,
         ...fileActions,
         handleEditorChange: fileActions.handleEditorChange
-    }), [fileState, fileSystem, fileActions]);
+    };
 }

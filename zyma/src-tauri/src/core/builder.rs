@@ -1,9 +1,7 @@
 use tauri::{Manager, Wry};
 use std::path::PathBuf;
-use std::sync::Mutex;
-use std::collections::HashMap;
 use crate::models::*;
-use crate::{bus, commands, services, llm};
+use crate::{bus, services, llm};
 use crate::core::setup::setup_zyma;
 
 pub struct ZymaBuilder {
@@ -30,9 +28,9 @@ impl ZymaBuilder {
     }
 
     pub fn from_builder(builder: tauri::Builder<Wry>) -> Self {
-        Self { 
-            builder, 
-            participants: Vec::new(), 
+        Self {
+            builder,
+            participants: Vec::new(),
             auth_providers: Vec::new(),
             sidebar_items: Vec::new(),
             file_menu_items: Vec::new(),
@@ -100,12 +98,10 @@ impl ZymaBuilder {
             }))
             .plugin(tauri_plugin_cli::init())
             .setup(move |app| {
-                // 1. 初始化并注册 EventBus
                 let bus = bus::EventBus::new();
                 app.manage(bus.clone());
 
-                // 2. 初始化并注册 WorkspaceService
-                let initial_path = if let Ok(settings) = commands::config::load_settings() {
+                let initial_path = if let Ok(settings) = services::settings::load_settings() {
                     settings.session.and_then(|s| s.root_path).and_then(|p| {
                         let path = PathBuf::from(p);
                         if path.exists() && path.is_dir() { Some(path) } else { None }
@@ -115,21 +111,37 @@ impl ZymaBuilder {
                 };
 
                 app.manage(services::WorkspaceService::new(initial_path));
-                app.manage(commands::watcher::WatcherState { watchers: Mutex::new(HashMap::new()) });
-                app.manage(commands::output::OutputState { channels: Mutex::new(HashMap::new()) });
                 app.manage(llm::LLMManager::new());
                 app.manage(services::ContextService::new());
 
-                // 3. 初始化并注册 PluginService
-                app.manage(commands::plugins::PluginService {
-                    external_plugins: std::sync::RwLock::new(Vec::new()),
-                    native_chat_participants: std::sync::RwLock::new(participants),
-                    native_auth_providers: std::sync::RwLock::new(auth),
-                    native_sidebar_items: std::sync::RwLock::new(items),
-                    native_file_menu_items: std::sync::RwLock::new(file_menus),
-                    native_commands: std::sync::RwLock::new(Vec::new()),
-                    native_slot_components: std::sync::RwLock::new(slots),
-                });
+                app.manage(services::watcher::WatcherState::new());
+                app.manage(services::output::OutputState::new());
+
+                let chat_service = services::ChatParticipantService::new();
+                let _ = chat_service.set_items(participants);
+                app.manage(chat_service);
+
+                let auth_service = services::AuthService::new();
+                let _ = auth_service.set_items(auth);
+                app.manage(auth_service);
+
+                let sidebar_service = services::SidebarService::new();
+                let _ = sidebar_service.set_items(items);
+                app.manage(sidebar_service);
+
+                let file_menu_service = services::FileMenuService::new();
+                let _ = file_menu_service.set_items(file_menus);
+                app.manage(file_menu_service);
+
+                let command_service = services::CommandService::new();
+                app.manage(command_service);
+
+                let slot_service = services::SlotService::new();
+                let _ = slot_service.set_items(slots);
+                app.manage(slot_service);
+
+                let plugin_registry = services::plugin_registry::PluginRegistryService::new();
+                app.manage(plugin_registry);
 
                 setup_zyma(app, bus)?;
 

@@ -25,6 +25,14 @@ export const pathUtils = {
         if (!path) return "";
         // 处理末尾斜杠的情况，并统一标准化
         return path.replace(/\\/g, '/').split('/').filter(Boolean).pop() || path;
+    },
+
+    /**
+     * 比较两个路径是否相等（大小写不敏感，统一斜杠）
+     */
+    isEqual: (p1: string | null, p2: string | null): boolean => {
+        if (!p1 || !p2) return p1 === p2;
+        return p1.replace(/\\/g, '/').toLowerCase() === p2.replace(/\\/g, '/').toLowerCase();
     }
 };
 

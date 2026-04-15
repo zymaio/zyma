@@ -5,24 +5,26 @@ import { statusBar as statusBarRegistry } from '../components/StatusBar/StatusBa
 import { pathUtils } from '../utils/pathUtils';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { logger } from '../utils/logger';
 
 import { useSessionManagement } from './useSessionManagement';
 import { useUIState } from './useUIState';
 import type { AppSettings } from '../components/SettingsModal/SettingsModal';
+import type { FileManagement } from './useFileManagement';
+import type { TabSystem } from './useTabSystem';
 
 const LANGUAGE_EXTENSION_MAP: Record<string, string> = {
-    'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript', 
+    'rs': 'Rust', 'js': 'JavaScript', 'ts': 'TypeScript', 'tsx': 'TypeScript',
     'jsx': 'JavaScript', 'py': 'Python', 'md': 'Markdown', 'html': 'HTML',
     'css': 'CSS', 'json': 'JSON', 'xml': 'XML', 'svg': 'SVG', 'cpp': 'C++', 'toml': 'TOML'
 };
 
 interface WorkbenchLogicProps {
-    fm: any;
-    tabSystem: any;
+    fm: FileManagement;
+    tabSystem: TabSystem;
     appInit: {
         ready: boolean;
         setSettings?: (s: AppSettings) => void;
-        [key: string]: any;
     };
 }
 
@@ -54,7 +56,7 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
             const un = await listen<string>('workspace_changed', async (event) => {
                 if (!isMounted) return;
                 const newPath = event.payload;
-                console.log("[Logic] Workspace changed to:", newPath);
+                logger.debug("[Logic] Workspace changed to:", newPath);
                 
                 setRootPath(newPath);
                 if (fm.setOpenFiles) fm.setOpenFiles([]);
@@ -93,7 +95,7 @@ export function useWorkbenchLogic({ fm, tabSystem, appInit }: WorkbenchLogicProp
     // 3. 开启 Watcher
     useEffect(() => {
         if (ready && rootPath && rootPath !== '.') {
-            invoke('fs_watch', { path: rootPath }).catch(console.warn);
+            invoke('fs_watch', { path: rootPath }).catch((e) => logger.warn('fs_watch failed:', e));
         }
     }, [ready, rootPath]);
 

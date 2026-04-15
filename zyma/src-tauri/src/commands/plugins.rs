@@ -1,94 +1,106 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::models::{PluginManifest, NativeChatParticipant, NativeAuthProvider, NativeSidebarItem, NativeSlotComponent, NativeFileMenuItem};
-use std::sync::RwLock;
+use crate::models::{PluginManifest, NativeSidebarItem, NativeFileMenuItem, NativeCommand};
 use tauri::Emitter;
+use serde::Serialize;
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct NativeCommand {
-    pub id: String,
-    pub title: String,
-    pub category: Option<String>,
-}
-
-pub struct PluginService {
-    pub external_plugins: RwLock<Vec<PathBuf>>,
-    pub native_chat_participants: RwLock<Vec<NativeChatParticipant>>,
-    pub native_auth_providers: RwLock<Vec<NativeAuthProvider>>,
-    pub native_sidebar_items: RwLock<Vec<NativeSidebarItem>>,
-    pub native_file_menu_items: RwLock<Vec<NativeFileMenuItem>>,
-    pub native_commands: RwLock<Vec<NativeCommand>>,
-    pub native_slot_components: RwLock<Vec<NativeSlotComponent>>,
-}
-
-impl PluginService {
-    pub fn new() -> Self {
-        Self {
-            external_plugins: RwLock::new(Vec::new()),
-            native_chat_participants: RwLock::new(Vec::new()),
-            native_auth_providers: RwLock::new(Vec::new()),
-            native_sidebar_items: RwLock::new(Vec::new()),
-            native_file_menu_items: RwLock::new(Vec::new()),
-            native_commands: RwLock::new(Vec::new()),
-            native_slot_components: RwLock::new(Vec::new()),
-        }
-    }
+/// Helper function to emit update events for registry services
+fn emit_registry_update<T: Clone + Serialize>(
+    app_handle: &tauri::AppHandle,
+    items: &Vec<T>,
+    event_name: &str,
+) {
+    let _ = app_handle.emit(event_name, items);
 }
 
 #[tauri::command]
 pub fn get_native_extensions(
-    plugin_service: tauri::State<'_, PluginService>,
+    chat_service: tauri::State<'_, crate::services::ChatParticipantService>,
+    auth_service: tauri::State<'_, crate::services::AuthService>,
+    sidebar_service: tauri::State<'_, crate::services::SidebarService>,
+    command_service: tauri::State<'_, crate::services::CommandService>,
+    file_menu_service: tauri::State<'_, crate::services::FileMenuService>,
+    slot_service: tauri::State<'_, crate::services::SlotService>,
 ) -> serde_json::Value {
-    let sidebar_items = plugin_service.native_sidebar_items.read().unwrap();
-    let commands = plugin_service.native_commands.read().unwrap();
-    let participants = plugin_service.native_chat_participants.read().unwrap();
-    let auth_providers = plugin_service.native_auth_providers.read().unwrap();
-    let file_menu_items = plugin_service.native_file_menu_items.read().unwrap();
-    let slot_components = plugin_service.native_slot_components.read().unwrap();
-    
     serde_json::json!({
-        "chat_participants": *participants,
-        "auth_providers": *auth_providers,
-        "sidebar_items": *sidebar_items,
-        "file_menu_items": *file_menu_items,
-        "commands": *commands,
-        "slot_components": *slot_components,
+        "chat_participants": chat_service.get_items().unwrap_or_default(),
+        "auth_providers": auth_service.get_items().unwrap_or_default(),
+        "sidebar_items": sidebar_service.get_items().unwrap_or_default(),
+        "file_menu_items": file_menu_service.get_items().unwrap_or_default(),
+        "commands": command_service.get_items().unwrap_or_default(),
+        "slot_components": slot_service.get_items().unwrap_or_default(),
     })
 }
 
 #[tauri::command]
 pub fn update_native_commands(
     app_handle: tauri::AppHandle,
-    plugin_service: tauri::State<'_, PluginService>,
+    command_service: tauri::State<'_, crate::services::CommandService>,
     commands: Vec<NativeCommand>,
 ) -> Result<(), String> {
-    {
-        let mut native_commands = plugin_service.native_commands.write().unwrap();
-        *native_commands = commands.clone();
-    }
-    // 通知前端指令已更新
-    let _ = app_handle.emit("zyma:commands-updated", commands);
+    command_service.set_items(commands.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &commands, "zyma:commands-updated");
     Ok(())
 }
 
 #[tauri::command]
 pub fn update_sidebar_items(
     app_handle: tauri::AppHandle,
-    plugin_service: tauri::State<'_, PluginService>,
+    sidebar_service: tauri::State<'_, crate::services::SidebarService>,
     items: Vec<NativeSidebarItem>,
 ) -> Result<(), String> {
-    {
-        let mut sidebar_items = plugin_service.native_sidebar_items.write().unwrap();
-        *sidebar_items = items.clone();
-    }
-    // 通知前端侧边栏已更新
-    let _ = app_handle.emit("zyma:sidebar-updated", items);
+    sidebar_service.set_items(items.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &items, "zyma:sidebar-updated");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_chat_participants(
+    app_handle: tauri::AppHandle,
+    chat_service: tauri::State<'_, crate::services::ChatParticipantService>,
+    participants: Vec<crate::models::NativeChatParticipant>,
+) -> Result<(), String> {
+    chat_service.set_items(participants.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &participants, "zyma:chat-participants-updated");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_auth_providers(
+    app_handle: tauri::AppHandle,
+    auth_service: tauri::State<'_, crate::services::AuthService>,
+    providers: Vec<crate::models::NativeAuthProvider>,
+) -> Result<(), String> {
+    auth_service.set_items(providers.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &providers, "zyma:auth-providers-updated");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_file_menu_items(
+    app_handle: tauri::AppHandle,
+    file_menu_service: tauri::State<'_, crate::services::FileMenuService>,
+    items: Vec<NativeFileMenuItem>,
+) -> Result<(), String> {
+    file_menu_service.set_items(items.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &items, "zyma:file-menu-updated");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_slot_components(
+    app_handle: tauri::AppHandle,
+    slot_service: tauri::State<'_, crate::services::SlotService>,
+    components: Vec<crate::models::NativeSlotComponent>,
+) -> Result<(), String> {
+    slot_service.set_items(components.clone()).map_err(|e| e.to_string())?;
+    emit_registry_update(&app_handle, &components, "zyma:slot-components-updated");
     Ok(())
 }
 
 #[tauri::command]
 pub fn list_plugins(
-    plugin_service: tauri::State<'_, PluginService>,
+    plugin_registry: tauri::State<'_, crate::services::plugin_registry::PluginRegistryService>,
 ) -> Result<Vec<(String, PluginManifest, bool)>, String> {
     let mut plugins = Vec::new();
     let mut seen_names = std::collections::HashSet::new();
@@ -104,10 +116,9 @@ pub fn list_plugins(
     }
     scan_dir(&user_path, false, &mut plugins, &mut seen_names);
 
-    // 扫描通过命令行参数传入的动态路径
-    let external_paths = plugin_service.external_plugins.read().unwrap();
-    for p_dir in &*external_paths {
-        scan_dir(p_dir, false, &mut plugins, &mut seen_names);
+    let external_plugins = plugin_registry.get_external_plugins().map_err(|e| e.to_string())?;
+    for p_dir in external_plugins {
+        scan_dir(&p_dir, false, &mut plugins, &mut seen_names);
     }
 
     Ok(plugins)
@@ -127,7 +138,6 @@ fn scan_dir(dir: &Path, is_builtin: bool, plugins: &mut Vec<(String, PluginManif
                             if seen.contains(&m.name) { continue; }
                             if let Ok(abs_p) = fs::canonicalize(&p) {
                                 seen.insert(m.name.clone());
-                                // 使用 simplify_canonical 确保前端兼容性
                                 plugins.push((crate::services::path::simplify_canonical(abs_p), m, is_builtin));
                             }
                         }
@@ -147,17 +157,14 @@ fn get_user_plugins_dir() -> PathBuf {
 }
 
 #[tauri::command]
-pub fn read_plugin_file(path: String) -> Result<String, String> { 
+pub fn read_plugin_file(path: String) -> Result<String, String> {
     let mut p = PathBuf::from(&path);
-    // 尝试规范化路径以处理分隔符问题
     if let Ok(canon) = fs::canonicalize(&p) {
         p = canon;
     }
 
-    // 安全校验：向上查找直到找到 manifest.json (防止读取系统任意文件)
     let mut current = p.parent();
     let mut found = false;
-    // 最多向上找 5 层
     for _ in 0..5 {
         if let Some(dir) = current {
             if dir.join("manifest.json").exists() {
@@ -169,8 +176,7 @@ pub fn read_plugin_file(path: String) -> Result<String, String> {
             break;
         }
     }
-    
-    // 特殊情况：如果读取的就是 manifest.json 本身
+
     if !found && p.file_name().and_then(|n| n.to_str()) == Some("manifest.json") {
          found = true;
     }
@@ -178,7 +184,7 @@ pub fn read_plugin_file(path: String) -> Result<String, String> {
     if !found {
         return Err(format!("Unauthorized: Cannot read files outside plugin scope. Path: {}", path));
     }
-    fs::read_to_string(p).map_err(|e| e.to_string()) 
+    fs::read_to_string(p).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

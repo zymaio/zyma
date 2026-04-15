@@ -8,27 +8,9 @@ import { registerWorkspaceCommands } from '../commands/workspace';
 import { slotRegistry } from './SlotRegistry';
 import OutputPanelWrapper from '../components/PluginSystem/OutputPanelWrapper';
 import type { CustomViewRequest } from '../hooks/useTabSystem';
+import type { WorkbenchHandlers, WorkbenchComponents } from '../components/PluginSystem/types';
 
-export function setupWorkbench(t: (key: string) => string, handlers: {
-    handleNewFile: () => void,
-    handleSave: (force: boolean) => void,
-    handleSaveSettings: (settings: any) => void,
-    getSettings: () => any,
-    setShowCommandPalette: (show: boolean) => void,
-    setShowSearch: (show: boolean) => void,
-    setSidebarTab: (id: string) => void,
-    toggleSidebar: () => void,
-    setRootPath: (path: string) => void,
-    fm: any,
-    setActiveTabId: (id: string | null) => void,
-    components: {
-        Sidebar: React.ReactNode,
-        SearchPanel: React.ReactNode,
-        PluginList: React.ComponentType,
-        ChatPanel: (props: { getContext?: any }) => React.ReactNode,
-    },
-    openCustomView: (request: CustomViewRequest) => void
-}) {
+export function setupWorkbench(t: (key: string) => string, handlers: WorkbenchHandlers) {
     // 1. 注册各模块命令
     registerFileCommands(t, handlers);
     registerViewCommands(t, handlers);

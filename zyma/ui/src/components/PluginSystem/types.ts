@@ -2,6 +2,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event';
 import type { Command } from '../CommandSystem/CommandRegistry';
 import type { View } from '../ViewSystem/ViewRegistry';
 import type { StatusBarItem } from '../StatusBar/StatusBarRegistry';
+import type React from 'react';
 
 export interface PluginManifest {
     name: string;
@@ -173,4 +174,72 @@ export interface AIChatChunk {
         };
         finish_reason?: string;
     }[];
+}
+
+/**
+ * Plugin API Builder 回调接口
+ */
+export interface PluginCallbacks {
+    insertText: (text: string) => void;
+    getContent: () => string;
+    getSelection: () => string;
+    showDiff: (originalPath: string, modifiedContent: string) => Promise<void>;
+    openCustomView?: (request: { id: string; title: string; component: React.ReactNode; options?: Record<string, unknown> }) => void;
+    notify: (msg: string) => void;
+    addFileMenuItem: (item: Record<string, unknown>) => void;
+    onMenuUpdate?: () => void;
+    components: PluginComponents;
+}
+
+/**
+ * Plugin 组件接口
+ */
+export interface PluginComponents {
+    ChatPanel: React.ComponentType<any>;
+}
+
+/**
+ * Plugin API Builder 的完整回调接口（包含内部使用的回调）
+ */
+export interface PluginAPIBuilderCallbacks extends PluginCallbacks {
+    openCustomView?: (request: { id: string; title: string; component: React.ReactNode; options?: Record<string, unknown> }) => void;
+}
+
+/**
+ * Workbench Handlers 接口
+ */
+export interface WorkbenchHandlers {
+    handleNewFile: () => void;
+    handleSave: (force: boolean) => void;
+    handleSaveSettings: (settings: AppSettings) => void;
+    getSettings: () => AppSettings;
+    setShowCommandPalette: (show: boolean) => void;
+    setShowSearch: (show: boolean) => void;
+    setSidebarTab: (id: string) => void;
+    toggleSidebar: () => void;
+    setRootPath: (path: string) => void;
+    fm: import('../../hooks/useFileManagement').FileManagement;
+    setActiveTabId: (id: string | null) => void;
+    components: WorkbenchComponents;
+    openCustomView: (request: import('../../hooks/useTabSystem').CustomViewRequest) => void;
+}
+
+/**
+ * Workbench Components 接口
+ */
+export interface WorkbenchComponents {
+    Sidebar: React.ReactNode;
+    SearchPanel: React.ReactNode;
+    PluginList: React.ComponentType;
+    ChatPanel: (props: { getContext?: any }) => React.ReactNode;
+}
+
+/**
+ * App Settings 接口（简化版）
+ */
+export interface AppSettings {
+    language?: string;
+    theme?: 'dark' | 'light' | 'abyss';
+    ui_font_size?: number;
+    [key: string]: any;
 }
